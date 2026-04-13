@@ -109,4 +109,7 @@ code {
   padding: 4px 8px;
   background: var(--code-bg);
 } */
-@import "tailwindcss";
+/* @import "tailwindcss"; */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
