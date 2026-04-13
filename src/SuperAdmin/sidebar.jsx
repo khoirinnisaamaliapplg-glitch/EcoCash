@@ -1,4 +1,5 @@
 import React from "react";
+import { NavLink } from "react-router-dom"; // Import NavLink untuk navigasi
 import { 
   List, 
   ListItem, 
@@ -14,25 +15,25 @@ import {
   ShoppingBagIcon, 
   ChartBarIcon, 
   Cog6ToothIcon,
-  XMarkIcon // Tambahkan icon silang untuk tutup menu di mobile
+  XMarkIcon 
 } from "@heroicons/react/24/outline";
 import logo2 from "../assets/logo2.png";
 
-const Sidebar = ({ open, setOpen }) => { // Menambahkan props untuk kontrol buka/tutup
+const Sidebar = ({ open, setOpen }) => {
+  // Tambahkan property 'path' sesuai dengan route di App.jsx kamu
   const menu = [
-    { name: "Dashboard", icon: <Square2StackIcon className="h-5 w-5" />, active: true },
-    { name: "Smart Container", icon: <CubeIcon className="h-5 w-5" /> },
-    { name: "Smart Truck", icon: <TruckIcon className="h-5 w-5" /> },
-    { name: "Users", icon: <UserGroupIcon className="h-5 w-5" /> },
-    { name: "Waste Prices", icon: <TagIcon className="h-5 w-5" /> },
-    { name: "MarketPlace", icon: <ShoppingBagIcon className="h-5 w-5" /> },
-    { name: "Financial Reports", icon: <ChartBarIcon className="h-5 w-5" /> },
-    { name: "System Setting", icon: <Cog6ToothIcon className="h-5 w-5" /> },
+    { name: "Dashboard", icon: <Square2StackIcon className="h-5 w-5" />, path: "/dashboard" },
+    { name: "Smart Container", icon: <CubeIcon className="h-5 w-5" />, path: "/smart-container" },
+    { name: "Smart Truck", icon: <TruckIcon className="h-5 w-5" />, path: "/smart-truck" },
+    { name: "Users", icon: <UserGroupIcon className="h-5 w-5" />, path: "/users" },
+    { name: "Waste Prices", icon: <TagIcon className="h-5 w-5" />, path: "/waste-prices" },
+    { name: "MarketPlace", icon: <ShoppingBagIcon className="h-5 w-5" />, path: "/marketplace" },
+    { name: "Financial Reports", icon: <ChartBarIcon className="h-5 w-5" />, path: "/reports" },
+    { name: "System Setting", icon: <Cog6ToothIcon className="h-5 w-5" />, path: "/settings" },
   ];
 
   return (
     <>
-      {/* OVERLAY: Muncul saat mobile menu terbuka untuk menutup sisa layar */}
       {open && (
         <div 
           className="fixed inset-0 z-20 bg-black/20 backdrop-blur-sm md:hidden"
@@ -40,7 +41,6 @@ const Sidebar = ({ open, setOpen }) => { // Menambahkan props untuk kontrol buka
         />
       )}
 
-      {/* SIDEBAR CONTAINER */}
       <div className={`
         fixed md:static inset-y-0 left-0 z-30
         h-screen w-full max-w-[18rem] p-4 
@@ -63,7 +63,6 @@ const Sidebar = ({ open, setOpen }) => { // Menambahkan props untuk kontrol buka
             </div>
           </div>
           
-          {/* Tombol Close hanya muncul di Mobile */}
           <button onClick={() => setOpen(false)} className="md:hidden">
             <XMarkIcon className="h-6 w-6 text-gray-500" />
           </button>
@@ -71,16 +70,24 @@ const Sidebar = ({ open, setOpen }) => { // Menambahkan props untuk kontrol buka
 
         <List className="gap-1">
           {menu.map((item, idx) => (
-            <ListItem 
-              key={idx} 
-              className={`
-                ${item.active ? "bg-blue-50 text-[#2b6cb0]" : "text-gray-600 hover:text-[#2b6cb0]"} 
-                font-semibold text-sm py-3 transition-all
-              `}
+            /* Bungkus ListItem dengan NavLink */
+            <NavLink 
+              to={item.path} 
+              key={idx}
+              onClick={() => setOpen(false)} // Otomatis tutup sidebar di mobile setelah klik
             >
-              <ListItemPrefix>{item.icon}</ListItemPrefix>
-              {item.name}
-            </ListItem>
+              {({ isActive }) => (
+                <ListItem 
+                  className={`
+                    ${isActive ? "bg-blue-50 text-[#2b6cb0]" : "text-gray-600 hover:text-[#2b6cb0]"} 
+                    font-semibold text-sm py-3 transition-all
+                  `}
+                >
+                  <ListItemPrefix>{item.icon}</ListItemPrefix>
+                  {item.name}
+                </ListItem>
+              )}
+            </NavLink>
           ))}
         </List>
       </div>
