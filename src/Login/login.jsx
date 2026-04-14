@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom'; // Tambahkan ini
+import { useNavigate } from 'react-router-dom';
 import {
   Card,
   Input,
@@ -12,14 +12,24 @@ import { motion, AnimatePresence } from 'framer-motion';
 import ForgotPasswordModal from './ForgotPasswordModal';
 
 const Login = () => {
-  const navigate = useNavigate(); // Inisialisasi navigasi
+  const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // --- DATA DUMMY ---
-  const DUMMY_USER = {
-    username: "admin",
-    password: "password123"
-  };
+  // --- DATA DUMMY MULTI-ROLE ---
+  const DUMMY_USERS = [
+    {
+      username: "superadmin",
+      password: "password123",
+      role: "SUPER_ADMIN",
+      target: "/dashboard" // Rute untuk Super Admin
+    },
+    {
+      username: "adminarea",
+      password: "password123",
+      role: "AREA_ADMIN",
+      target: "/area/dashboard" // Rute untuk Area Admin
+    }
+  ];
   
   const data = [
     { main: "Smart Waste Management", sub: "Digital Recycling Platform" },
@@ -43,12 +53,18 @@ const Login = () => {
       password: Yup.string().required('Password wajib diisi'),
     }),
     onSubmit: (values) => {
-      // PROSES PENGECEKAN DATA DUMMY
-      if (values.username === DUMMY_USER.username && values.password === DUMMY_USER.password) {
-        console.log('Login Sukses!');
-        navigate('/dashboard'); // PINDAH KE DASHBOARD
+      // PROSES PENGECEKAN DATA DUMMY BERDASARKAN ROLE
+      const userFound = DUMMY_USERS.find(
+        (u) => u.username === values.username && u.password === values.password
+      );
+
+      if (userFound) {
+        console.log(`Login Sukses sebagai ${userFound.role}!`);
+        // Simpan role ke localStorage agar Layout & Sidebar bisa menyesuaikan tampilan secara dinamis
+        localStorage.setItem("userRole", userFound.role);
+        navigate(userFound.target); 
       } else {
-        alert('Username atau Password salah! (Gunakan admin / password123)');
+        alert('Username atau Password salah!\n\nGunakan:\n- superadmin / password123\n- adminarea / password123');
       }
     },
   });
@@ -56,7 +72,7 @@ const Login = () => {
   return (
     <div className="h-screen w-full bg-white flex flex-col md:flex-row overflow-y-auto md:overflow-hidden font-sans">
       
-      {/* SISI KIRI: HERO */}
+      {/* SISI KIRI: HERO (ANIMASI CAROUSEL) */}
       <div className="w-full md:w-1/2 h-full bg-blue-50/50 p-10 flex flex-col items-center justify-center text-center">
         <div className="w-full flex flex-col items-center justify-center">
           

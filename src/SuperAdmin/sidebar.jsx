@@ -28,7 +28,7 @@ const Sidebar = ({ open, setOpen }) => {
     { name: "Users", icon: <UserGroupIcon className="h-5 w-5" />, path: "/users" },
     { name: "Waste Prices", icon: <TagIcon className="h-5 w-5" />, path: "/waste-prices" },
     { name: "MarketPlace", icon: <ShoppingBagIcon className="h-5 w-5" />, path: "/marketplace" },
-    { name: "Financial Reports", icon: <ChartBarIcon className="h-5 w-5" />, path: "/reports" },
+    { name: "Financial Reports", icon: <ChartBarIcon className="h-5 w-5" />, path: "/finansial-reports" },
     { name: "System Setting", icon: <Cog6ToothIcon className="h-5 w-5" />, path: "/settings" },
   ];
 
@@ -70,11 +70,11 @@ const Sidebar = ({ open, setOpen }) => {
 
         <List className="gap-1">
           {menu.map((item, idx) => (
-            /* Bungkus ListItem dengan NavLink */
+            
             <NavLink 
               to={item.path} 
               key={idx}
-              onClick={() => setOpen(false)} // Otomatis tutup sidebar di mobile setelah klik
+              onClick={() => setOpen(false)} 
             >
               {({ isActive }) => (
                 <ListItem 
