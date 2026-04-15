@@ -15,19 +15,31 @@ const Login = () => {
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // --- DATA DUMMY MULTI-ROLE ---
+  // --- DATA DUMMY TETAP (Ditambah Admin Store) ---
   const DUMMY_USERS = [
     {
       username: "superadmin",
       password: "password123",
       role: "SUPER_ADMIN",
-      target: "/dashboard" // Rute untuk Super Admin
+      target: "/dashboard"
     },
     {
       username: "adminarea",
       password: "password123",
       role: "AREA_ADMIN",
-      target: "/area/dashboard" // Rute untuk Area Admin
+      target: "/area/dashboard"
+    },
+    {
+      username: "operator",
+      password: "password123",
+      role: "OPERATOR",
+      target: "/operator/dashboard"
+    },
+    {
+      username: "adminstore",
+      password: "password123",
+      role: "STORE_ADMIN",
+      target: "/store/dashboard" 
     }
   ];
   
@@ -53,18 +65,16 @@ const Login = () => {
       password: Yup.string().required('Password wajib diisi'),
     }),
     onSubmit: (values) => {
-      // PROSES PENGECEKAN DATA DUMMY BERDASARKAN ROLE
       const userFound = DUMMY_USERS.find(
         (u) => u.username === values.username && u.password === values.password
       );
 
       if (userFound) {
         console.log(`Login Sukses sebagai ${userFound.role}!`);
-        // Simpan role ke localStorage agar Layout & Sidebar bisa menyesuaikan tampilan secara dinamis
         localStorage.setItem("userRole", userFound.role);
         navigate(userFound.target); 
       } else {
-        alert('Username atau Password salah!\n\nGunakan:\n- superadmin / password123\n- adminarea / password123');
+        alert('Username atau Password salah!\n\nGunakan:\n- adminstore / password123\n- superadmin / password123');
       }
     },
   });
@@ -72,7 +82,7 @@ const Login = () => {
   return (
     <div className="h-screen w-full bg-white flex flex-col md:flex-row overflow-y-auto md:overflow-hidden font-sans">
       
-      {/* SISI KIRI: HERO (ANIMASI CAROUSEL) */}
+      {/* SISI KIRI: HERO (LAYOUT TETAP) */}
       <div className="w-full md:w-1/2 h-full bg-blue-50/50 p-10 flex flex-col items-center justify-center text-center">
         <div className="w-full flex flex-col items-center justify-center">
           
@@ -116,7 +126,7 @@ const Login = () => {
         </div>
       </div>
 
-      {/* SISI KANAN: FORM LOGIN */}
+      {/* SISI KANAN: FORM LOGIN (LAYOUT TETAP) */}
       <div className="w-full md:w-1/2 h-full p-8 md:p-10 flex flex-col justify-center items-center bg-white border-l border-gray-50">
         <Card color="transparent" shadow={false} className="w-full max-w-sm">
           

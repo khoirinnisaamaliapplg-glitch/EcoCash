@@ -1,8 +1,10 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 
-// Import Halaman Super Admin
+// --- IMPORT HALAMAN LOGIN ---
 import Login from './Login/login'; 
+
+// --- IMPORT HALAMAN SUPER ADMIN ---
 import Dashboard from './SuperAdmin/dashboard';
 import SmartContainerIndex from './SuperAdmin/SmartContainer/index';
 import SmartTruckIndex from './SuperAdmin/SmartTruck/index';
@@ -13,7 +15,7 @@ import FinansialReportsIndex from './SuperAdmin/FinansialReports/index';
 import SystemSettingIndex from './SuperAdmin/SystemSettingIndex';
 import ProfileIndex from './SuperAdmin/Profile/index';
 
-// Import Halaman Admin Area
+// --- IMPORT HALAMAN ADMIN AREA ---
 import DashboardArea from './AdminArea/dashboard';
 import MachineManagement from './AdminArea/Machine/index'; 
 import OperatorManagement from './AdminArea/Operator/index'; 
@@ -21,11 +23,25 @@ import LocalWastePrice from './AdminArea/LocalWastePrice/index';
 import AreaSettingIndex from './AdminArea/SystemSettingIndex';
 import AreaProfileIndex from './AdminArea/Profile/index';
 
+// --- IMPORT HALAMAN OPERATOR ---
+import OperatorDashboard from './Operator/dashboard'; 
+import OperatorSmartContainer from './Operator/SmartContainer/index'; 
+import OperatorSystemSetting from './Operator/SystemSettingIndex'; 
+import OperatorProfile from './Operator/Profile/index'; 
+
+// --- IMPORT HALAMAN ADMIN STORE ---
+import DashboardStore from './AdminStore/dashboard';
+import ProdukIndex from './AdminStore/Produk/index'; 
+import PesananIndex from './AdminStore/Pesanan/index';
+import PengirimanIndex from './AdminStore/Pengiriman/index'; 
+import StoreSystemSetting from './AdminStore/SystemSettingIndex'; 
+import StoreProfileIndex from './AdminStore/Profile/index'; // <-- BARU: Import profil admin store
+
 function App() {
   return (
     <Router>
       <Routes>
-        {/* Halaman utama */}
+        {/* HALAMAN UTAMA */}
         <Route path="/" element={<Login />} />
         
         {/* GROUP 1: SUPER ADMIN */}
@@ -47,7 +63,21 @@ function App() {
         <Route path="/area/settings" element={<AreaSettingIndex />} />
         <Route path="/area/profile" element={<AreaProfileIndex />} />
         
-        {/* Catch-all */}
+        {/* GROUP 3: OPERATOR */}
+        <Route path="/operator/dashboard" element={<OperatorDashboard />} />
+        <Route path="/operator/smart-container" element={<OperatorSmartContainer />} />
+        <Route path="/operator/settings" element={<OperatorSystemSetting />} />
+        <Route path="/operator/profile" element={<OperatorProfile />} />
+
+        {/* GROUP 4: ADMIN STORE */}
+        <Route path="/store/dashboard" element={<DashboardStore />} />
+        <Route path="/store/produk" element={<ProdukIndex />} /> 
+        <Route path="/store/pesanan" element={<PesananIndex />} />
+        <Route path="/store/shipping" element={<PengirimanIndex />} />
+        <Route path="/store/settings" element={<StoreSystemSetting />} /> 
+        <Route path="/store/profile" element={<StoreProfileIndex />} /> {/* <-- BARU: Route ke profil store */}
+
+        {/* CATCH-ALL */}
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </Router>
