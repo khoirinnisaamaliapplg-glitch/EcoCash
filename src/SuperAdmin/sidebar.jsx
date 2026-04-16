@@ -1,5 +1,5 @@
 import React from "react";
-import { NavLink } from "react-router-dom"; // Import NavLink untuk navigasi
+import { NavLink } from "react-router-dom";
 import { 
   List, 
   ListItem, 
@@ -15,16 +15,18 @@ import {
   ShoppingBagIcon, 
   ChartBarIcon, 
   Cog6ToothIcon,
-  XMarkIcon 
+  XMarkIcon,
+  MapIcon // <-- IMPORT ICON MAP UNTUK AREA
 } from "@heroicons/react/24/outline";
 import logo2 from "../assets/logo2.png";
 
 const Sidebar = ({ open, setOpen }) => {
-  // Tambahkan property 'path' sesuai dengan route di App.jsx kamu
+  // Menu yang sudah ditambahkan Data Wilayah
   const menu = [
     { name: "Dashboard", icon: <Square2StackIcon className="h-5 w-5" />, path: "/dashboard" },
     { name: "Smart Container", icon: <CubeIcon className="h-5 w-5" />, path: "/smart-container" },
     { name: "Smart Truck", icon: <TruckIcon className="h-5 w-5" />, path: "/smart-truck" },
+    { name: "Data Wilayah", icon: <MapIcon className="h-5 w-5" />, path: "/areas" }, // <-- MENU BARU
     { name: "Users", icon: <UserGroupIcon className="h-5 w-5" />, path: "/users" },
     { name: "Waste Prices", icon: <TagIcon className="h-5 w-5" />, path: "/waste-prices" },
     { name: "MarketPlace", icon: <ShoppingBagIcon className="h-5 w-5" />, path: "/marketplace" },
@@ -34,6 +36,7 @@ const Sidebar = ({ open, setOpen }) => {
 
   return (
     <>
+      {/* Overlay untuk Mobile */}
       {open && (
         <div 
           className="fixed inset-0 z-20 bg-black/20 backdrop-blur-sm md:hidden"
@@ -41,6 +44,7 @@ const Sidebar = ({ open, setOpen }) => {
         />
       )}
 
+      {/* Sidebar Container */}
       <div className={`
         fixed md:static inset-y-0 left-0 z-30
         h-screen w-full max-w-[18rem] p-4 
@@ -50,6 +54,7 @@ const Sidebar = ({ open, setOpen }) => {
         ${open ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
       `}>
         
+        {/* Logo Section */}
         <div className="mb-6 p-4 flex items-center justify-between border-b border-gray-50 pb-6">
           <div className="flex items-center gap-4">
             <img src={logo2} alt="EcoCash" className="h-14 w-14 object-contain" />
@@ -68,9 +73,9 @@ const Sidebar = ({ open, setOpen }) => {
           </button>
         </div>
 
+        {/* Menu List */}
         <List className="gap-1">
           {menu.map((item, idx) => (
-            
             <NavLink 
               to={item.path} 
               key={idx}
@@ -80,7 +85,7 @@ const Sidebar = ({ open, setOpen }) => {
                 <ListItem 
                   className={`
                     ${isActive ? "bg-blue-50 text-[#2b6cb0]" : "text-gray-600 hover:text-[#2b6cb0]"} 
-                    font-semibold text-sm py-3 transition-all
+                    font-semibold text-sm py-3 transition-all rounded-xl
                   `}
                 >
                   <ListItemPrefix>{item.icon}</ListItemPrefix>

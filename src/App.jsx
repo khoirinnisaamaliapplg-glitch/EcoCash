@@ -14,6 +14,7 @@ import MarketPlaceIndex from './SuperAdmin/MarketPlace/index';
 import FinansialReportsIndex from './SuperAdmin/FinansialReports/index';
 import SystemSettingIndex from './SuperAdmin/SystemSettingIndex';
 import ProfileIndex from './SuperAdmin/Profile/index';
+import AreaIndex from './SuperAdmin/Area/index'; 
 
 // --- IMPORT HALAMAN ADMIN AREA ---
 import DashboardArea from './AdminArea/dashboard';
@@ -48,6 +49,7 @@ function App() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/smart-container" element={<SmartContainerIndex />} />
         <Route path="/smart-truck" element={<SmartTruckIndex />} />
+        <Route path="/areas" element={<AreaIndex />} />
         <Route path="/users" element={<UserIndex />} />
         <Route path="/waste-prices" element={<WastePricesIndex />} />
         <Route path="/marketplace" element={<MarketPlaceIndex />} />
