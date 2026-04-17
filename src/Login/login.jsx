@@ -9,43 +9,17 @@ import {
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import { motion, AnimatePresence } from 'framer-motion';
+import axios from 'axios';
 import ForgotPasswordModal from './ForgotPasswordModal';
 
 const Login = () => {
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // --- DATA DUMMY TETAP (Ditambah Admin Store) ---
-  const DUMMY_USERS = [
-    {
-      username: "superadmin",
-      password: "password123",
-      role: "SUPER_ADMIN",
-      target: "/dashboard"
-    },
-    {
-      username: "adminarea",
-      password: "password123",
-      role: "AREA_ADMIN",
-      target: "/area/dashboard"
-    },
-    {
-      username: "operator",
-      password: "password123",
-      role: "OPERATOR",
-      target: "/operator/dashboard"
-    },
-    {
-      username: "adminstore",
-      password: "password123",
-      role: "STORE_ADMIN",
-      target: "/store/dashboard" 
-    }
-  ];
-  
-  const data = [
+  const dataHero = [
     { main: "Smart Waste Management", sub: "Digital Recycling Platform" },
-    { main: "AIoT Integration", sub: "Real-time Monitoring System" },
+    { main: "AI-IoT Integration", sub: "Real-time Monitoring System" },
     { main: "Circular Economy", sub: "Sustainable Waste Ecosystem" }
   ];
 
@@ -53,28 +27,56 @@ const Login = () => {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setIndex((prevIndex) => (prevIndex + 1) % data.length);
+      setIndex((prevIndex) => (prevIndex + 1) % dataHero.length);
     }, 3000);
     return () => clearInterval(interval);
-  }, [data.length]);
+  }, [dataHero.length]);
 
+  // --- LOGIKA API SESUAI POSTMAN ---
   const formik = useFormik({
     initialValues: { username: '', password: '' },
     validationSchema: Yup.object({
       username: Yup.string().required('Username wajib diisi'),
       password: Yup.string().required('Password wajib diisi'),
     }),
-    onSubmit: (values) => {
-      const userFound = DUMMY_USERS.find(
-        (u) => u.username === values.username && u.password === values.password
-      );
+    onSubmit: async (values) => {
+      setIsLoading(true);
+      try {
+        const response = await axios.post('http://localhost:3000/api/auth/login', {
+          // Tetap gunakan 'identifier' sesuai kebutuhan backend Anda
+          identifier: values.username, 
+          password: values.password
+        });
 
-      if (userFound) {
-        console.log(`Login Sukses sebagai ${userFound.role}!`);
-        localStorage.setItem("userRole", userFound.role);
-        navigate(userFound.target); 
-      } else {
-        alert('Username atau Password salah!\n\nGunakan:\n- adminstore / password123\n- superadmin / password123');
+        // Ambil data dari response.data.data sesuai struktur Postman Anda
+        const loginData = response.data.data;
+        const { token, role } = loginData;
+
+        // Simpan token dan role
+        localStorage.setItem("token", token);
+        localStorage.setItem("userRole", role);
+
+        // PENTING: Simpan seluruh objek user agar properti 'name' (misal: "admin amel") 
+        // bisa dibaca oleh MainLayout
+        if (loginData) {
+          localStorage.setItem("userData", JSON.stringify(loginData));
+        }
+
+        // Navigasi Berdasarkan Role
+        switch (role) {
+          case "SUPER_ADMIN": navigate("/dashboard"); break;
+          case "AREA_ADMIN": navigate("/area/dashboard"); break;
+          case "OPERATOR": navigate("/operator/dashboard"); break;
+          case "STORE_ADMIN": navigate("/store/dashboard"); break;
+          default: navigate("/dashboard");
+        }
+
+      } catch (error) {
+        console.error("Login Error:", error.response?.data);
+        const errorMsg = error.response?.data?.message || "Username atau Password salah!";
+        alert(`Gagal Login: ${errorMsg}`);
+      } finally {
+        setIsLoading(false);
       }
     },
   });
@@ -82,7 +84,7 @@ const Login = () => {
   return (
     <div className="h-screen w-full bg-white flex flex-col md:flex-row overflow-y-auto md:overflow-hidden font-sans">
       
-      {/* SISI KIRI: HERO (LAYOUT TETAP) */}
+      {/* SISI KIRI: HERO (Layout dari Kode Kedua) */}
       <div className="w-full md:w-1/2 h-full bg-blue-50/50 p-10 flex flex-col items-center justify-center text-center">
         <div className="w-full flex flex-col items-center justify-center">
           
@@ -106,27 +108,27 @@ const Login = () => {
                   variant="h2" 
                   className="font-black text-3xl md:text-4xl leading-tight drop-shadow-md text-[#2b6cb0]"
                 >
-                  {data[index].main}
+                  {dataHero[index].main}
                 </Typography>
 
                 <Typography 
                   variant="h4" 
                   className="font-extrabold text-xl md:text-2xl opacity-80 mt-2 tracking-wide text-[#2b6cb0]"
                 >
-                  & {data[index].sub}
+                  & {dataHero[index].sub}
                 </Typography>
               </motion.div>
             </AnimatePresence>
           </div>
 
           <Typography className="text-gray-600 text-sm mt-6 max-w-md px-4 font-normal leading-relaxed hidden md:block text-center">
-            EcoCash menghubungkan masyarakat Indonesia dengan teknologi AIoT dan sistem insentif digital Terpusat untuk mengubah sampah menjadi nilai ekonomi.
+            EcoCash menghubungkan masyarakat Indonesia dengan teknologi AI-IoT dan sistem insentif digital Terpusat untuk mengubah sampah menjadi nilai ekonomi.
           </Typography>
           
         </div>
       </div>
 
-      {/* SISI KANAN: FORM LOGIN (LAYOUT TETAP) */}
+      {/* SISI KANAN: FORM LOGIN (Layout dari Kode Kedua) */}
       <div className="w-full md:w-1/2 h-full p-8 md:p-10 flex flex-col justify-center items-center bg-white border-l border-gray-50">
         <Card color="transparent" shadow={false} className="w-full max-w-sm">
           
@@ -135,6 +137,7 @@ const Login = () => {
             <Typography variant="h4" className="text-blue-gray-800 font-bold">Sign In</Typography>
           </div>
 
+          {/* Tombol Google Login */}
           <Button
             size="lg"
             variant="outlined"
@@ -206,9 +209,10 @@ const Login = () => {
               type="submit"
               fullWidth
               size="lg"
-              className="bg-[#2b6cb0] hover:bg-[#23568c] shadow-md h-11 normal-case text-sm mt-4 font-bold tracking-wide"
+              disabled={isLoading}
+              className="bg-[#2b6cb0] hover:bg-[#23568c] shadow-md h-11 normal-case text-sm mt-4 font-bold tracking-wide flex justify-center items-center"
             >
-              Continue
+              {isLoading ? "Authenticating..." : "Continue"}
             </Button>
           </form>
 
