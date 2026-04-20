@@ -15,8 +15,7 @@ import {
 } from "@material-tailwind/react";
 import { PlusIcon, MagnifyingGlassIcon, ArrowPathIcon } from "@heroicons/react/24/outline";
 
-// 1. SESUAIKAN HEADER TABEL DENGAN SKEMA DB
-const TABLE_HEAD = ["Machine Code", "Name & Place", "Area ID", "Location", "Status", "Action"];
+const TABLE_HEAD = ["Machine Code", "Name & Place", "Area", "Location", "Status", "Action"];
 
 const SmartContainerIndex = () => {
   const [openCreate, setOpenCreate] = useState(false);
@@ -33,12 +32,18 @@ const SmartContainerIndex = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.get("http://localhost:3000/api/machines/", {
+      // Jika data masih tidak muncul, coba hapus "?isActive=true" sementara untuk testing
+      const response = await axios.get("http://localhost:3000/api/machines?isActive=true", {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setMachines(response.data.data || response.data);
+      
+      console.log("Data dari API:", response.data); // Cek struktur data di console browser
+
+      // Menyesuaikan berbagai kemungkinan struktur response
+      const result = response.data.data || response.data;
+      setMachines(Array.isArray(result) ? result : []);
     } catch (error) {
-      console.error("Gagal mengambil data mesin:", error);
+      console.error("Gagal mengambil data mesin:", error.response || error);
     } finally {
       setLoading(false);
     }
@@ -48,11 +53,16 @@ const SmartContainerIndex = () => {
     fetchMachines();
   }, []);
 
-  // 2. LOGIKA FILTER SEARCH (Berdasarkan Kode atau Nama)
-  const filteredMachines = machines.filter((item) => 
-    item.name?.toLowerCase().includes(search.toLowerCase()) ||
-    item.machineCode?.toLowerCase().includes(search.toLowerCase())
-  );
+  // Filter pencarian (Aman terhadap data null/undefined)
+  const filteredMachines = machines.filter((item) => {
+    const searchLower = search.toLowerCase();
+    return (
+      item.name?.toLowerCase().includes(searchLower) ||
+      item.machineCode?.toLowerCase().includes(searchLower) ||
+      item.placeName?.toLowerCase().includes(searchLower) ||
+      item.district?.toLowerCase().includes(searchLower)
+    );
+  });
 
   const handleOpenEdit = (row) => { setSelectedData(row); setOpenEdit(true); };
   const handleOpenDelete = (row) => { setSelectedData(row); setOpenDelete(true); };
@@ -61,6 +71,7 @@ const SmartContainerIndex = () => {
   return (
     <MainLayout>
       <div className="p-4 md:p-0 space-y-6">
+        {/* Header Section */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
             <Typography variant="h4" className="text-[#2b6cb0] font-bold text-2xl md:text-3xl">
@@ -73,13 +84,14 @@ const SmartContainerIndex = () => {
           <Button 
             variant="text" 
             size="sm" 
-            className="flex items-center gap-2 text-blue-600 font-bold"
+            className="flex items-center gap-2 text-blue-600 font-bold hover:bg-blue-50"
             onClick={fetchMachines}
           >
             <ArrowPathIcon className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Refresh Database
           </Button>
         </div>
 
+        {/* Action & Search Section */}
         <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
           <Button 
             onClick={() => setOpenCreate(true)}
@@ -90,15 +102,17 @@ const SmartContainerIndex = () => {
           
           <div className="w-full md:w-80">
             <Input
-              label="Cari Kode atau Nama..."
+              label="Cari Kode, Nama, atau Lokasi..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               icon={<MagnifyingGlassIcon className="h-5 w-5" />}
               className="bg-white rounded-xl"
+              color="blue"
             />
           </div>
         </div>
 
+        {/* Table Section */}
         <Card className="w-full border border-blue-50 shadow-sm rounded-2xl overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[900px] table-auto text-left">
@@ -117,79 +131,120 @@ const SmartContainerIndex = () => {
                 {loading ? (
                   <tr>
                     <td colSpan={6} className="p-10 text-center">
-                      <Spinner className="h-8 w-8 text-blue-500 mx-auto" />
+                      <div className="flex flex-col items-center gap-2">
+                        <Spinner className="h-8 w-8 text-blue-500" />
+                        <Typography className="text-gray-500 text-sm">Memuat data...</Typography>
+                      </div>
                     </td>
                   </tr>
-                ) : filteredMachines.map((row, index) => {
-                  const isLast = index === filteredMachines.length - 1;
-                  const classes = isLast ? "p-5" : "p-5 border-b border-blue-50/50";
+                ) : filteredMachines.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="p-10 text-center">
+                      <Typography className="text-gray-500 font-medium">
+                        {search ? `Data "${search}" tidak ditemukan.` : "Belum ada data mesin tersedia."}
+                      </Typography>
+                    </td>
+                  </tr>
+                ) : (
+                  filteredMachines.map((row, index) => {
+                    const isLast = index === filteredMachines.length - 1;
+                    const classes = isLast ? "p-5" : "p-5 border-b border-blue-50/50";
 
-                  return (
-                    <tr key={row.id} className="hover:bg-blue-50/10 transition-colors">
-                      {/* 1. Machine Code */}
-                      <td className={classes}>
-                        <Typography variant="small" className="font-bold text-blue-900 uppercase">
-                          {row.machineCode}
-                        </Typography>
-                      </td>
+                    return (
+                      <tr key={row.id || index} className="hover:bg-blue-50/10 transition-colors">
+                        {/* 1. Machine Code */}
+                        <td className={classes}>
+                          <Typography variant="small" className="font-bold text-blue-900 uppercase">
+                            {row.machineCode || "-"}
+                          </Typography>
+                        </td>
 
-                      {/* 2. Name & Place */}
-                      <td className={classes}>
-                        <Typography variant="small" className="font-semibold text-gray-800">
-                          {row.name}
-                        </Typography>
-                        <Typography className="text-[10px] text-gray-500 italic">
-                          {row.placeName || "No Place Name"}
-                        </Typography>
-                      </td>
+                        {/* 2. Name & Place */}
+                        <td className={classes}>
+                          <Typography variant="small" className="font-semibold text-gray-800">
+                            {row.name || "Unnamed"}
+                          </Typography>
+                          <Typography className="text-[10px] text-gray-500 italic">
+                            {row.placeName || "No Place Name"}
+                          </Typography>
+                        </td>
 
-                      {/* 3. Area ID */}
-                      <td className={classes}>
-                        <Chip value={`Area: ${row.areaId}`} size="sm" variant="ghost" className="rounded-full w-fit" />
-                      </td>
+                        {/* 3. Area Name */}
+                        <td className={classes}>
+                          <Chip 
+                            value={row.area?.name || `ID Area: ${row.areaId || '?'}`} 
+                            size="sm" 
+                            variant="ghost" 
+                            className="rounded-full w-fit bg-blue-50 text-blue-700 border-none normal-case" 
+                          />
+                        </td>
 
-                      {/* 4. Location (District & Sub) */}
-                      <td className={classes}>
-                        <Typography variant="small" className="text-gray-700 font-medium">
-                          {row.district}
-                        </Typography>
-                        <Typography className="text-[10px] text-gray-400">
-                          {row.subdistrict}
-                        </Typography>
-                      </td>
+                        {/* 4. Location */}
+                        <td className={classes}>
+                          <Typography variant="small" className="text-gray-700 font-medium">
+                            {row.district || "-"}
+                          </Typography>
+                          <Typography className="text-[10px] text-gray-400">
+                            {row.subdistrict || "-"}
+                          </Typography>
+                        </td>
 
-                      {/* 5. Status (isActive) */}
-                      <td className={classes}>
-                        <Chip
-                          variant="ghost"
-                          size="sm"
-                          value={row.isActive ? "Active" : "Inactive"}
-                          color={row.isActive ? "green" : "red"}
-                          className="text-[10px] font-bold rounded-lg"
-                        />
-                      </td>
+                        {/* 5. Status */}
+                        <td className={classes}>
+                          <Chip
+                            variant="ghost"
+                            size="sm"
+                            value={row.isActive ? "Active" : "Inactive"}
+                            color={row.isActive ? "green" : "red"}
+                            className="text-[10px] font-bold rounded-lg"
+                          />
+                        </td>
 
-                      {/* 6. Action */}
-                      <td className={classes}>
-                        <div className="flex items-center gap-2">
-                          <Button onClick={() => handleOpenDetail(row)} size="sm" variant="text" className="text-blue-600 capitalize text-xs font-bold">Detail</Button>
-                          <Button onClick={() => handleOpenEdit(row)} size="sm" className="bg-green-500 shadow-none rounded-lg capitalize">Edit</Button>
-                          <Button onClick={() => handleOpenDelete(row)} size="sm" className="bg-red-400 shadow-none rounded-lg capitalize">Hapus</Button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
+                        {/* 6. Action */}
+                        <td className={classes}>
+                          <div className="flex items-center gap-2">
+                            <Button onClick={() => handleOpenDetail(row)} size="sm" variant="text" className="text-blue-600 capitalize text-xs font-bold">Detail</Button>
+                            <Button onClick={() => handleOpenEdit(row)} size="sm" className="bg-green-500 shadow-none rounded-lg capitalize">Edit</Button>
+                            <Button onClick={() => handleOpenDelete(row)} size="sm" className="bg-red-400 shadow-none rounded-lg capitalize">Hapus</Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>
         </Card>
 
-        {/* --- MODALS --- */}
-        <CreateModal open={openCreate} handleOpen={() => setOpenCreate(false)} refreshData={fetchMachines} />
-        <EditModal open={openEdit} handleOpen={() => setOpenEdit(false)} data={selectedData} refreshData={fetchMachines} />
-        <DeleteModal open={openDelete} handleOpen={() => setOpenDelete(false)} data={selectedData} refreshData={fetchMachines} />
-        <DetailModal open={openDetail} handleOpen={() => setOpenDetail(false)} data={selectedData} />
+        {/* Modals Container */}
+        <CreateModal 
+          open={openCreate} 
+          handleOpen={() => setOpenCreate(false)} 
+          refreshData={fetchMachines} 
+        />
+        
+        {selectedData && (
+          <>
+            <EditModal 
+              open={openEdit} 
+              handleOpen={() => setOpenEdit(false)} 
+              data={selectedData} 
+              refreshData={fetchMachines} 
+            />
+            <DeleteModal 
+              open={openDelete} 
+              handleOpen={() => setOpenDelete(false)} 
+              data={selectedData} 
+              refreshData={fetchMachines} 
+            />
+            <DetailModal 
+              open={openDetail} 
+              handleOpen={() => setOpenDetail(false)} 
+              data={selectedData} 
+            />
+          </>
+        )}
       </div>
     </MainLayout>
   );

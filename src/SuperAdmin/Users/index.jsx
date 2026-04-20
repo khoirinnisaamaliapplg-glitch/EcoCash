@@ -14,7 +14,7 @@ const UserIndex = () => {
   const [openEdit, setOpenEdit] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
-  const [users, setUsers] = useState([]); // Inisialisasi array kosong
+  const [users, setUsers] = useState([]);
   const [search, setSearch] = useState("");
 
   const fetchUsers = async () => {
@@ -23,8 +23,8 @@ const UserIndex = () => {
       const response = await axios.get("http://localhost:3000/api/users", {
         headers: { Authorization: `Bearer ${token}` }
       });
-      // Gunakan || [] untuk memastikan users selalu berupa array
-      setUsers(response.data.data || response.data || []);
+      // Menyesuaikan struktur response data dari controller getUsers
+      setUsers(response.data.data || []);
     } catch (error) {
       console.error("Gagal mengambil data user:", error);
     }
@@ -34,18 +34,20 @@ const UserIndex = () => {
     fetchUsers();
   }, []);
 
-  // Tambahkan tanda ? setelah 'users' agar tidak error jika data kosong
   const filteredUsers = users?.filter(user => 
     user?.name?.toLowerCase().includes(search.toLowerCase()) || 
-    user?.email?.toLowerCase().includes(search.toLowerCase())
+    user?.email?.toLowerCase().includes(search.toLowerCase()) ||
+    user?.username?.toLowerCase().includes(search.toLowerCase())
   );
 
+  // Sesuaikan dengan validRoles di Backend
   const getRoleColor = (role) => {
     switch (role) {
       case "SUPER_ADMIN": return "blue";
       case "AREA_ADMIN": return "green";
-      case "OPERATOR": return "orange";
+      case "MACHINE_OPERATOR": return "orange"; // Ubah dari OPERATOR
       case "STORE_ADMIN": return "purple";
+      case "REGULAR_USER": return "teal";
       default: return "gray";
     }
   };
@@ -90,14 +92,20 @@ const UserIndex = () => {
                 </tr>
               </thead>
               <tbody>
-                {/* Gunakan optional chaining ?.map agar tidak blank putih */}
                 {filteredUsers?.length > 0 ? (
                   filteredUsers.map((row) => (
                     <tr key={row.id} className="hover:bg-blue-50/20 transition-colors border-b border-blue-gray-50/50">
                       <td className="p-5">
                         <div className="flex items-center gap-3">
-                          <Avatar src={`https://ui-avatars.com/api/?name=${row.name}&background=random`} size="sm" variant="rounded" />
-                          <Typography variant="small" className="font-bold text-blue-900">{row.name}</Typography>
+                          <Avatar 
+                            src={`https://ui-avatars.com/api/?name=${row.name}&background=random&color=fff`} 
+                            size="sm" 
+                            variant="rounded" 
+                          />
+                          <div>
+                            <Typography variant="small" className="font-bold text-blue-900">{row.name}</Typography>
+                            <Typography className="text-[10px] text-gray-400">@{row.username}</Typography>
+                          </div>
                         </div>
                       </td>
                       <td className="p-5">
@@ -112,13 +120,19 @@ const UserIndex = () => {
                         <Chip 
                           variant="ghost" 
                           size="sm" 
+                          // Ubah snake_case jadi teks biasa (contoh: AREA ADMIN)
                           value={row.role?.replace("_", " ") || "USER"} 
                           color={getRoleColor(row.role)} 
                           className="text-[10px] font-bold" 
                         />
                       </td>
                       <td className="p-5">
-                        <Typography className="text-xs font-semibold text-gray-700">{row.areaId || "Pusat"}</Typography>
+                        <div className="flex flex-col">
+                           <Typography className="text-xs font-semibold text-gray-700">
+                             {/* Jika API kamu me-return objek area, tampilkan namanya. Jika tidak, ID-nya. */}
+                             {row.area?.name || `Area ID: ${row.areaId || "Pusat"}`}
+                           </Typography>
+                        </div>
                       </td>
                       <td className="p-5">
                         <div className="flex items-center gap-2">
@@ -139,7 +153,7 @@ const UserIndex = () => {
                 ) : (
                   <tr>
                     <td colSpan={6} className="p-10 text-center text-gray-400">
-                      Memuat data atau data tidak ditemukan...
+                      Tidak ada data user ditemukan.
                     </td>
                   </tr>
                 )}
@@ -150,8 +164,13 @@ const UserIndex = () => {
       </div>
 
       <CreateUserModal open={openCreate} handleOpen={() => setOpenCreate(false)} refreshData={fetchUsers} />
-      <EditUserModal open={openEdit} handleOpen={() => setOpenEdit(false)} data={selectedUser} refreshData={fetchUsers} />
-      <DeleteUserModal open={openDelete} handleOpen={() => setOpenDelete(false)} data={selectedUser} refreshData={fetchUsers} />
+      {/* Pastikan Modal Edit & Delete juga menerima data terbaru */}
+      {selectedUser && (
+        <>
+          <EditUserModal open={openEdit} handleOpen={() => setOpenEdit(false)} data={selectedUser} refreshData={fetchUsers} />
+          <DeleteUserModal open={openDelete} handleOpen={() => setOpenDelete(false)} data={selectedUser} refreshData={fetchUsers} />
+        </>
+      )}
     </MainLayout>
   );
 };
