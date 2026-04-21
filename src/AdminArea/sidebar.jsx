@@ -1,5 +1,5 @@
 import React from "react";
-// 1. Import gambar dari folder assets (sesuaikan nama variabelnya)
+// 1. Import gambar dari folder assets
 import logo2 from "../assets/logo2.png"; 
 
 import { 
@@ -8,7 +8,6 @@ import {
   List, 
   ListItem, 
   ListItemPrefix, 
-  IconButton 
 } from "@material-tailwind/react";
 import {
   PresentationChartBarIcon,
@@ -16,7 +15,9 @@ import {
   CpuChipIcon,
   UserIcon,
   TagIcon,
-  Cog6ToothIcon
+  Cog6ToothIcon,
+  ClipboardDocumentListIcon, // Icon baru untuk Transaksi
+  UserGroupIcon // Icon baru untuk User Management
 } from "@heroicons/react/24/outline";
 import { useNavigate, useLocation } from "react-router-dom";
 
@@ -24,12 +25,15 @@ const SidebarArea = ({ open, setOpen }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // DAFTAR MENU (Tambahkan item baru di sini)
   const menuItems = [
-    { name: "Dashboard", icon: <PresentationChartBarIcon className="h-5 w-5" />, path: "/area/dashboard" },
-    { name: "Machine Management", icon: <CpuChipIcon className="h-5 w-5" />, path: "/area/machine" },
-    { name: "Operator Management", icon: <UserIcon className="h-5 w-5" />, path: "/area/operator" },
-    { name: "Local Waste Price", icon: <TagIcon className="h-5 w-5" />, path: "/area/local-waste" },
-    { name: "System Setting", icon: <Cog6ToothIcon className="h-5 w-5" />, path: "/area/settings" },
+    { name: "Dashboard", icon: <PresentationChartBarIcon className="h-5 w-5" />, path: "/AdminArea/dashboard" },
+    { name: "Machine Management", icon: <CpuChipIcon className="h-5 w-5" />, path: "/AdminArea/machine" },
+    { name: "Operator Management", icon: <UserIcon className="h-5 w-5" />, path: "/AdminArea/operator" },
+    { name: "User Management", icon: <UserGroupIcon className="h-5 w-5" />, path: "/AdminArea/users" }, // Area Baru
+    { name: "Data Lokasi", icon: <ClipboardDocumentListIcon className="h-5 w-5" />, path: "/AdminArea/locations" }, // Area Baru
+    { name: "Local Waste Price", icon: <TagIcon className="h-5 w-5" />, path: "/AdminArea/local-waste" },
+    { name: "System Setting", icon: <Cog6ToothIcon className="h-5 w-5" />, path: "/AdminArea/settings" },
   ];
 
   return (
@@ -64,7 +68,7 @@ const SidebarArea = ({ open, setOpen }) => {
         </div>
 
         {/* LIST MENU */}
-        <List className="p-0 space-y-1.5">
+        <List className="p-0 space-y-1.5 overflow-y-auto"> {/* Tambahkan overflow jika menu terlalu banyak */}
           {menuItems.map((item) => {
             const isActive = location.pathname === item.path;
             return (

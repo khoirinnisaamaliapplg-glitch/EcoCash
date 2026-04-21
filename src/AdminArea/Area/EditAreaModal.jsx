@@ -10,10 +10,10 @@ import {
   Option,
   Typography,
 } from "@material-tailwind/react";
-import { CheckCircleIcon, XCircleIcon, ShieldCheckIcon } from "@heroicons/react/24/solid";
+import { CheckCircleIcon, XCircleIcon } from "@heroicons/react/24/solid";
 import axios from "axios";
 
-const EditModal = ({ open, setOpen, selectedArea, refreshData }) => {
+const EditAreaModal = ({ open, setOpen, selectedArea, refreshData }) => {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState(null); // 'success' | 'error' | null
   const [errorMessage, setErrorMessage] = useState("");
@@ -39,8 +39,8 @@ const EditModal = ({ open, setOpen, selectedArea, refreshData }) => {
   }, [selectedArea, open]);
 
   const handleUpdate = async () => {
-    if (!formData.name) {
-      setErrorMessage("Nama Area tidak boleh kosong");
+    if (!formData.name || !formData.code) {
+      setErrorMessage("Nama dan Kode Area tidak boleh kosong");
       setStatus("error");
       return;
     }
@@ -51,7 +51,7 @@ const EditModal = ({ open, setOpen, selectedArea, refreshData }) => {
     try {
       const token = localStorage.getItem("token");
       
-      // Mengirimkan data yang diperbarui
+      // MENGGANTI axios.put MENJADI axios.patch
       await axios.patch(`http://localhost:3000/api/areas/${selectedArea.id}`, formData, {
         headers: { 
           Authorization: `Bearer ${token}`,
@@ -94,8 +94,8 @@ const EditModal = ({ open, setOpen, selectedArea, refreshData }) => {
       {status === "success" ? (
         <div className="flex flex-col items-center py-10">
           <CheckCircleIcon className="h-20 w-20 text-green-500 mb-4 animate-bounce" />
-          <Typography variant="h4" color="blue-gray" className="font-bold">Wilayah Diperbarui!</Typography>
-          <Typography className="text-gray-600 font-medium text-center px-4">Informasi administratif wilayah berhasil disimpan.</Typography>
+          <Typography variant="h4" color="blue-gray" className="font-bold">Update Berhasil!</Typography>
+          <Typography className="text-gray-600 font-medium text-center">Data wilayah telah diperbarui.</Typography>
         </div>
       ) : status === "error" ? (
         <div className="flex flex-col items-center py-10 text-center">
@@ -106,58 +106,50 @@ const EditModal = ({ open, setOpen, selectedArea, refreshData }) => {
         </div>
       ) : (
         <>
-          <DialogHeader className="flex flex-col items-start gap-1">
-            <div className="flex items-center gap-2 text-blue-900">
-              <ShieldCheckIcon className="h-6 w-6" />
-              <Typography variant="h5" className="font-bold uppercase tracking-tight">Area Management</Typography>
-            </div>
-            <Typography className="text-xs text-gray-500 font-normal">Pembaruan data wilayah terbatas untuk Admin Area.</Typography>
-          </DialogHeader>
-
-          <DialogBody className="space-y-5 max-h-[65vh] overflow-y-auto pr-2">
-            <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl mb-2">
-              <Typography className="text-[10px] font-bold text-blue-700 uppercase tracking-widest">Identitas Wilayah (Read Only)</Typography>
-              <Typography className="text-sm font-bold text-blue-900">Kode: {formData.code} — {formData.regencyType}</Typography>
-            </div>
-
+          <DialogHeader className="text-blue-900 font-bold uppercase text-xl">Edit Data Wilayah</DialogHeader>
+          <DialogBody className="space-y-4 max-h-[65vh] overflow-y-auto pr-2">
             <div className="flex flex-col gap-4">
               <Input 
-                label="Nama Display Area" 
+                label="Kode Area" 
+                value={formData.code} 
+                onChange={(e) => setFormData({...formData, code: e.target.value.toUpperCase()})} 
+                color="blue" 
+              />
+              <Input 
+                label="Nama Area" 
                 value={formData.name} 
                 onChange={(e) => setFormData({...formData, name: e.target.value})} 
                 color="blue" 
               />
-              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input 
-                  label="Kabupaten/Kota" 
-                  value={formData.regencyName} 
-                  onChange={(e) => setFormData({...formData, regencyName: e.target.value})} 
-                  color="blue" 
-                />
                 <Input 
                   label="Provinsi" 
                   value={formData.province} 
                   onChange={(e) => setFormData({...formData, province: e.target.value})} 
                   color="blue" 
                 />
-              </div>
-              
-              <div className="opacity-60 pointer-events-none">
                 <Input 
-                  label="Kode Wilayah" 
-                  value={formData.code} 
-                  disabled
-                  className="bg-gray-100"
+                  label="Kabupaten/Kota" 
+                  value={formData.regencyName} 
+                  onChange={(e) => setFormData({...formData, regencyName: e.target.value})} 
+                  color="blue" 
                 />
               </div>
+              
+              <Select 
+                label="Tipe Wilayah" 
+                value={formData.regencyType} 
+                onChange={(val) => setFormData({...formData, regencyType: val})}
+              >
+                <Option value="KOTA">KOTA</Option>
+                <Option value="KABUPATEN">KABUPATEN</Option>
+              </Select>
             </div>
           </DialogBody>
-
-          <DialogFooter className="flex flex-col-reverse md:flex-row gap-2 border-t border-gray-100 pt-4">
-            <Button variant="text" color="red" onClick={handleClose} disabled={loading} className="w-full md:w-auto rounded-xl normal-case">Batal</Button>
-            <Button className="bg-blue-600 w-full md:w-auto rounded-xl px-10 normal-case" onClick={handleUpdate} disabled={loading}>
-              {loading ? "Menyimpan..." : "Update Informasi"}
+          <DialogFooter className="flex flex-col-reverse md:flex-row gap-2">
+            <Button variant="text" color="red" onClick={handleClose} disabled={loading} className="w-full md:w-auto rounded-xl">Batal</Button>
+            <Button className="bg-blue-600 w-full md:w-auto rounded-xl px-10" onClick={handleUpdate} disabled={loading}>
+              {loading ? "Loading..." : "Simpan Perubahan"}
             </Button>
           </DialogFooter>
         </>
@@ -166,4 +158,4 @@ const EditModal = ({ open, setOpen, selectedArea, refreshData }) => {
   );
 };
 
-export default EditModal;
+export default EditAreaModal;

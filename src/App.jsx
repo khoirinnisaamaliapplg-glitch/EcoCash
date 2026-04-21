@@ -23,6 +23,7 @@ import OperatorManagement from './AdminArea/Operator/index';
 import LocalWastePrice from './AdminArea/LocalWastePrice/index'; 
 import AreaSettingIndex from './AdminArea/SystemSettingIndex';
 import AreaProfileIndex from './AdminArea/Profile/index';
+import AdminAreaIndex from './AdminArea/Area/index'; // <-- BARU: Import halaman data lokasi
 
 // --- IMPORT HALAMAN OPERATOR ---
 import OperatorDashboard from './Operator/dashboard'; 
@@ -58,12 +59,13 @@ function App() {
         <Route path="/profile" element={<ProfileIndex />} />
 
         {/* GROUP 2: ADMIN AREA */}
-        <Route path="/area/dashboard" element={<DashboardArea />} />
-        <Route path="/area/machine" element={<MachineManagement />} />
-        <Route path="/area/operator" element={<OperatorManagement />} />
-        <Route path="/area/local-waste" element={<LocalWastePrice />} />
-        <Route path="/area/settings" element={<AreaSettingIndex />} />
-        <Route path="/area/profile" element={<AreaProfileIndex />} />
+        <Route path="/AdminArea/dashboard" element={<DashboardArea />} />
+        <Route path="/AdminArea/machine" element={<MachineManagement />} />
+        <Route path="/AdminArea/operator" element={<OperatorManagement />} />
+        <Route path="/AdminArea/local-waste" element={<LocalWastePrice />} />
+        <Route path="/AdminArea/locations" element={<AdminAreaIndex />} />
+        <Route path="/AdminArea/settings" element={<AreaSettingIndex />} />
+        <Route path="/AdminArea/profile" element={<AreaProfileIndex />} />
         
         {/* GROUP 3: OPERATOR */}
         <Route path="/operator/dashboard" element={<OperatorDashboard />} />

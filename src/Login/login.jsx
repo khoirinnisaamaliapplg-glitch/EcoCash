@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { jwtDecode } from "jwt-decode";
 import { useNavigate } from 'react-router-dom';
 import {
   Card,
@@ -39,46 +40,57 @@ const Login = () => {
       username: Yup.string().required('Username wajib diisi'),
       password: Yup.string().required('Password wajib diisi'),
     }),
-    onSubmit: async (values) => {
-      setIsLoading(true);
-      try {
-        const response = await axios.post('http://localhost:3000/api/auth/login', {
-          // Tetap gunakan 'identifier' sesuai kebutuhan backend Anda
-          identifier: values.username, 
-          password: values.password
-        });
+ // Taruh di paling atas file
 
-        // Ambil data dari response.data.data sesuai struktur Postman Anda
-        const loginData = response.data.data;
-        const { token, role } = loginData;
+// ... di dalam onSubmit:
+onSubmit: async (values) => {
+  setIsLoading(true);
+  try {
+    const response = await axios.post('http://localhost:3000/api/auth/login', {
+      identifier: values.username, 
+      password: values.password
+    });
 
-        // Simpan token dan role
-        localStorage.setItem("token", token);
-        localStorage.setItem("userRole", role);
+    const loginData = response.data.data;
+    const token = loginData.token;
 
-        // PENTING: Simpan seluruh objek user agar properti 'name' (misal: "admin amel") 
-        // bisa dibaca oleh MainLayout
-        if (loginData) {
-          localStorage.setItem("userData", JSON.stringify(loginData));
-        }
+    if (token) {
+      // 1. Dekode token untuk mendapatkan role dan data user lainnya
+      const decoded = jwtDecode(token);
+      const role = decoded.role; // Pastikan di isi token ada field 'role'
 
-        // Navigasi Berdasarkan Role
-        switch (role) {
-          case "SUPER_ADMIN": navigate("/dashboard"); break;
-          case "AREA_ADMIN": navigate("/area/dashboard"); break;
-          case "OPERATOR": navigate("/operator/dashboard"); break;
-          case "STORE_ADMIN": navigate("/store/dashboard"); break;
-          default: navigate("/dashboard");
-        }
+      // 2. Simpan ke LocalStorage
+      localStorage.setItem("token", token);
+      localStorage.setItem("userRole", role);
+      localStorage.setItem("userData", JSON.stringify(decoded));
 
-      } catch (error) {
-        console.error("Login Error:", error.response?.data);
-        const errorMsg = error.response?.data?.message || "Username atau Password salah!";
-        alert(`Gagal Login: ${errorMsg}`);
-      } finally {
-        setIsLoading(false);
+      // 3. Navigasi berdasarkan Role dari hasil decode
+      const userRole = role ? role.toUpperCase().trim() : "";
+
+      switch (userRole) {
+        case "SUPER_ADMIN": 
+          navigate("/dashboard"); 
+          break;
+        case "AREA_ADMIN": 
+          navigate("/AdminArea/dashboard"); 
+          break;
+        case "MACHINE_OPERATOR": 
+          navigate("/operator/dashboard"); 
+          break;
+        case "STORE_ADMIN": 
+          navigate("/store/dashboard"); 
+          break;
+        default: 
+          alert(`Role "${userRole}" tidak dikenali atau tidak memiliki akses.`);
+          navigate("/");
       }
-    },
+    }
+  } catch (error) {
+    console.error("Login Error:", error.response?.data);
+    alert("Gagal Login: " + (error.response?.data?.message || "Terjadi kesalahan"));
+  } finally {
+    setIsLoading(false);
+  }},
   });
 
   return (

@@ -21,6 +21,7 @@ const EditUserModal = ({ open, handleOpen, data, refreshData }) => {
     if (open && data) {
       setRole(data.role || "");
       setErrorMessage(""); 
+      setStatus(null); // Reset status saat modal dibuka kembali
     }
   }, [data, open]);
 
@@ -41,16 +42,20 @@ const EditUserModal = ({ open, handleOpen, data, refreshData }) => {
       
       /**
        * KONTROL ID: 
-       * Memastikan ID benar-benar bersih (hanya angka). 
-       * Jika ada karakter ":1" seperti di error sebelumnya, ini akan membuangnya.
+       * Memastikan ID bersih dari karakter pengganggu (seperti titik dua).
        */
-      const cleanId = String(data.id).split(':')[0];
+      const cleanId = String(data.id).replace(':', '');
 
-      // Menggunakan PUT agar sesuai dengan route di Backend kamu
-      const response = await axios.put(
-        `http://localhost:3000/api/users/role/${cleanId}`, 
+      // PERBAIKAN: Menggunakan PATCH dan URL sesuai permintaan Anda
+      const response = await axios.patch(
+        `http://localhost:3000/api/users/${cleanId}/role`, 
         { role: role }, 
-        { headers: { Authorization: `Bearer ${token}` } }
+        { 
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json"
+          } 
+        }
       );
 
       setStatus("success");
@@ -59,11 +64,10 @@ const EditUserModal = ({ open, handleOpen, data, refreshData }) => {
       setTimeout(() => {
         if (refreshData) refreshData();
         handleOpen();
-        setStatus(null);
       }, 1500);
 
     } catch (error) {
-      // Menangkap pesan error dari backend (seperti "Invalid role" atau "User not found")
+      // Menangkap pesan error dari backend
       const msg = error.response?.data?.message || "Terjadi kesalahan pada server";
       setErrorMessage(msg);
       console.error("Update Role Error:", error.response?.data);
@@ -96,7 +100,6 @@ const EditUserModal = ({ open, handleOpen, data, refreshData }) => {
           </div>
         ) : (
           <div className="space-y-4">
-            {/* Tampilkan Alert jika ada error */}
             {errorMessage && (
               <Alert
                 color="red"

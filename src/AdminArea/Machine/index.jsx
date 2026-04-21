@@ -1,144 +1,209 @@
-import React, { useState } from "react";
-import MainLayout from "../MainLayout";
+import React, { useState, useEffect } from "react";
+import MainLayout from "../MainLayout"; 
+import CreateModal from "./CreateModal";
+import EditModal from "./EditModal";
+import DeleteModal from "./DeleteModal";
+import AssignOperatorModal from "./AssignOperatorModal"; 
+import axios from "axios";
 import { 
   Card, 
   Typography, 
   Button, 
-  CardHeader, 
-  CardBody 
+  Input, 
+  Chip, 
+  Spinner,
+  IconButton // Sudah ditambahkan
 } from "@material-tailwind/react";
-import { 
-  PlusIcon, 
-  PencilIcon, 
-  TrashIcon,
-  CpuChipIcon
-} from "@heroicons/react/24/outline";
+import { PlusIcon, MagnifyingGlassIcon, ArrowPathIcon, UserPlusIcon } from "@heroicons/react/24/outline";
 
-// Import Komponen Modal
-import CreateModal from "./CreateModal";
-import EditModal from "./EditModal";
-import DeleteModal from "./DeleteModal";
+const TABLE_HEAD = ["Machine Code", "Name & Place", "Operator", "Location", "Status", "Action"];
 
 const MachineManagement = () => {
-  const [machines, setMachines] = useState([
-    { id: "MS 001", jenis: "Pencacah Plastik Otomatis", lokasi: "Jakarta, Cikini 1", operator: "Santo", status: "Beroperasi" },
-    { id: "MS 002", jenis: "Mesin Press Hidrolik", lokasi: "Jakarta, Cikini 2", operator: "Budi", status: "Rusak" },
-    { id: "MS 003", jenis: "Pemilah Magnetik AI", lokasi: "Bandung, Dago 3", operator: "Ani", status: "Maintenance" },
-  ]);
-
-  const [selectedMachine, setSelectedMachine] = useState(null);
   const [openCreate, setOpenCreate] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
+  const [openAssign, setOpenAssign] = useState(false);
+  
+  const [selectedData, setSelectedData] = useState(null);
+  const [machines, setMachines] = useState([]); 
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
 
-  const TABLE_HEAD = ["ID Mesin", "Jenis Mesin", "Lokasi", "Status Operasi", "Aksi"];
+  const rawUser = localStorage.getItem("userData") || localStorage.getItem("user");
+  const userData = rawUser ? JSON.parse(rawUser) : null;
+
+  const fetchMachines = async () => {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get("http://localhost:3000/api/machines", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      const result = response.data.data || response.data;
+      
+      if (Array.isArray(result)) {
+        const myAreaMachines = result.filter(m => m.areaId === userData?.areaId);
+        setMachines(myAreaMachines);
+      }
+    } catch (error) {
+      console.error("Gagal mengambil data mesin:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchMachines();
+  }, []);
+
+  const filteredMachines = machines.filter((item) => {
+    const searchLower = search.toLowerCase();
+    return (
+      item.name?.toLowerCase().includes(searchLower) ||
+      item.machineCode?.toLowerCase().includes(searchLower) ||
+      item.placeName?.toLowerCase().includes(searchLower)
+    );
+  });
+
+  const handleOpenEdit = (row) => { setSelectedData(row); setOpenEdit(true); };
+  const handleOpenDelete = (row) => { setSelectedData(row); setOpenDelete(true); };
+  const handleOpenAssign = (row) => { setSelectedData(row); setOpenAssign(true); };
 
   return (
     <MainLayout>
-      <div className="space-y-6 pb-8">
-        {/* HEADER SECTION */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 px-2">
+      <div className="p-4 md:p-0 space-y-6">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
-            <Typography variant="h3" className="text-blue-900 font-black flex items-center gap-3">
-              <CpuChipIcon className="h-9 w-9 text-blue-600" />
-              Machine Management
+            <Typography variant="h4" className="text-[#2b6cb0] font-bold text-2xl md:text-3xl">
+              Smart Container
             </Typography>
-            <Typography className="text-gray-500 font-medium ml-12 -mt-1">
-              Monitoring dan kontrol unit AIoT EcoCash secara real-time.
+            <Typography className="text-gray-500 text-sm italic">
+              Area Management: <span className="text-blue-600 font-bold">{userData?.areaName || "My Area"}</span>
             </Typography>
           </div>
           <Button 
-            onClick={() => setOpenCreate(true)} 
-            className="flex items-center gap-3 bg-blue-600 rounded-xl normal-case shadow-blue-100 hover:shadow-blue-300 transition-all py-3"
+            variant="text" 
+            size="sm" 
+            className="flex items-center gap-2 text-blue-600 font-bold hover:bg-blue-50"
+            onClick={fetchMachines}
           >
-            <PlusIcon className="h-5 w-5 stroke-[3]" /> Tambah Unit Mesin
+            <ArrowPathIcon className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Refresh Data
           </Button>
         </div>
 
-        {/* TABLE SECTION */}
-        <Card className="h-full w-full shadow-xl shadow-blue-900/5 rounded-[2rem] border border-blue-gray-50 overflow-hidden">
-          <CardHeader floated={false} shadow={false} className="rounded-none p-4 pb-0">
-             <div className="mb-4 flex items-center justify-between gap-8">
-                <Typography variant="h5" color="blue-gray" className="font-bold text-blue-900">
-                  Daftar Unit Mesin
-                </Typography>
-             </div>
-          </CardHeader>
+        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+          <Button 
+            onClick={() => setOpenCreate(true)}
+            className="flex items-center justify-center gap-2 bg-[#2196F3] normal-case text-sm px-5 py-3 rounded-xl shadow-none hover:shadow-lg transition-all"
+          >
+            <PlusIcon className="h-5 w-5 stroke-[3]" /> Add Unit
+          </Button>
           
-          <CardBody className="overflow-auto px-0 pt-0">
-            <table className="w-full min-w-max table-auto text-left">
+          <div className="w-full md:w-80">
+            <Input
+              label="Cari di area ini..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              icon={<MagnifyingGlassIcon className="h-5 w-5" />}
+              className="bg-white rounded-xl"
+              color="blue"
+            />
+          </div>
+        </div>
+
+        <Card className="w-full border border-blue-50 shadow-sm rounded-2xl overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[1000px] table-auto text-left">
               <thead>
-                <tr>
+                <tr className="bg-[#f8fbff]">
                   {TABLE_HEAD.map((head) => (
-                    <th key={head} className="border-y border-blue-gray-100 bg-blue-50/50 p-5">
-                      <Typography className="text-[11px] font-black uppercase tracking-wider text-blue-800 opacity-80">
+                    <th key={head} className="p-5 border-b border-blue-50">
+                      <Typography className="font-bold text-[#2b6cb0] uppercase text-[10px] tracking-widest">
                         {head}
                       </Typography>
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody>
-                {machines.map((m, index) => {
-                  const isLast = index === machines.length - 1;
-                  const classes = isLast ? "p-5" : "p-5 border-b border-blue-gray-50";
-
-                  return (
-                    <tr key={m.id} className="hover:bg-blue-50/30 transition-colors group">
-                      <td className={classes}>
-                        <div className="bg-blue-50 w-fit px-3 py-1 rounded-lg">
-                          <Typography className="text-sm font-black text-blue-700">{m.id}</Typography>
-                        </div>
+              <tbody className="bg-white">
+                {loading ? (
+                  <tr>
+                    <td colSpan={6} className="p-10 text-center"><Spinner className="mx-auto" /></td>
+                  </tr>
+                ) : filteredMachines.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="p-10 text-center text-gray-500">Data tidak ditemukan.</td>
+                  </tr>
+                ) : (
+                  filteredMachines.map((row) => (
+                    <tr key={row.id} className="hover:bg-blue-50/10 transition-colors border-b border-blue-50/50">
+                      <td className="p-5">
+                        <Typography variant="small" className="font-bold text-blue-900 uppercase">
+                          {row.machineCode}
+                        </Typography>
                       </td>
-                      <td className={classes}>
-                        <Typography className="text-sm font-bold text-gray-800">{m.jenis}</Typography>
+                      <td className="p-5">
+                        <Typography variant="small" className="font-semibold text-gray-800">{row.name}</Typography>
+                        <Typography className="text-[10px] text-gray-500">{row.placeName || "-"}</Typography>
                       </td>
-                      <td className={classes}>
-                        <Typography className="text-sm font-medium text-gray-600">{m.lokasi}</Typography>
+                      <td className="p-5">
+                         {row.operator ? (
+                           <div className="flex flex-col">
+                             <Typography className="text-xs font-bold text-blue-gray-800">{row.operator.name}</Typography>
+                             <Typography className="text-[9px] text-gray-500">Petugas Area</Typography>
+                           </div>
+                         ) : (
+                           <Typography className="text-[10px] font-bold text-red-400 bg-red-50 px-2 py-1 rounded w-fit italic">
+                             Belum di-assign
+                           </Typography>
+                         )}
                       </td>
-                      <td className={classes}>
-                        <div className="w-max">
-                          <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider text-white shadow-sm ${
-                            m.status === "Beroperasi" ? "bg-green-500" : 
-                            m.status === "Rusak" ? "bg-red-500" : "bg-orange-500"
-                          }`}>
-                            {m.status}
-                          </span>
-                        </div>
+                      <td className="p-5">
+                        <Typography variant="small" className="text-gray-700">{row.district}</Typography>
+                        <Typography className="text-[10px] text-gray-400">{row.subdistrict}</Typography>
                       </td>
-                      <td className={classes}>
-                        <div className="flex gap-3">
-                          <Button 
-                            size="sm" 
-                            color="blue" 
-                            className="flex items-center gap-2 rounded-xl normal-case bg-blue-600 px-5 shadow-md shadow-blue-100"
-                            onClick={() => { setSelectedMachine(m); setOpenEdit(true); }}
-                          >
-                            <PencilIcon className="h-4 w-4 stroke-[2]" /> Edit
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            color="red" 
-                            className="flex items-center gap-2 rounded-xl normal-case bg-red-500 px-5 shadow-md shadow-red-100"
-                            onClick={() => { setSelectedMachine(m); setOpenDelete(true); }}
-                          >
-                            <TrashIcon className="h-4 w-4 stroke-[2]" /> Hapus
-                          </Button>
+                      <td className="p-5">
+                        <Chip
+                          variant="ghost"
+                          size="sm"
+                          value={row.isActive ? "Operasional" : "Non-Aktif"}
+                          color={row.isActive ? "green" : "red"}
+                          className="rounded-full font-bold"
+                        />
+                      </td>
+                      <td className="p-5">
+                        <div className="flex items-center gap-1">
+                          <IconButton size="sm" variant="text" color="blue" onClick={() => handleOpenAssign(row)}>
+                            <UserPlusIcon className="h-4 w-4" />
+                          </IconButton>
+                          <Button onClick={() => handleOpenEdit(row)} size="sm" variant="text" color="green" className="capitalize font-bold">Edit</Button>
+                          <Button onClick={() => handleOpenDelete(row)} size="sm" variant="text" color="red" className="capitalize font-bold">Hapus</Button>
                         </div>
                       </td>
                     </tr>
-                  );
-                })}
+                  ))
+                )}
               </tbody>
             </table>
-          </CardBody>
+          </div>
         </Card>
-      </div>
 
-      {/* Modals tetap sama */}
-      <CreateModal open={openCreate} setOpen={setOpenCreate} setMachines={setMachines} machines={machines} />
-      <EditModal open={openEdit} setOpen={setOpenEdit} data={selectedMachine} setMachines={setMachines} machines={machines} />
-      <DeleteModal open={openDelete} setOpen={setOpenDelete} data={selectedMachine} setMachines={setMachines} machines={machines} />
+        {/* Modals */}
+        <CreateModal open={openCreate} handleOpen={() => setOpenCreate(false)} refreshData={fetchMachines} />
+        {selectedData && (
+          <>
+            <EditModal open={openEdit} handleOpen={() => setOpenEdit(false)} data={selectedData} refreshData={fetchMachines} />
+            <DeleteModal open={openDelete} handleOpen={() => setOpenDelete(false)} data={selectedData} refreshData={fetchMachines} />
+            <AssignOperatorModal 
+                open={openAssign} 
+                handleOpen={() => setOpenAssign(false)} 
+                machineData={selectedData} 
+                refreshData={fetchMachines} 
+            />
+          </>
+        )}
+      </div>
     </MainLayout>
   );
 };

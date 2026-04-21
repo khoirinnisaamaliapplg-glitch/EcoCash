@@ -1,107 +1,221 @@
-import React, { useState } from "react";
-import { 
-  Dialog, 
-  DialogHeader, 
-  DialogBody, 
-  DialogFooter, 
-  Input, 
-  Button, 
-  Typography 
+import React, { useState, useEffect } from "react";
+import {
+  Dialog, DialogHeader, DialogBody, DialogFooter,
+  Input, Button, Typography, IconButton, Textarea, Spinner, Select, Option,
 } from "@material-tailwind/react";
-import { CpuChipIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { 
+  XMarkIcon, CheckCircleIcon, XCircleIcon, 
+  CpuChipIcon, MapPinIcon
+} from "@heroicons/react/24/outline";
+import axios from "axios";
 
-const CreateModal = ({ open, setOpen, setMachines, machines }) => {
-  const [form, setForm] = useState({ 
-    id: "", 
-    jenis: "", 
-    lokasi: "", 
-    operator: "", 
-    status: "Beroperasi" 
-  });
+const CreateModal = ({ open, handleOpen, refreshData }) => {
+  // Ambil data user dari localStorage
+  const rawUser = localStorage.getItem("userData") || localStorage.getItem("user");
+  const userData = rawUser ? JSON.parse(rawUser) : null;
 
-  const handleSave = () => {
-    if (form.id && form.jenis) {
-      setMachines([...machines, form]);
-      setOpen(false);
-      // Reset form setelah simpan
-      setForm({ id: "", jenis: "", lokasi: "", operator: "", status: "Beroperasi" });
+  const initialState = {
+    machineCode: "",
+    name: "",
+    areaId: userData?.areaId || "", // Otomatis set dari user
+    machineType: "BOX",
+    locationType: "OTHER",
+    latitude: "",
+    longitude: "",
+    district: "",
+    subdistrict: "",
+    address: "",
+    placeName: "",
+    description: "",
+  };
+
+  const [form, setForm] = useState(initialState);
+  const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState(null); // 'success' | 'error' | null
+  const [errorDetails, setErrorDetails] = useState("");
+
+  // Update areaId jika userData baru tersedia
+  useEffect(() => {
+    if (userData?.areaId) {
+      setForm(prev => ({ ...prev, areaId: userData.areaId }));
+    }
+  }, [open]);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setForm({ ...form, [name]: value });
+  };
+
+  const handleSelectChange = (name, value) => {
+    setForm({ ...form, [name]: value });
+  };
+
+  const handleSubmit = async () => {
+    if (!form.machineCode.trim() || !form.name.trim()) {
+      alert("Harap isi Machine Code dan Name");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      
+      const payload = {
+        ...form,
+        machineCode: form.machineCode.trim().toUpperCase(),
+        name: form.name.trim(),
+        areaId: Number(form.areaId),
+        latitude: form.latitude ? parseFloat(form.latitude) : 0,
+        longitude: form.longitude ? parseFloat(form.longitude) : 0,
+      };
+
+      const response = await axios.post("http://localhost:3000/api/machines/", payload, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (response.status === 200 || response.status === 201) {
+        setStatus("success");
+        setTimeout(() => { 
+          handleClose(); 
+          if (refreshData) refreshData(); 
+        }, 1500);
+      }
+    } catch (error) {
+      setStatus("error");
+      setErrorDetails(error.response?.data?.message || "Gagal menyimpan data.");
+    } finally { 
+      setLoading(false); 
     }
   };
+
+  const handleClose = () => {
+    setForm(initialState);
+    setStatus(null);
+    setErrorDetails("");
+    handleOpen();
+  };
+
+  const locationOptions = ["OFFICE", "HOTEL", "MALL", "MARKET", "SCHOOL_CAMPUS", "RT_RW", "PARK", "HOSPITAL", "OTHER"];
 
   return (
     <Dialog 
       open={open} 
-      handler={() => setOpen(false)} 
-      className="rounded-[30px] shadow-2xl"
-      size="sm"
+      handler={handleClose} 
+      size="xl" 
+      className="rounded-xl shadow-2xl max-h-[95vh] overflow-hidden flex flex-col font-sans"
     >
-      {/* Header dengan Ikon */}
-      <DialogHeader className="flex flex-col items-start gap-1 pt-8 px-8">
-        <div className="bg-blue-50 p-3 rounded-2xl mb-2">
-          <CpuChipIcon className="h-8 w-8 text-blue-600" />
+      <DialogHeader className="flex justify-between items-center border-b border-gray-100 px-6 py-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-blue-50 rounded-lg">
+            <CpuChipIcon className="h-6 w-6 text-blue-600" />
+          </div>
+          <div>
+            <Typography variant="h5" color="blue-gray" className="font-bold">
+              Register New Machine
+            </Typography>
+            <Typography className="text-xs text-blue-600 font-bold uppercase tracking-tight">
+               Area: {userData?.areaName || "Your Assigned Area"} (ID: {userData?.areaId})
+            </Typography>
+          </div>
         </div>
-        <Typography variant="h4" className="text-blue-900 font-black">
-          Tambah Mesin Baru
-        </Typography>
-        <Typography className="text-gray-500 font-medium text-sm">
-          Masukkan detail unit AIoT EcoCash yang akan didaftarkan.
-        </Typography>
+        <IconButton variant="text" color="blue-gray" onClick={handleClose}>
+          <XMarkIcon className="h-5 w-5" strokeWidth={2} />
+        </IconButton>
       </DialogHeader>
 
-      {/* Body dengan Input yang Rapi */}
-      <DialogBody className="px-8 py-4 space-y-6">
-        <div className="grid gap-5">
-          <Input 
-            size="lg"
-            label="ID Mesin (Contoh: MS-001)" 
-            className="rounded-xl"
-            color="blue"
-            value={form.id}
-            onChange={(e) => setForm({...form, id: e.target.value})} 
-          />
-          <Input 
-            size="lg"
-            label="Jenis Mesin" 
-            className="rounded-xl"
-            color="blue"
-            value={form.jenis}
-            onChange={(e) => setForm({...form, jenis: e.target.value})} 
-          />
-          <Input 
-            size="lg"
-            label="Lokasi Penempatan" 
-            className="rounded-xl"
-            color="blue"
-            value={form.lokasi}
-            onChange={(e) => setForm({...form, lokasi: e.target.value})} 
-          />
-          <Input 
-            size="lg"
-            label="Nama Admin Operator" 
-            className="rounded-xl"
-            color="blue"
-            value={form.operator}
-            onChange={(e) => setForm({...form, operator: e.target.value})} 
-          />
-        </div>
+      <DialogBody className="overflow-y-auto px-6 py-4 flex-grow">
+        {status === "success" ? (
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <CheckCircleIcon className="h-20 w-20 text-green-500 mb-4" />
+            <Typography variant="h4" className="text-green-700 font-bold">Registration Success!</Typography>
+            <Typography className="text-gray-500">The machine has been registered to your area.</Typography>
+          </div>
+        ) : status === "error" ? (
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <XCircleIcon className="h-20 w-20 text-red-500 mb-4" />
+            <Typography variant="h5" color="red" className="font-bold">Failed to Save</Typography>
+            <Typography color="red" className="mt-2">{errorDetails}</Typography>
+            <Button variant="outlined" color="red" onClick={() => setStatus(null)} className="mt-6">Try Again</Button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            
+            {/* COLUMN 1: UNIT INFO */}
+            <div className="space-y-6">
+              <div className="flex items-center gap-2 border-l-4 border-blue-500 pl-3">
+                <Typography className="font-bold text-gray-800 uppercase text-xs tracking-wider">Unit Identity</Typography>
+              </div>
+              <div className="grid grid-cols-1 gap-4">
+                {/* Informasi Area - Read Only untuk Area Admin */}
+                <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                   <Typography className="text-[10px] uppercase font-bold text-gray-500">Current Management Area</Typography>
+                   <Typography className="text-sm font-bold text-blue-700">{userData?.areaName || "Assigned Area"} (ID: {userData?.areaId})</Typography>
+                </div>
+
+                <Input label="Machine Code (Unique)" name="machineCode" value={form.machineCode} onChange={handleChange} color="blue" />
+                <Input label="Display Name" name="name" value={form.name} onChange={handleChange} color="blue" />
+                
+                <Select label="Hardware Type" value={form.machineType} onChange={(v) => handleSelectChange("machineType", v)}>
+                  <Option value="BOX">BOX SYSTEM</Option>
+                  <Option value="CONTAINER">CONTAINER SYSTEM</Option>
+                </Select>
+              </div>
+            </div>
+
+            {/* COLUMN 2: PLACEMENT */}
+            <div className="space-y-6">
+              <div className="flex items-center gap-2 border-l-4 border-green-500 pl-3">
+                <Typography className="font-bold text-gray-800 uppercase text-xs tracking-wider">GPS & Address</Typography>
+              </div>
+              <div className="grid grid-cols-1 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Input label="Point Name (Building)" name="placeName" value={form.placeName} onChange={handleChange} />
+                  <Select label="Location Category" value={form.locationType} onChange={(v) => handleSelectChange("locationType", v)}>
+                    {locationOptions.map((opt) => (
+                      <Option key={opt} value={opt}>{opt.replace("_", " ")}</Option>
+                    ))}
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <Input label="Latitude" name="latitude" type="number" value={form.latitude} onChange={handleChange} />
+                  <Input label="Longitude" name="longitude" type="number" value={form.longitude} onChange={handleChange} />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <Input label="District" name="district" value={form.district} onChange={handleChange} />
+                  <Input label="Subdistrict" name="subdistrict" value={form.subdistrict} onChange={handleChange} />
+                </div>
+                <Textarea label="Full Address Details" name="address" rows={2} value={form.address} onChange={handleChange} />
+              </div>
+            </div>
+
+            {/* INTERNAL NOTES */}
+            <div className="lg:col-span-2 pt-2">
+              <div className="flex items-center gap-2 border-l-4 border-orange-400 pl-3 mb-4">
+                <Typography className="font-bold text-gray-800 uppercase text-xs tracking-wider">Internal Description</Typography>
+              </div>
+              <Textarea label="Additional Notes" name="description" rows={2} value={form.description} onChange={handleChange} />
+            </div>
+          </div>
+        )}
       </DialogBody>
 
-      {/* Footer dengan Tombol yang Tegas */}
-      <DialogFooter className="px-8 pb-8 pt-4 gap-3">
-        <Button 
-          variant="text" 
-          color="red" 
-          onClick={() => setOpen(false)}
-          className="rounded-xl normal-case font-bold flex-1 py-3"
-        >
-          Batal
-        </Button>
-        <Button 
-          className="bg-blue-600 rounded-xl normal-case font-bold flex-[2] py-3 shadow-blue-100 shadow-lg hover:shadow-blue-200"
-          onClick={handleSave}
-        >
-          Simpan Unit Mesin
-        </Button>
+      <DialogFooter className="border-t border-gray-100 p-4 gap-2">
+        {!status && (
+          <>
+            <Button variant="text" color="gray" onClick={handleClose} className="normal-case">
+              Cancel
+            </Button>
+            <Button 
+              variant="gradient" 
+              color="blue" 
+              onClick={handleSubmit} 
+              disabled={loading} 
+              className="flex items-center gap-2 normal-case"
+            >
+              {loading ? <Spinner className="h-4 w-4" /> : "Confirm Registration"}
+            </Button>
+          </>
+        )}
       </DialogFooter>
     </Dialog>
   );
