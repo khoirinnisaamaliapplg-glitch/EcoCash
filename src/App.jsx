@@ -15,6 +15,7 @@ import FinansialReportsIndex from './SuperAdmin/FinansialReports/index';
 import SystemSettingIndex from './SuperAdmin/SystemSettingIndex';
 import ProfileIndex from './SuperAdmin/Profile/index';
 import AreaIndex from './SuperAdmin/Area/index'; 
+import WasteManagementIndex from './SuperAdmin/WasteManagement/index'; // <-- BARU: Import halaman waste management
 
 // --- IMPORT HALAMAN ADMIN AREA ---
 import DashboardArea from './AdminArea/dashboard';
@@ -54,6 +55,7 @@ function App() {
         <Route path="/users" element={<UserIndex />} />
         <Route path="/waste-prices" element={<WastePricesIndex />} />
         <Route path="/marketplace" element={<MarketPlaceIndex />} />
+        <Route path="/waste-management" element={<WasteManagementIndex />} />
         <Route path="/finansial-reports" element={<FinansialReportsIndex />} />
         <Route path="/settings" element={<SystemSettingIndex />} />
         <Route path="/profile" element={<ProfileIndex />} />

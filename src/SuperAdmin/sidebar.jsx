@@ -16,17 +16,18 @@ import {
   ChartBarIcon, 
   Cog6ToothIcon,
   XMarkIcon,
-  MapIcon // <-- IMPORT ICON MAP UNTUK AREA
+  MapIcon,
+  TrashIcon // <-- IMPORT ICON BARU UNTUK WASTE MANAGEMENT
 } from "@heroicons/react/24/outline";
 import logo2 from "../assets/logo2.png";
 
 const Sidebar = ({ open, setOpen }) => {
-  // Menu yang sudah ditambahkan Data Wilayah
   const menu = [
     { name: "Dashboard", icon: <Square2StackIcon className="h-5 w-5" />, path: "/dashboard" },
     { name: "Smart Container", icon: <CubeIcon className="h-5 w-5" />, path: "/smart-container" },
     { name: "Smart Truck", icon: <TruckIcon className="h-5 w-5" />, path: "/smart-truck" },
-    { name: "Data Wilayah", icon: <MapIcon className="h-5 w-5" />, path: "/areas" }, // <-- MENU BARU
+    { name: "Data Wilayah", icon: <MapIcon className="h-5 w-5" />, path: "/areas" },
+    { name: "Waste Management", icon: <TrashIcon className="h-5 w-5" />, path: "/waste-management" }, // <-- MENU BARU
     { name: "Users", icon: <UserGroupIcon className="h-5 w-5" />, path: "/users" },
     { name: "Waste Prices", icon: <TagIcon className="h-5 w-5" />, path: "/waste-prices" },
     { name: "MarketPlace", icon: <ShoppingBagIcon className="h-5 w-5" />, path: "/marketplace" },
