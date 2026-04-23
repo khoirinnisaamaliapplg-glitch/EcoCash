@@ -13,7 +13,7 @@ const MainLayout = ({ children }) => {
   const navigate = useNavigate();
   const [openSidebar, setOpenSidebar] = useState(false);
   
-  // LOGIKA AMBIL NAMA (Dibuat sangat teliti)
+  // LOGIKA AMBIL NAMA & ROLE (Disesuaikan ke Area Admin)
   const [userProfile] = useState(() => {
     const storedUser = localStorage.getItem("userData");
     const storedRole = localStorage.getItem("userRole");
@@ -21,18 +21,23 @@ const MainLayout = ({ children }) => {
     if (storedUser) {
       try {
         const parsedUser = JSON.parse(storedUser);
-        // Kita cek satu per satu kemungkinan field nama dari API kamu
         const fixName = parsedUser.name || parsedUser.username || parsedUser.user?.name || "User";
         
+        // Memastikan role yang tampil adalah AREA ADMIN
+        let currentRole = storedRole || parsedUser.role || "AREA_ADMIN";
+        if (currentRole.includes("SUPER")) {
+          currentRole = "AREA_ADMIN";
+        }
+
         return {
           name: fixName,
-          role: storedRole || parsedUser.role || "ADMIN"
+          role: currentRole
         };
       } catch (e) {
         console.error("Error parsing data", e);
       }
     }
-    return { name: "Guest", role: "USER" };
+    return { name: "Guest", role: "AREA_ADMIN" };
   });
 
   const handleLogout = () => {
@@ -45,7 +50,7 @@ const MainLayout = ({ children }) => {
       <Sidebar open={openSidebar} setOpen={setOpenSidebar} />
       
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* HEADER - Tetap menggunakan struktur asli kamu agar tidak berantakan */}
+        {/* HEADER */}
         <header className="h-16 bg-white border-b border-gray-100 flex items-center justify-between px-4 md:px-8 shadow-sm z-10">
           <div className="flex items-center gap-3">
             <IconButton variant="text" color="blue-gray" className="md:hidden" onClick={() => setOpenSidebar(true)}>
@@ -66,16 +71,15 @@ const MainLayout = ({ children }) => {
                 <MenuHandler>
                   <div className="flex items-center gap-2 md:gap-3 cursor-pointer hover:bg-gray-50 p-1 rounded-lg transition-all">
                     <div className="text-right hidden lg:block">
-                      {/* INI DIA: Menampilkan nama asli tanpa underscore */}
                       <Typography className="text-sm font-bold text-gray-800 capitalize leading-tight">
                         {userProfile.name.replace(/_/g, " ")}
                       </Typography>
+                      {/* ROLE DITAMPILKAN SEBAGAI AREA ADMIN */}
                       <Typography className="text-[10px] font-bold text-green-500 uppercase tracking-widest leading-tight">
-                        {userProfile.role.replace("_", " ")} • Online
+                        {userProfile.role.replace(/_/g, " ")} • Online
                       </Typography>
                     </div>
                     
-                    {/* AVATAR KOTAK BIRU KHAS KAMU */}
                     <div className="w-8 h-8 md:w-10 md:h-10 bg-[#2b6cb0] rounded-full flex items-center justify-center text-white text-xs md:text-base font-bold shadow-sm uppercase">
                       {userProfile.name.charAt(0)}
                     </div>
@@ -84,22 +88,30 @@ const MainLayout = ({ children }) => {
                 </MenuHandler>
                 
                 <MenuList className="p-1 border-none shadow-lg">
-                  <MenuItem onClick={() => navigate("/profile")} className="flex items-center gap-3 rounded-md">
-                    <UserCircleIcon className="h-5 w-5 text-blue-gray-500" />
-                    <Typography variant="small" className="font-bold text-blue-gray-800">Profil Saya</Typography>
-                  </MenuItem>
-                  <hr className="my-1 border-blue-gray-50" />
-                  <MenuItem onClick={handleLogout} className="flex items-center gap-3 rounded-md hover:bg-red-50 group">
-                    <PowerIcon className="h-5 w-5 text-red-500" />
-                    <Typography variant="small" className="font-bold text-red-500">Keluar</Typography>
-                  </MenuItem>
-                </MenuList>
+  {/* PATH HARUS SAMA PERSIS DENGAN YANG ADA DI APP.JS */}
+  <MenuItem 
+    onClick={() => navigate("/AdminArea/profile")} 
+    className="flex items-center gap-3 rounded-md"
+  >
+    <UserCircleIcon className="h-5 w-5 text-blue-gray-500" />
+    <Typography variant="small" className="font-bold text-blue-gray-800">
+      Profil Area Admin
+    </Typography>
+  </MenuItem>
+  
+  <hr className="my-1 border-blue-gray-50" />
+  
+  <MenuItem onClick={handleLogout} className="flex items-center gap-3 rounded-md hover:bg-red-50 group">
+    <PowerIcon className="h-5 w-5 text-red-500" />
+    <Typography variant="small" className="font-bold text-red-500">Keluar</Typography>
+  </MenuItem>
+</MenuList>
               </Menu>
             </div>
           </div>
         </header>
         
-        {/* MAIN CONTENT - Memastikan children tampil sempurna */}
+        {/* MAIN CONTENT */}
         <main className="flex-1 overflow-y-auto bg-gray-50/50">
           <div className="min-h-[calc(100vh-64px)] flex flex-col">
             <div className="flex-1 p-4 md:p-8">

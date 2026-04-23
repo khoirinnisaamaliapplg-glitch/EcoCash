@@ -1,48 +1,187 @@
 import React, { useState, useEffect } from "react";
-import { Dialog, DialogHeader, DialogBody, DialogFooter, Input, Button, Typography } from "@material-tailwind/react";
-import { PencilSquareIcon, BanknotesIcon } from "@heroicons/react/24/outline";
+import axios from "axios";
+import { 
+  Dialog, DialogHeader, DialogBody, DialogFooter, 
+  Input, Button, Typography, Spinner, Select, Option 
+} from "@material-tailwind/react";
+import { PencilSquareIcon, BanknotesIcon, CheckCircleIcon, XMarkIcon } from "@heroicons/react/24/outline";
 
-const EditWastePriceModal = ({ open, handleOpen, data }) => {
-  const [price, setPrice] = useState("");
+const EditWastePriceModal = ({ open, handleOpen, data, refreshData }) => {
+  const [loading, setLoading] = useState(false);
+  const [loadingData, setLoadingData] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false); // State untuk switch tampilan ke Sukses
+  
+  const [areas, setAreas] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [formData, setFormData] = useState({
+    areaId: "",
+    wasteTypeId: "",
+    pricePerKg: "",
+  });
 
+  // 1. Load Data Dropdown
   useEffect(() => {
-    if (data) setPrice(data.price.replace(".", "")); // Hapus titik format ribuan untuk input
-  }, [data]);
+    if (open) {
+      setIsSuccess(false); // Reset status setiap kali modal dibuka
+      const loadDropdownData = async () => {
+        setLoadingData(true);
+        try {
+          const token = localStorage.getItem("token");
+          const config = { headers: { Authorization: `Bearer ${token}` } };
+          const [areaRes, wasteRes] = await Promise.all([
+            axios.get("http://localhost:3000/api/areas", config),
+            axios.get("http://localhost:3000/api/waste-types", config)
+          ]);
+          setAreas((areaRes.data.data || areaRes.data).filter(a => a.isActive));
+          setCategories((wasteRes.data.data || wasteRes.data).filter(c => c.isActive));
+        } catch (error) {
+          console.error("Gagal load dropdown:", error);
+        } finally {
+          setLoadingData(false);
+        }
+      };
+      loadDropdownData();
+    }
+  }, [open]);
+
+  // 2. Sinkronisasi Data Awal
+  useEffect(() => {
+    if (data && open) {
+      setFormData({
+        areaId: data.areaId ? String(data.areaId) : "",
+        wasteTypeId: data.wasteTypeId ? String(data.wasteTypeId) : "",
+        pricePerKg: data.pricePerKg || "",
+      });
+    }
+  }, [data, open]);
+
+  const handleUpdate = async () => {
+    if (!formData.areaId || !formData.wasteTypeId || !formData.pricePerKg) return;
+
+    setLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      await axios.patch(
+        `http://localhost:3000/api/waste-prices/${data.id}`, 
+        {
+          areaId: Number(formData.areaId),
+          wasteTypeId: Number(formData.wasteTypeId),
+          pricePerKg: parseFloat(formData.pricePerKg),
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      refreshData();
+      setIsSuccess(true); // Ganti tampilan modal jadi Sukses
+    } catch (error) {
+      alert("Gagal memperbarui data");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <Dialog open={open} handler={handleOpen} size="xs" className="rounded-[28px] shadow-2xl border border-blue-50/50">
-      <DialogHeader className="px-8 pt-8 flex items-center gap-3">
-        <div className="p-2.5 bg-blue-50 rounded-xl">
-          <PencilSquareIcon className="h-6 w-6 text-blue-600" />
-        </div>
-        <Typography variant="h5" className="text-blue-900 font-bold">Edit Harga</Typography>
-      </DialogHeader>
-      
-      <DialogBody className="px-8 py-4 space-y-4">
-        <div>
-          <Typography className="text-[11px] font-bold text-gray-400 uppercase tracking-widest ml-1 mb-1">Kategori</Typography>
-          <div className="px-4 py-2 bg-blue-50 rounded-lg text-blue-700 font-bold text-sm w-fit">
-            {data?.category}
+    <Dialog 
+      open={open} 
+      handler={handleOpen} 
+      size="sm" 
+      className="rounded-[32px] overflow-visible shadow-2xl min-w-[90%] md:min-w-[450px]"
+    >
+      {/* KONDISI 1: TAMPILAN SUKSES */}
+      {isSuccess ? (
+        <DialogBody className="flex flex-col items-center p-10 text-center">
+          <div className="bg-green-50 p-5 rounded-full mb-4">
+            <CheckCircleIcon className="h-20 w-20 text-green-500" />
           </div>
-        </div>
+          <Typography variant="h4" className="text-blue-900 font-black mb-2">
+            Berhasil Diperbarui!
+          </Typography>
+          <Typography className="text-gray-600 font-medium mb-8">
+            Data standar harga untuk wilayah <span className="text-blue-700">{data?.area?.name}</span> telah berhasil disimpan.
+          </Typography>
+          <Button 
+            fullWidth 
+            className="bg-blue-700 py-4 rounded-2xl shadow-none normal-case text-base"
+            onClick={handleOpen}
+          >
+            Selesai
+          </Button>
+        </DialogBody>
+      ) : (
+        /* KONDISI 2: TAMPILAN FORM EDIT */
+        <>
+          <DialogHeader className="px-6 md:px-10 pt-8 flex justify-between items-center">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-blue-50 rounded-2xl">
+                <PencilSquareIcon className="h-7 w-7 text-blue-600" />
+              </div>
+              <div>
+                <Typography variant="h5" className="text-blue-900 font-black">Edit Harga</Typography>
+                <Typography className="text-[12px] text-gray-500 font-medium italic">Ubah parameter harga operasional</Typography>
+              </div>
+            </div>
+          </DialogHeader>
+          
+          <DialogBody className="px-6 md:px-10 py-6 overflow-visible">
+            {loadingData ? (
+              <div className="flex flex-col items-center py-10 gap-3">
+                <Spinner color="blue" className="h-10 w-10" />
+                <Typography className="text-blue-gray-300 font-medium animate-pulse">Menghubungkan ke database...</Typography>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <div>
+                  <Typography variant="small" className="text-blue-900 font-bold mb-2 ml-1">Wilayah</Typography>
+                  <Select 
+                    label="Pilih Wilayah"
+                    value={formData.areaId}
+                    onChange={(val) => setFormData({ ...formData, areaId: val })}
+                  >
+                    {areas.map((a) => <Option key={a.id} value={String(a.id)}>{a.name}</Option>)}
+                  </Select>
+                </div>
 
-        <div className="space-y-1">
-          <Typography variant="small" className="text-blue-900 font-bold ml-1">Harga Baru (Rp/Kg)</Typography>
-          <Input 
-            type="number"
-            value={price}
-            onChange={(e) => setPrice(e.target.value)}
-            icon={<BanknotesIcon className="h-4 w-4 text-green-500" />}
-            className="!rounded-xl border-t-blue-gray-200 focus:!border-blue-500"
-            labelProps={{ className: "hidden" }}
-          />
-        </div>
-      </DialogBody>
+                <div className="flex flex-col md:grid md:grid-cols-2 gap-6">
+                  <div>
+                    <Typography variant="small" className="text-blue-900 font-bold mb-2 ml-1">Kategori</Typography>
+                    <Select 
+                      label="Pilih Jenis"
+                      value={formData.wasteTypeId}
+                      onChange={(val) => setFormData({ ...formData, wasteTypeId: val })}
+                    >
+                      {categories.map((c) => <Option key={c.id} value={String(c.id)}>{c.name}</Option>)}
+                    </Select>
+                  </div>
+                  <div>
+                    <Typography variant="small" className="text-blue-900 font-bold mb-2 ml-1">Harga (Rp/Kg)</Typography>
+                    <Input 
+                      type="number"
+                      value={formData.pricePerKg}
+                      onChange={(e) => setFormData({ ...formData, pricePerKg: e.target.value })}
+                      icon={<BanknotesIcon className="h-5 w-5 text-green-500" />}
+                      className="!rounded-xl border-t-blue-gray-200 focus:!border-blue-500"
+                      labelProps={{ className: "hidden" }}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+          </DialogBody>
 
-      <DialogFooter className="px-8 pb-8 pt-2 gap-3">
-        <Button variant="text" color="blue-gray" onClick={handleOpen} className="normal-case font-bold">Batal</Button>
-        <Button className="bg-[#2b6cb0] px-8 rounded-xl normal-case font-bold shadow-none" onClick={handleOpen}>Update Harga</Button>
-      </DialogFooter>
+          <DialogFooter className="px-6 md:px-10 pb-10 pt-2 flex flex-col-reverse md:flex-row gap-4">
+            <Button variant="text" color="blue-gray" onClick={handleOpen} className="w-full md:w-auto normal-case font-bold">
+              Batal
+            </Button>
+            <Button 
+              className="bg-blue-700 w-full md:flex-1 rounded-2xl py-4 flex justify-center items-center shadow-lg shadow-blue-100 normal-case text-base" 
+              onClick={handleUpdate} 
+              disabled={loading}
+            >
+              {loading ? <Spinner className="h-5 w-5" /> : "Update Sekarang"}
+            </Button>
+          </DialogFooter>
+        </>
+      )}
     </Dialog>
   );
 };
