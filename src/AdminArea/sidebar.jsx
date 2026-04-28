@@ -30,7 +30,7 @@ const SidebarArea = ({ open, setOpen }) => {
     { name: "Dashboard", icon: <PresentationChartBarIcon className="h-5 w-5" />, path: "/AdminArea/dashboard" },
     { name: "Machine Management", icon: <CpuChipIcon className="h-5 w-5" />, path: "/AdminArea/machine" },
     { name: "Operator Management", icon: <UserIcon className="h-5 w-5" />, path: "/AdminArea/operator" },
-    { name: "User Management", icon: <UserGroupIcon className="h-5 w-5" />, path: "/AdminArea/users" }, // Area Baru
+    { name: "Store", icon: <UserGroupIcon className="h-5 w-5" />, path: "/AdminArea/store" }, // Area Baru
     { name: "Data Lokasi", icon: <ClipboardDocumentListIcon className="h-5 w-5" />, path: "/AdminArea/locations" }, // Area Baru
     { name: "Local Waste Price", icon: <TagIcon className="h-5 w-5" />, path: "/AdminArea/local-waste" },
     { name: "System Setting", icon: <Cog6ToothIcon className="h-5 w-5" />, path: "/AdminArea/settings" },

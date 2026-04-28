@@ -1,115 +1,160 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import axios from "axios";
 import MainLayout from "../MainLayout";
-// Import file modal yang sudah kamu buat
 import AddProductModal from "./AddProductModal";
 import EditProductModal from "./EditProductModal";
-import DeleteConfirmModal from "./DeleteConfirmModal";
-import { Card, Typography, Button, IconButton, Chip, Avatar } from "@material-tailwind/react";
+import DeleteConfirmModal from "./DeleteConfirmModal"; // Import modal hapus baru
+import { Card, Typography, Button, IconButton } from "@material-tailwind/react";
 import { PlusIcon, PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { toast, ToastContainer } from "react-toastify";
+
+const API_URL = "http://localhost:3000/api/products";
 
 const ProdukIndex = () => {
-  const [products, setProducts] = useState([
-    { id: "PO-001", nama: "Pot Tanaman Kaleng", stok: 100, harga: 10000, status: "Aktif", img: "https://images.unsplash.com/photo-1599591037488-348f3f885f81?w=100" },
-    { id: "PO-002", nama: "Lampu dari Sendok", stok: 10, harga: 100000, status: "Rendah", img: "https://images.unsplash.com/photo-1513506496266-3d241991aa05?w=100" },
-  ]);
-
-  // State untuk kontrol masing-masing modal
+  const [products, setProducts] = useState([]);
   const [openAdd, setOpenAdd] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
   
-  const [formData, setFormData] = useState({ id: "", nama: "", stok: "", harga: "", img: "" });
-  const [selectedId, setSelectedId] = useState(null);
+  // State untuk data yang sedang diproses (Edit/Delete)
+  const [formData, setFormData] = useState({ 
+    id: "", name: "", stock: 0, price: 0, weight: 0, description: "", storeId: "" 
+  });
 
-  // FUNGSI TAMBAH
+  const getAuthHeader = () => ({
+    headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+  });
+
+  const fetchProducts = async () => {
+    try {
+      // Menggunakan endpoint /my untuk mendapatkan produk khusus toko ini
+      const response = await axios.get(`${API_URL}/my`, getAuthHeader());
+      setProducts(response.data.data);
+    } catch (error) {
+      console.error("Fetch error:", error);
+      toast.error("Gagal memuat daftar produk");
+    }
+  };
+
+  useEffect(() => { fetchProducts(); }, []);
+
+  // Fungsi untuk membuka modal tambah
   const handleOpenAdd = () => {
-    setFormData({ id: `PO-00${products.length + 1}`, nama: "", stok: "", harga: "", img: "" });
-    setOpenAdd(true);
+    setOpenAdd(!openAdd);
   };
 
-  const submitAdd = () => {
-    setProducts([...products, { ...formData, status: formData.stok > 20 ? "Aktif" : "Rendah" }]);
-    setOpenAdd(false);
-  };
-
-  // FUNGSI EDIT
+  // Fungsi untuk membuka modal edit
   const handleOpenEdit = (product) => {
-    setFormData(product);
+    setFormData({
+      id: product.id,
+      name: product.name,
+      stock: product.stock,
+      price: product.price,
+      weight: product.weight || 0,
+      description: product.description || "",
+      storeId: product.storeId
+    });
     setOpenEdit(true);
   };
 
-  const submitEdit = () => {
-    setProducts(products.map(p => p.id === formData.id ? { ...formData, status: formData.stok > 20 ? "Aktif" : "Rendah" } : p));
-    setOpenEdit(false);
-  };
-
-  // FUNGSI HAPUS
-  const handleOpenDelete = (id) => {
-    setSelectedId(id);
+  // Fungsi untuk memicu modal hapus
+  const handleOpenDelete = (product) => {
+    setFormData(product); // Simpan info produk yang mau dihapus ke state
     setOpenDelete(true);
   };
 
-  const submitDelete = () => {
-    setProducts(products.filter(p => p.id !== selectedId));
-    setOpenDelete(false);
+  // Logika Update (Submit dari EditProductModal)
+  const submitEdit = async () => {
+    try {
+      const payload = {
+        ...formData,
+        price: Number(formData.price),
+        stock: Number(formData.stock),
+        weight: Number(formData.weight)
+      };
+      
+      await axios.patch(`${API_URL}/${formData.id}`, payload, getAuthHeader());
+      toast.success("Produk berhasil diperbarui");
+      setOpenEdit(false);
+      fetchProducts();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Gagal update produk");
+    }
+  };
+
+  // Logika Delete (Konfirmasi dari DeleteConfirmModal)
+  const submitDelete = async () => {
+    try {
+      await axios.delete(`${API_URL}/${formData.id}`, getAuthHeader());
+      toast.success("Produk berhasil dihapus");
+      setOpenDelete(false);
+      fetchProducts();
+    } catch (error) {
+      toast.error("Gagal menghapus produk");
+    }
   };
 
   return (
     <MainLayout>
-      <div className="space-y-6">
+      <ToastContainer />
+      <div className="p-4 space-y-6">
         <div className="flex justify-between items-center">
-          <Typography variant="h3" className="text-blue-900 font-black uppercase">Produk Saya</Typography>
-          <Button onClick={handleOpenAdd} className="bg-blue-600 rounded-2xl flex items-center gap-3 shadow-lg shadow-blue-100">
+          <div>
+            <Typography variant="h4" className="font-black text-blue-900 uppercase">Inventory Toko</Typography>
+            <Typography className="text-gray-500 text-sm font-medium">Kelola stok dan harga produk Anda</Typography>
+          </div>
+          <Button onClick={handleOpenAdd} className="bg-blue-600 flex items-center gap-2 rounded-xl shadow-lg shadow-blue-100 uppercase tracking-wider">
             <PlusIcon className="h-5 w-5 stroke-[3]" /> Tambah Produk
           </Button>
         </div>
 
-        {/* TABEL (Sesuai desain EcoCash) */}
-        <Card className="overflow-hidden rounded-[2rem] border-2 border-blue-400">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-max table-auto text-left">
-              <thead className="bg-blue-50/50">
-                <tr>
-                  {["ID", "Produk", "Stok", "Harga", "Status", "Aksi"].map((h) => (
-                    <th key={h} className="p-5 font-black text-blue-800 uppercase text-[10px] tracking-widest">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-50">
-                {products.map((row) => (
-                  <tr key={row.id} className="hover:bg-blue-50/20">
-                    <td className="p-5 font-bold text-blue-600">{row.id}</td>
-                    <td className="p-5 flex items-center gap-3">
-                      <Avatar src={row.img} size="sm" variant="rounded" className="border shadow-sm" />
-                      <Typography className="text-sm font-black text-gray-800">{row.nama}</Typography>
+        <Card className="overflow-hidden border-2 border-blue-100 rounded-3xl shadow-sm">
+          <table className="w-full text-left">
+            <thead className="bg-blue-50/50">
+              <tr>
+                {["Nama Produk", "Stok", "Harga", "Aksi"].map((head) => (
+                  <th key={head} className="p-4 text-[11px] font-black uppercase text-blue-800 tracking-widest">{head}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {products.length > 0 ? (
+                products.map((row) => (
+                  <tr key={row.id} className="border-b border-blue-50 hover:bg-blue-50/20 transition-colors">
+                    <td className="p-4">
+                      <Typography className="font-bold text-sm text-gray-800">{row.name}</Typography>
+                      <Typography className="text-[10px] text-gray-400 font-medium uppercase">{row.description?.substring(0, 30)}...</Typography>
                     </td>
-                    <td className="p-5 font-bold text-gray-500">{row.stok}</td>
-                    <td className="p-5 font-black text-blue-900">Rp {row.harga.toLocaleString()}</td>
-                    <td className="p-5">
-                      <Chip size="sm" value={row.status} color={row.status === "Aktif" ? "green" : "orange"} className="rounded-full" />
+                    <td className="p-4 text-sm font-bold text-gray-600">
+                      <span className={`px-2 py-1 rounded-md ${row.stock < 5 ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'}`}>
+                        {row.stock} unit
+                      </span>
                     </td>
-                    <td className="p-5 flex gap-2">
-                      <IconButton variant="text" color="green" onClick={() => handleOpenEdit(row)} className="bg-green-50 rounded-xl">
+                    <td className="p-4 text-sm font-black text-blue-700">Rp {row.price.toLocaleString()}</td>
+                    <td className="p-4 flex gap-2">
+                      <IconButton variant="text" color="green" onClick={() => handleOpenEdit(row)} className="bg-green-50 rounded-lg">
                         <PencilIcon className="h-4 w-4" />
                       </IconButton>
-                      <IconButton variant="text" color="red" onClick={() => handleOpenDelete(row.id)} className="bg-red-50 rounded-xl">
+                      <IconButton variant="text" color="red" onClick={() => handleOpenDelete(row)} className="bg-red-50 rounded-lg">
                         <TrashIcon className="h-4 w-4" />
                       </IconButton>
                     </td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={4} className="p-10 text-center text-gray-400 italic">Belum ada produk di toko ini.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </Card>
 
-        {/* PEMANGGILAN 3 MODAL TERPISAH */}
+        {/* Modal-modal Pendukung */}
         <AddProductModal 
           open={openAdd} 
-          setOpen={setOpenAdd} 
-          formData={formData} 
-          setFormData={setFormData} 
-          handleAdd={submitAdd} 
+          handleOpen={handleOpenAdd} 
+          refreshData={fetchProducts} 
         />
 
         <EditProductModal 
@@ -124,7 +169,7 @@ const ProdukIndex = () => {
           open={openDelete} 
           setOpen={setOpenDelete} 
           onConfirm={submitDelete} 
-          productName={products.find(p => p.id === selectedId)?.nama}
+          productName={formData.name} 
         />
       </div>
     </MainLayout>

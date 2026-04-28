@@ -10,7 +10,7 @@ import SmartContainerIndex from './SuperAdmin/SmartContainer/index';
 import SmartTruckIndex from './SuperAdmin/SmartTruck/index';
 import UserIndex from './SuperAdmin/Users/index';
 import WastePricesIndex from './SuperAdmin/WastePrices/index';
-import MarketPlaceIndex from './SuperAdmin/MarketPlace/index';
+import MarketPlaceIndex from './SuperAdmin/Store/index';
 import FinansialReportsIndex from './SuperAdmin/FinansialReports/index';
 import SystemSettingIndex from './SuperAdmin/SystemSettingIndex';
 import ProfileIndex from './SuperAdmin/Profile/index';
@@ -39,6 +39,7 @@ import PesananIndex from './AdminStore/Pesanan/index';
 import PengirimanIndex from './AdminStore/Pengiriman/index'; 
 import StoreSystemSetting from './AdminStore/SystemSettingIndex'; 
 import StoreProfileIndex from './AdminStore/Profile/index'; // <-- BARU: Import profil admin store
+import StoreIndex from './AdminArea/Store';
 
 function App() {
   return (
@@ -68,7 +69,8 @@ function App() {
         <Route path="/AdminArea/locations" element={<AdminAreaIndex />} />
         <Route path="/AdminArea/settings" element={<AreaSettingIndex />} />
         <Route path="/AdminArea/profile" element={<AreaProfileIndex />} />
-        
+        <Route path="/AdminArea/store" element={<StoreIndex />} /> 
+
         {/* GROUP 3: OPERATOR */}
         <Route path="/operator/dashboard" element={<OperatorDashboard />} />
         <Route path="/operator/smart-container" element={<OperatorSmartContainer />} />

@@ -1,185 +1,174 @@
-import React, { useState } from "react";
-import MainLayout from "../MainLayout";
+import React, { useState, useEffect } from "react";
+import MainLayout from "../MainLayout"; 
+import { Card, Typography, Button, Avatar, Spinner } from "@material-tailwind/react";
 import { 
-  Card, 
-  Typography, 
-  Button, 
-  Avatar, 
-  Chip, 
-  Tooltip 
-} from "@material-tailwind/react";
-import { 
+  PencilSquareIcon, 
   EnvelopeIcon, 
   MapPinIcon, 
-  PhoneIcon, 
-  BuildingStorefrontIcon,
-  ShieldCheckIcon,
-  CalendarDaysIcon,
-  PencilSquareIcon,
-  CameraIcon,
-  ShoppingBagIcon,
-  BanknotesIcon,
-  StarIcon
+  BriefcaseIcon, 
+  IdentificationIcon,
+  ShieldCheckIcon 
 } from "@heroicons/react/24/outline";
-
 import EditProfileModal from "./EditProfileModal";
+import axios from "axios";
 
 const ProfileIndex = () => {
-  const [profileData, setProfileData] = useState({
-    nama: "Khoirin Nisa Amalia",
-    role: "Official Admin Store",
-    namaToko: "EcoStore Tasikmalaya",
-    wilayah: "Tasikmalaya, Jawa Barat",
-    email: "nisa.store@ecocash.id",
-    phone: "+62 812-3456-7890",
-    joinDate: "Maret 2026",
-    bio: "Pengelola gerai resmi produk daur ulang EcoCash wilayah Tasikmalaya. Berfokus pada pemasaran produk circular economy berkualitas tinggi."
+  const [openEdit, setOpenEdit] = useState(false);
+  const [loading, setLoading] = useState(true);
+  
+  // Data awal kosong, akan diisi dari API
+  const [userData, setUserData] = useState({
+    name: "",
+    username: "",
+    email: "",
+    role: "",
+    location: "",
+    bio: ""
   });
 
-  const [openEdit, setOpenEdit] = useState(false);
+  // 1. Fungsi Fetch Profile Data
+  const fetchProfile = async () => {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      // Ganti URL ini sesuai endpoint profile/me di backend kamu
+      const response = await axios.get("http://localhost:3000/api/auth/me", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      const data = response.data.data || response.data;
+      setUserData({
+        name: data.name || "User EcoCash",
+        username: data.username || "-",
+        email: data.email || "-",
+        role: data.role || "Member",
+        location: data.location || "Belum diatur",
+        bio: data.bio || "Tidak ada biografi."
+      });
+    } catch (error) {
+      console.error("Gagal mengambil profile:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProfile();
+  }, []);
+
+  if (loading) {
+    return (
+      <MainLayout>
+        <div className="flex h-[70vh] items-center justify-center">
+          <Spinner className="h-12 w-12 text-blue-500" />
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout>
-      <div className="max-w-7xl mx-auto space-y-8 pb-12 px-4 md:px-0">
-        
-        {/* --- HERO SECTION --- */}
-        <div className="relative mt-6">
-          <div className="h-56 w-full bg-gradient-to-br from-blue-900 via-blue-700 to-blue-500 rounded-[3rem] shadow-2xl overflow-hidden relative">
-            <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]"></div>
-            <div className="absolute top-6 right-8">
-              <Chip 
-                value="Verified Merchant" 
-                className="bg-green-500 text-white border-none normal-case font-bold px-4" 
-              />
-            </div>
-          </div>
-
-          {/* Profile Picture */}
-          <div className="absolute -bottom-16 left-6 md:left-12 flex items-end gap-6">
-            <div className="relative group">
-              <div className="p-2 bg-white rounded-[2.5rem] shadow-2xl">
-                <Avatar
-                  src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${profileData.nama}`}
-                  alt="Profile"
-                  className="h-32 w-32 md:h-40 md:w-40 rounded-[2rem] object-cover bg-blue-50"
-                />
-              </div>
-              <Tooltip content="Ubah Foto">
-                <div className="absolute bottom-2 right-2 p-2 bg-blue-700 rounded-xl border-4 border-white text-white cursor-pointer shadow-lg hover:bg-blue-800 transition-colors">
-                  <CameraIcon className="h-5 w-5" />
-                </div>
-              </Tooltip>
-            </div>
-          </div>
+      <div className="max-w-5xl mx-auto pb-10">
+        <div className="flex flex-col gap-1 mb-8">
+          <Typography variant="h3" className="text-[#2b6cb0] font-black tracking-tight">My Profile</Typography>
+          <Typography className="text-gray-500 text-sm font-medium">Informasi personal dan otoritas akun EcoCash</Typography>
         </div>
 
-        {/* --- MAIN CONTENT --- */}
-        <div className="flex flex-col lg:flex-row gap-8 pt-16">
-          
-          {/* LEFT: Info Singkat */}
-          <div className="lg:w-1/3 space-y-6">
-            <Card className="p-8 rounded-[3rem] border-none shadow-xl bg-white">
-              <div className="mb-6">
-                <Typography variant="h3" className="text-blue-900 font-black tracking-tight mb-2">
-                  {profileData.nama}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* SISI KIRI */}
+          <div className="lg:col-span-1 space-y-6">
+            <Card className="p-8 rounded-[35px] border border-blue-50 shadow-sm flex flex-col items-center text-center relative overflow-hidden bg-white">
+              <div className="absolute top-0 w-full h-24 bg-gradient-to-br from-blue-600 to-blue-400 opacity-10" />
+              
+              <div className="relative mt-4">
+                <Avatar
+                  src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${userData.username}`}
+                  alt="Profile Photo"
+                  className="h-32 w-32 rounded-[30px] border-4 border-white shadow-2xl bg-white"
+                />
+                <div className="absolute -bottom-2 -right-2 p-2 bg-green-500 rounded-xl border-4 border-white shadow-lg">
+                  <ShieldCheckIcon className="h-5 w-5 text-white" />
+                </div>
+              </div>
+
+              <div className="mt-6">
+                <Typography variant="h5" className="text-blue-900 font-bold">{userData.name}</Typography>
+                <Typography className="text-blue-500 font-bold text-[10px] uppercase tracking-[0.2em] mt-1 italic">
+                    Verified {userData.role}
                 </Typography>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Chip 
-                    value={profileData.role} 
-                    className="bg-blue-900 text-white rounded-lg normal-case font-bold"
-                  />
-                </div>
               </div>
 
-              <Typography className="text-gray-600 text-sm leading-relaxed mb-8 font-medium italic">
-                "{profileData.bio}"
-              </Typography>
-
-              <div className="space-y-4 pt-4 border-t border-gray-100">
-                <div className="flex items-center gap-4">
-                  <div className="bg-blue-50 p-3 rounded-2xl text-blue-700">
-                    <BuildingStorefrontIcon className="h-5 w-5" />
-                  </div>
-                  <Typography className="text-sm font-bold text-gray-700">{profileData.namaToko}</Typography>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="bg-blue-50 p-3 rounded-2xl text-blue-700">
-                    <MapPinIcon className="h-5 w-5" />
-                  </div>
-                  <Typography className="text-sm font-bold text-gray-700">{profileData.wilayah}</Typography>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="bg-blue-50 p-3 rounded-2xl text-blue-700">
-                    <CalendarDaysIcon className="h-5 w-5" />
-                  </div>
-                  <Typography className="text-sm font-bold text-gray-700">Partner Sejak {profileData.joinDate}</Typography>
-                </div>
+              <div className="w-full mt-8 pt-8 border-t border-gray-50 space-y-3">
+                 <Button 
+                   fullWidth
+                   onClick={() => setOpenEdit(true)}
+                   className="flex items-center justify-center gap-2 bg-[#2b6cb0] normal-case rounded-2xl py-4 shadow-none hover:shadow-lg transition-all"
+                 >
+                   <PencilSquareIcon className="h-5 w-5" /> Edit Profile Details
+                 </Button>
               </div>
-
-              <Button 
-                fullWidth 
-                onClick={() => setOpenEdit(true)}
-                className="mt-8 bg-blue-700 rounded-2xl normal-case font-black flex items-center justify-center gap-3 py-4 shadow-lg shadow-blue-100"
-              >
-                <PencilSquareIcon className="h-5 w-5" /> Edit Profil Toko
-              </Button>
             </Card>
           </div>
 
-          {/* RIGHT: Detail & Stats */}
-          <div className="lg:w-2/3 space-y-6">
-            <Card className="p-10 rounded-[3rem] border-none shadow-xl bg-white">
-              <Typography variant="h5" className="text-blue-900 font-black uppercase tracking-tighter mb-8 border-b pb-4">
-                Informasi Kontak & Akun
-              </Typography>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-y-10 gap-x-12">
-                {[
-                  { label: "Email Bisnis", value: profileData.email, icon: EnvelopeIcon },
-                  { label: "WhatsApp Toko", value: profileData.phone, icon: PhoneIcon },
-                  { label: "ID Merchant", value: "MERC-ECO-0992", icon: ShieldCheckIcon },
-                  { label: "Rating Toko", value: "4.9 / 5.0", icon: StarIcon },
-                ].map((item, index) => (
-                  <div key={index} className="space-y-2 group">
-                    <Typography className="text-[10px] font-black text-gray-400 uppercase tracking-widest group-hover:text-blue-600 transition-colors">
-                      {item.label}
-                    </Typography>
-                    <div className="flex items-center gap-3 text-blue-900 font-bold">
-                      <item.icon className="h-5 w-5 text-blue-300 group-hover:text-blue-600" />
-                      {item.value}
+          {/* SISI KANAN */}
+          <div className="lg:col-span-2 space-y-6">
+            <Card className="p-10 rounded-[35px] border border-blue-50 shadow-sm bg-white">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                <div className="space-y-8">
+                  <section>
+                    <div className="flex items-center gap-2 mb-3">
+                      <IdentificationIcon className="h-4 w-4 text-blue-400" />
+                      <Typography className="text-[10px] uppercase font-black text-gray-400 tracking-widest">Username</Typography>
                     </div>
+                    <Typography className="text-md font-bold text-blue-900 pl-6 border-l-2 border-blue-100">@{userData.username}</Typography>
+                  </section>
+
+                  <section>
+                    <div className="flex items-center gap-2 mb-3">
+                      <EnvelopeIcon className="h-4 w-4 text-blue-400" />
+                      <Typography className="text-[10px] uppercase font-black text-gray-400 tracking-widest">Email Address</Typography>
+                    </div>
+                    <Typography className="text-md font-bold text-blue-900 pl-6 border-l-2 border-blue-100">{userData.email}</Typography>
+                  </section>
+                </div>
+
+                <div className="space-y-8">
+                  <section>
+                    <div className="flex items-center gap-2 mb-3">
+                      <BriefcaseIcon className="h-4 w-4 text-blue-400" />
+                      <Typography className="text-[10px] uppercase font-black text-gray-400 tracking-widest">Job Role</Typography>
+                    </div>
+                    <Typography className="text-md font-bold text-blue-900 pl-6 border-l-2 border-blue-100">{userData.role}</Typography>
+                  </section>
+
+                  <section>
+                    <div className="flex items-center gap-2 mb-3">
+                      <MapPinIcon className="h-4 w-4 text-blue-400" />
+                      <Typography className="text-[10px] uppercase font-black text-gray-400 tracking-widest">Location</Typography>
+                    </div>
+                    <Typography className="text-md font-bold text-blue-900 pl-6 border-l-2 border-blue-100">{userData.location}</Typography>
+                  </section>
+                </div>
+
+                <div className="md:col-span-2 pt-6 border-t border-gray-50">
+                  <Typography className="text-[10px] uppercase font-black text-gray-400 tracking-widest mb-4">Account Biography</Typography>
+                  <div className="bg-blue-50/30 p-6 rounded-[24px] border border-blue-50/50">
+                    <Typography className="text-sm text-gray-700 leading-relaxed font-medium">
+                      "{userData.bio}"
+                    </Typography>
                   </div>
-                ))}
+                </div>
               </div>
             </Card>
-
-            {/* STORE STATS */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {[
-                { label: "Produk Aktif", val: "24", color: "bg-blue-700", icon: ShoppingBagIcon },
-                { label: "Total Pesanan", val: "1.2k", color: "bg-emerald-500", icon: BanknotesIcon },
-                { label: "Performa", val: "96%", color: "bg-blue-900", icon: StarIcon }
-              ].map((stat, i) => (
-                <Card key={i} className={`${stat.color} p-8 rounded-[2.5rem] text-white shadow-xl`}>
-                  <div className="flex justify-between items-start mb-4">
-                    <stat.icon className="h-6 w-6 opacity-50" />
-                    <Typography className="text-[10px] font-bold uppercase tracking-widest opacity-80">
-                      {stat.label}
-                    </Typography>
-                  </div>
-                  <Typography variant="h2" className="font-black">{stat.val}</Typography>
-                </Card>
-              ))}
-            </div>
           </div>
         </div>
       </div>
 
       <EditProfileModal 
         open={openEdit} 
-        setOpen={setOpenEdit} 
-        data={profileData} 
-        setData={setProfileData} 
+        handleOpen={() => setOpenEdit(false)} 
+        data={userData} 
+        refreshData={fetchProfile} // Gunakan fungsi refresh bukan setUserData manual
       />
     </MainLayout>
   );

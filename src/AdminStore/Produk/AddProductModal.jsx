@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Dialog,
   DialogHeader,
@@ -7,116 +7,172 @@ import {
   Input,
   Button,
   Typography,
+  IconButton,
+  Textarea,
+  Spinner,
 } from "@material-tailwind/react";
-import { 
-  PlusIcon, 
-  CubeIcon, 
-  BanknotesIcon, 
-  PhotoIcon, 
-  TagIcon 
+import {
+  XMarkIcon,
+  CheckCircleIcon,
+  XCircleIcon,
+  ShoppingBagIcon,
+  CurrencyDollarIcon,
+  CubeIcon,
+  BuildingStorefrontIcon // Icon tambahan untuk Store
 } from "@heroicons/react/24/outline";
+import axios from "axios";
 
-const AddProductModal = ({ open, setOpen, formData, setFormData, handleAdd }) => (
-  <Dialog 
-    open={open} 
-    handler={() => setOpen(false)} 
-    size="sm" 
-    className="rounded-[2rem] p-4 shadow-2xl border border-blue-50/50"
-  >
-    <DialogHeader className="flex items-center gap-4 border-b border-blue-50 pb-4">
-      <div className="bg-blue-600 p-2.5 rounded-xl shadow-md shadow-blue-100">
-        <PlusIcon className="h-6 w-6 text-white stroke-[3]" />
-      </div>
-      <div>
-        <Typography variant="h5" className="text-blue-900 font-black uppercase tracking-tight">
-          Tambah Produk
-        </Typography>
-        <Typography className="text-[10px] text-blue-400 font-bold tracking-widest uppercase">
-          EcoCash Admin Store
-        </Typography>
-      </div>
-    </DialogHeader>
+const AddProductModal = ({ open, handleOpen, refreshData }) => {
+  const initialState = {
+    name: "",
+    price: "",
+    stock: "",
+    weight: "",
+    description: "",
+    storeId: "", // Sekarang kosong, menunggu input user
+  };
 
-    <DialogBody className="py-6 px-2">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-        {/* Kolom Kiri: Nama & URL Gambar */}
-        <div className="space-y-4">
-          <div className="space-y-1.5">
-            <Typography className="text-[11px] font-black text-blue-700 ml-1 uppercase flex items-center gap-2">
-              <TagIcon className="h-3 w-3" /> Nama Produk
-            </Typography>
-            <Input 
-              size="md"
-              placeholder="Pot Hias Kaleng"
-              className="!border !border-blue-100 bg-blue-50/20 focus:!border-blue-600 rounded-xl transition-all"
-              labelProps={{ className: "hidden" }}
-              value={formData.nama}
-              onChange={(e) => setFormData({...formData, nama: e.target.value})} 
-            />
+  const [form, setForm] = useState(initialState);
+  const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState(null);
+  const [errorDetails, setErrorDetails] = useState("");
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleClose = () => {
+    setForm(initialState);
+    setStatus(null);
+    setErrorDetails("");
+    setLoading(false);
+    handleOpen();
+  };
+
+  const handleSubmit = async () => {
+    // Validasi: Sekarang storeId wajib diisi manual
+    if (!form.name.trim() || !form.price || !form.storeId) {
+      alert("Mohon isi Nama Produk, Harga, dan ID Toko!");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const payload = {
+        ...form,
+        price: Number(form.price),
+        stock: Number(form.stock || 0),
+        weight: Number(form.weight || 0),
+        storeId: Number(form.storeId), // Pastikan jadi angka jika API minta number
+      };
+
+      const response = await axios.post("http://localhost:3000/api/products", payload, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (response.status === 200 || response.status === 201) {
+        setStatus("success");
+        setTimeout(() => {
+          handleClose();
+          if (refreshData) refreshData();
+        }, 1500);
+      }
+    } catch (error) {
+      setStatus("error");
+      setErrorDetails(error.response?.data?.message || "Gagal menyimpan produk.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} handler={handleClose} size="lg" className="rounded-3xl">
+      <DialogHeader className="flex justify-between items-center border-b border-gray-100 px-6 py-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-blue-50 rounded-xl">
+            <ShoppingBagIcon className="h-6 w-6 text-blue-600" />
           </div>
-          <div className="space-y-1.5">
-            <Typography className="text-[11px] font-black text-blue-700 ml-1 uppercase flex items-center gap-2">
-              <PhotoIcon className="h-3 w-3" /> URL Gambar
-            </Typography>
-            <Input 
-              placeholder="https://..."
-              className="!border !border-blue-100 bg-blue-50/20 focus:!border-blue-600 rounded-xl"
-              labelProps={{ className: "hidden" }}
-              value={formData.img}
-              onChange={(e) => setFormData({...formData, img: e.target.value})} 
-            />
-          </div>
+          <Typography variant="h5" color="blue-gray" className="font-black uppercase">
+            Tambah Produk
+          </Typography>
         </div>
+        <IconButton variant="text" color="blue-gray" onClick={handleClose}>
+          <XMarkIcon className="h-6 w-6" strokeWidth={2} />
+        </IconButton>
+      </DialogHeader>
 
-        {/* Kolom Kanan: Stok & Harga */}
-        <div className="space-y-4">
-          <div className="space-y-1.5">
-            <Typography className="text-[11px] font-black text-blue-700 ml-1 uppercase flex items-center gap-2">
-              <CubeIcon className="h-3 w-3" /> Stok Tersedia
-            </Typography>
-            <Input 
-              type="number"
-              placeholder="0"
-              className="!border !border-blue-100 bg-blue-50/20 focus:!border-blue-600 rounded-xl"
-              labelProps={{ className: "hidden" }}
-              value={formData.stok}
-              onChange={(e) => setFormData({...formData, stok: e.target.value})} 
-            />
+      <DialogBody className="px-6 py-4 overflow-y-auto max-h-[70vh]">
+        {status === "success" ? (
+          <div className="flex flex-col items-center justify-center py-12">
+            <CheckCircleIcon className="h-20 w-20 text-green-500 mb-4 animate-bounce" />
+            <Typography variant="h4" className="text-green-700">Berhasil!</Typography>
           </div>
-          <div className="space-y-1.5">
-            <Typography className="text-[11px] font-black text-blue-700 ml-1 uppercase flex items-center gap-2">
-              <BanknotesIcon className="h-3 w-3" /> Harga Jual (Rp)
-            </Typography>
-            <Input 
-              type="number"
-              placeholder="15000"
-              className="!border !border-blue-100 bg-blue-50/20 focus:!border-blue-600 rounded-xl"
-              labelProps={{ className: "hidden" }}
-              value={formData.harga}
-              onChange={(e) => setFormData({...formData, harga: e.target.value})} 
-            />
+        ) : status === "error" ? (
+          <div className="flex flex-col items-center justify-center py-12">
+            <XCircleIcon className="h-20 w-20 text-red-500 mb-4" />
+            <Typography variant="h5" color="red">{errorDetails}</Typography>
+            <Button variant="outlined" color="red" onClick={() => setStatus(null)} className="mt-4">Coba Lagi</Button>
           </div>
-        </div>
-      </div>
-    </DialogBody>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <Typography className="font-bold text-gray-800 text-xs uppercase">Informasi Produk</Typography>
+              <Input label="Nama Produk" name="name" value={form.name} onChange={handleChange} />
+              <Textarea label="Deskripsi" name="description" value={form.description} onChange={handleChange} />
+            </div>
 
-    <DialogFooter className="flex justify-end gap-3 border-t border-blue-50 pt-4">
-      <Button 
-        variant="text" 
-        color="red" 
-        onClick={() => setOpen(false)} 
-        className="rounded-xl font-black italic lowercase py-2.5"
-      >
-        batal
-      </Button>
-      <Button 
-        onClick={handleAdd} 
-        className="bg-blue-600 rounded-xl font-black shadow-lg shadow-blue-100 px-8 py-2.5 text-xs uppercase"
-      >
-        Simpan Produk
-      </Button>
-    </DialogFooter>
-  </Dialog>
-);
+            <div className="space-y-4">
+              <Typography className="font-bold text-gray-800 text-xs uppercase">Store & Harga</Typography>
+              
+              {/* INPUT STORE ID MANUAL DI SINI */}
+              <Input 
+                label="ID Toko (Store ID)" 
+                name="storeId" 
+                type="number"
+                icon={<BuildingStorefrontIcon className="h-4 w-4" />}
+                value={form.storeId} 
+                onChange={handleChange}
+                color="orange" // Dibedakan warnanya agar mencolok
+              />
+
+              <Input 
+                label="Harga (Rp)" 
+                name="price" 
+                type="number" 
+                icon={<CurrencyDollarIcon className="h-4 w-4" />} 
+                value={form.price} 
+                onChange={handleChange} 
+              />
+              
+              <div className="grid grid-cols-2 gap-4">
+                <Input label="Stok" name="stock" type="number" value={form.stock} onChange={handleChange} />
+                <Input label="Berat (Gr)" name="weight" type="number" value={form.weight} onChange={handleChange} />
+              </div>
+            </div>
+          </div>
+        )}
+      </DialogBody>
+
+      <DialogFooter className="p-4 gap-2">
+        {!status && (
+          <>
+            <Button variant="text" color="red" onClick={handleClose}>Batal</Button>
+            <Button 
+              variant="gradient" 
+              color="blue" 
+              onClick={handleSubmit} 
+              disabled={loading}
+              className="flex items-center gap-2"
+            >
+              {loading ? <Spinner className="h-4 w-4" /> : "Simpan"}
+            </Button>
+          </>
+        )}
+      </DialogFooter>
+    </Dialog>
+  );
+};
 
 export default AddProductModal;

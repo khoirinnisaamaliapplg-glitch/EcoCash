@@ -2,7 +2,7 @@ import React from "react";
 import { Dialog, DialogHeader, DialogBody, DialogFooter, Button, Typography } from "@material-tailwind/react";
 import { ExclamationTriangleIcon } from "@heroicons/react/24/outline";
 
-const DeleteProductModal = ({ open, handleOpen, data }) => {
+const DeleteStoreModal = ({ open, handleOpen, data }) => {
   return (
     <Dialog open={open} handler={handleOpen} size="xs" className="rounded-[28px]">
       <DialogHeader className="flex flex-col items-center pt-8 gap-2">
@@ -22,4 +22,4 @@ const DeleteProductModal = ({ open, handleOpen, data }) => {
   );
 };
 
-export default DeleteProductModal;
+export default DeleteStoreModal;

@@ -30,7 +30,7 @@ const Sidebar = ({ open, setOpen }) => {
     { name: "Waste Management", icon: <TrashIcon className="h-5 w-5" />, path: "/waste-management" }, // <-- MENU BARU
     { name: "Users", icon: <UserGroupIcon className="h-5 w-5" />, path: "/users" },
     { name: "Waste Prices", icon: <TagIcon className="h-5 w-5" />, path: "/waste-prices" },
-    { name: "MarketPlace", icon: <ShoppingBagIcon className="h-5 w-5" />, path: "/marketplace" },
+    { name: "Store", icon: <ShoppingBagIcon className="h-5 w-5" />, path: "/marketplace" },
     { name: "Financial Reports", icon: <ChartBarIcon className="h-5 w-5" />, path: "/finansial-reports" },
     { name: "System Setting", icon: <Cog6ToothIcon className="h-5 w-5" />, path: "/settings" },
   ];
