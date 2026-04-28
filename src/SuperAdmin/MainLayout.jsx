@@ -9,11 +9,15 @@ import {
 } from "@heroicons/react/24/outline";
 import { useNavigate } from "react-router-dom";
 
+// --- TAMBAHKAN INI ---
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+// ---------------------
+
 const MainLayout = ({ children }) => {
   const navigate = useNavigate();
   const [openSidebar, setOpenSidebar] = useState(false);
   
-  // LOGIKA AMBIL NAMA (Dibuat sangat teliti)
   const [userProfile] = useState(() => {
     const storedUser = localStorage.getItem("userData");
     const storedRole = localStorage.getItem("userRole");
@@ -21,7 +25,6 @@ const MainLayout = ({ children }) => {
     if (storedUser) {
       try {
         const parsedUser = JSON.parse(storedUser);
-        // Kita cek satu per satu kemungkinan field nama dari API kamu
         const fixName = parsedUser.name || parsedUser.username || parsedUser.user?.name || "User";
         
         return {
@@ -42,10 +45,18 @@ const MainLayout = ({ children }) => {
 
   return (
     <div className="flex h-screen w-full bg-[#f8fafc] overflow-hidden font-sans">
+      {/* 1. TOAST CONTAINER DI SINI */}
+      <ToastContainer 
+        position="top-right"
+        autoClose={3000}
+        theme="colored"
+        pauseOnHover
+        closeOnClick
+      />
+
       <Sidebar open={openSidebar} setOpen={setOpenSidebar} />
       
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* HEADER - Tetap menggunakan struktur asli kamu agar tidak berantakan */}
         <header className="h-16 bg-white border-b border-gray-100 flex items-center justify-between px-4 md:px-8 shadow-sm z-10">
           <div className="flex items-center gap-3">
             <IconButton variant="text" color="blue-gray" className="md:hidden" onClick={() => setOpenSidebar(true)}>
@@ -66,7 +77,6 @@ const MainLayout = ({ children }) => {
                 <MenuHandler>
                   <div className="flex items-center gap-2 md:gap-3 cursor-pointer hover:bg-gray-50 p-1 rounded-lg transition-all">
                     <div className="text-right hidden lg:block">
-                      {/* INI DIA: Menampilkan nama asli tanpa underscore */}
                       <Typography className="text-sm font-bold text-gray-800 capitalize leading-tight">
                         {userProfile.name.replace(/_/g, " ")}
                       </Typography>
@@ -75,7 +85,6 @@ const MainLayout = ({ children }) => {
                       </Typography>
                     </div>
                     
-                    {/* AVATAR KOTAK BIRU KHAS KAMU */}
                     <div className="w-8 h-8 md:w-10 md:h-10 bg-[#2b6cb0] rounded-full flex items-center justify-center text-white text-xs md:text-base font-bold shadow-sm uppercase">
                       {userProfile.name.charAt(0)}
                     </div>
@@ -99,7 +108,6 @@ const MainLayout = ({ children }) => {
           </div>
         </header>
         
-        {/* MAIN CONTENT - Memastikan children tampil sempurna */}
         <main className="flex-1 overflow-y-auto bg-gray-50/50">
           <div className="min-h-[calc(100vh-64px)] flex flex-col">
             <div className="flex-1 p-4 md:p-8">

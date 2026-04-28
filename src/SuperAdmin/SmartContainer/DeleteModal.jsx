@@ -7,20 +7,20 @@ import {
   Typography,
   Spinner,
 } from "@material-tailwind/react";
-import { TrashIcon, ExclamationTriangleIcon } from "@heroicons/react/24/outline";
+import { ExclamationTriangleIcon } from "@heroicons/react/24/outline";
 import axios from "axios";
+
+// 1. Import Toast
+import { toast } from 'react-toastify';
 
 const DeleteModal = ({ open, handleOpen, data, refreshData }) => {
   const [loading, setLoading] = useState(false);
 
   const handleDelete = async () => {
-    // 1. Validasi ID (Pastikan ID ada sebelum kirim request)
-    // Gunakan data.id atau data._id tergantung skema database Anda
     const targetId = data?.id; 
     
     if (!targetId) {
-      console.error("ID tidak ditemukan pada data:", data);
-      alert("Gagal menghapus: ID Mesin tidak ditemukan.");
+      toast.error("Gagal menghapus: ID Mesin tidak ditemukan.");
       return;
     }
 
@@ -28,9 +28,6 @@ const DeleteModal = ({ open, handleOpen, data, refreshData }) => {
     try {
       const token = localStorage.getItem("token");
       
-      // 2. Debugging: Cek URL yang dipanggil di console
-      console.log(`Menghapus mesin dengan ID: ${targetId}`);
-
       const response = await axios.delete(`http://localhost:3000/api/machines/${targetId}`, {
         headers: { 
           Authorization: `Bearer ${token}`,
@@ -38,24 +35,21 @@ const DeleteModal = ({ open, handleOpen, data, refreshData }) => {
         },
       });
 
-      console.log("Respon server:", response.data);
+      // 2. Toast Sukses
+      toast.success(`Mesin ${data?.machineCode || ""} berhasil dihapus!`);
 
-      // 3. Jika berhasil, jalankan refresh dan tutup modal
       if (refreshData) refreshData();
       handleOpen();
       
-      // Opsional: Tambahkan notifikasi sukses sederhana
-      alert("Data berhasil dihapus");
-
     } catch (error) {
-      // 4. Logika penangkapan error yang lebih detail
       console.error("Detail Error Delete:", error.response);
       
       const errorMsg = error.response?.data?.message || 
                        error.response?.data?.error || 
                        "Terjadi kesalahan pada server.";
       
-      alert(`Gagal Menghapus: ${errorMsg}`);
+      // 3. Toast Error
+      toast.error(`Gagal Menghapus: ${errorMsg}`);
     } finally {
       setLoading(false);
     }

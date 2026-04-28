@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { Dialog, DialogHeader, DialogBody, DialogFooter, Button, Input } from "@material-tailwind/react";
+import { Dialog, DialogHeader, DialogBody, DialogFooter, Button, Input, Spinner } from "@material-tailwind/react";
 import axios from "axios";
+import { toast } from "react-toastify"; // Import Toast
 
 const EditWasteTypeModal = ({ open, handleOpen, data, refreshData, apiUrl }) => {
   const [name, setName] = useState("");
+  const [loading, setLoading] = useState(false);
 
   // Sinkronisasi data saat modal dibuka
   useEffect(() => {
@@ -11,13 +13,12 @@ const EditWasteTypeModal = ({ open, handleOpen, data, refreshData, apiUrl }) => 
   }, [data]);
 
   const handleSubmit = async () => {
-    if (!name.trim()) return alert("Nama tidak boleh kosong!");
+    if (!name.trim()) return toast.warning("Nama tidak boleh kosong!");
     
+    setLoading(true);
     try {
-      // 1. Ambil token dari localStorage
       const token = localStorage.getItem("token");
 
-      // 2. Kirim request PATCH dengan header token
       // Pastikan apiUrl tidak memiliki double slash (//)
       const cleanUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
       
@@ -26,24 +27,34 @@ const EditWasteTypeModal = ({ open, handleOpen, data, refreshData, apiUrl }) => 
         { name: name.trim() }, 
         {
           headers: {
-            Authorization: `Bearer ${token}`, // WAJIB
+            Authorization: `Bearer ${token}`,
           },
         }
       );
 
+      toast.success("Kategori sampah berhasil diperbarui!");
       handleOpen();
-      refreshData();
+      if (refreshData) refreshData();
     } catch (error) {
+      console.error("Update Error:", error);
       if (error.response?.status === 401) {
-        alert("Sesi login berakhir. Silakan login kembali.");
+        toast.error("Sesi login berakhir. Silakan login kembali.");
       } else {
-        alert(error.response?.data?.message || "Gagal update data");
+        const msg = error.response?.data?.message || "Gagal update data";
+        toast.error(msg);
       }
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <Dialog open={open} handler={handleOpen} size="xs" className="rounded-2xl">
+    <Dialog 
+      open={open} 
+      handler={loading ? () => {} : handleOpen} 
+      size="xs" 
+      className="rounded-2xl"
+    >
       <DialogHeader className="text-[#2b6cb0] font-bold">Edit Waste Type</DialogHeader>
       <DialogBody>
         <Input 
@@ -51,14 +62,26 @@ const EditWasteTypeModal = ({ open, handleOpen, data, refreshData, apiUrl }) => 
           value={name} 
           onChange={(e) => setName(e.target.value)} 
           color="blue"
+          disabled={loading}
+          onKeyPress={(e) => e.key === 'Enter' && handleSubmit()}
         />
       </DialogBody>
       <DialogFooter className="gap-2">
-        <Button variant="text" color="red" onClick={handleOpen} className="normal-case">
+        <Button 
+          variant="text" 
+          color="red" 
+          onClick={handleOpen} 
+          className="normal-case"
+          disabled={loading}
+        >
           Cancel
         </Button>
-        <Button className="bg-[#2b6cb0] normal-case" onClick={handleSubmit}>
-          Update Changes
+        <Button 
+          className="bg-[#2b6cb0] normal-case flex items-center gap-2" 
+          onClick={handleSubmit}
+          disabled={loading}
+        >
+          {loading ? <Spinner className="h-4 w-4" /> : "Update Changes"}
         </Button>
       </DialogFooter>
     </Dialog>

@@ -1,43 +1,60 @@
 import React, { useState } from "react";
-import { Dialog, DialogHeader, DialogBody, DialogFooter, Button, Input } from "@material-tailwind/react";
+import { Dialog, DialogHeader, DialogBody, DialogFooter, Button, Input, Spinner } from "@material-tailwind/react";
 import axios from "axios";
+import { toast } from "react-toastify"; // Import Toast
 
 const AddWasteTypeModal = ({ open, handleOpen, refreshData, apiUrl }) => {
   const [name, setName] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async () => {
-    if (!name.trim()) return alert("Nama kategori harus diisi!");
+    if (!name.trim()) {
+      return toast.warning("Nama kategori harus diisi!");
+    }
     
+    setLoading(true);
     try {
-      // 1. Ambil token dari localStorage
       const token = localStorage.getItem("token");
 
-      // 2. Kirim request dengan header Authorization
       await axios.post(
         apiUrl, 
         { name: name.trim() }, 
         {
           headers: {
-            Authorization: `Bearer ${token}`, // WAJIB ADA
+            Authorization: `Bearer ${token}`,
           },
         }
       );
 
+      toast.success("Kategori sampah berhasil ditambahkan!");
       setName("");
       handleOpen();
-      refreshData();
+      if (refreshData) refreshData();
     } catch (error) {
-      // Jika error 401, artinya token tidak valid/expired
+      console.error("Add Waste Type Error:", error);
       if (error.response?.status === 401) {
-        alert("Sesi habis, silakan login kembali.");
+        toast.error("Sesi habis, silakan login kembali.");
       } else {
-        alert(error.response?.data?.message || "Gagal menambah data");
+        const msg = error.response?.data?.message || "Gagal menambah data";
+        toast.error(msg);
       }
+    } finally {
+      setLoading(false);
     }
   };
 
+  const handleClose = () => {
+    setName("");
+    handleOpen();
+  };
+
   return (
-    <Dialog open={open} handler={handleOpen} size="xs" className="rounded-2xl">
+    <Dialog 
+      open={open} 
+      handler={loading ? () => {} : handleClose} 
+      size="xs" 
+      className="rounded-2xl"
+    >
       <DialogHeader className="text-[#2b6cb0] font-bold">Add Waste Type</DialogHeader>
       <DialogBody>
         <Input 
@@ -45,14 +62,26 @@ const AddWasteTypeModal = ({ open, handleOpen, refreshData, apiUrl }) => {
           value={name} 
           onChange={(e) => setName(e.target.value)} 
           color="blue"
+          disabled={loading}
+          onKeyPress={(e) => e.key === 'Enter' && handleSubmit()}
         />
       </DialogBody>
       <DialogFooter className="gap-2">
-        <Button variant="text" color="red" onClick={handleOpen} className="normal-case">
+        <Button 
+          variant="text" 
+          color="red" 
+          onClick={handleClose} 
+          className="normal-case"
+          disabled={loading}
+        >
           Cancel
         </Button>
-        <Button className="bg-[#2b6cb0] normal-case" onClick={handleSubmit}>
-          Save
+        <Button 
+          className="bg-[#2b6cb0] normal-case flex items-center gap-2" 
+          onClick={handleSubmit}
+          disabled={loading}
+        >
+          {loading ? <Spinner className="h-4 w-4" /> : "Save"}
         </Button>
       </DialogFooter>
     </Dialog>

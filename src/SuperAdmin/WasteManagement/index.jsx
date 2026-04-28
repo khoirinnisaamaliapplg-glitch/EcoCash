@@ -3,6 +3,7 @@ import axios from "axios";
 import MainLayout from "../MainLayout";
 import { Card, Typography, Button } from "@material-tailwind/react";
 import { PlusIcon, PencilSquareIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { toast } from "react-toastify"; // Import Toast
 
 // Import Modal
 import AddWasteTypeModal from "./AddWasteTypeModal";
@@ -20,21 +21,17 @@ const WasteManagementIndex = () => {
   const [openDelete, setOpenDelete] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
 
-  // FUNGSI FETCH DENGAN TOKEN
   const fetchWasteTypes = async () => {
     try {
       setLoading(true);
-      
-      // Ambil token dari storage (pastikan key-nya sama saat kamu login)
       const token = localStorage.getItem("token");
 
       const response = await axios.get(API_URL, {
         headers: {
-          Authorization: `Bearer ${token}` // Menyisipkan token ke header
+          Authorization: `Bearer ${token}`
         }
       });
 
-      // Validasi data adalah array
       if (response.data && Array.isArray(response.data.data)) {
         setWasteTypes(response.data.data);
       } else {
@@ -42,9 +39,13 @@ const WasteManagementIndex = () => {
       }
     } catch (error) {
       console.error("Error fetching data:", error);
+      
       if (error.response?.status === 401) {
-        alert("Sesi login berakhir atau tidak sah. Silakan login kembali.");
+        toast.error("Sesi login berakhir. Silakan login kembali.");
+      } else {
+        toast.error("Gagal mengambil data jenis sampah.");
       }
+      
       setWasteTypes([]); 
     } finally {
       setLoading(false);

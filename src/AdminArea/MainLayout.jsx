@@ -8,12 +8,13 @@ import {
   MagnifyingGlassIcon, BellIcon, ChevronDownIcon, UserCircleIcon, PowerIcon, Bars3Icon 
 } from "@heroicons/react/24/outline";
 import { useNavigate } from "react-router-dom";
+// 1. IMPORT TOASTER
+import { Toaster } from "react-hot-toast";
 
 const MainLayout = ({ children }) => {
   const navigate = useNavigate();
   const [openSidebar, setOpenSidebar] = useState(false);
   
-  // LOGIKA AMBIL NAMA & ROLE (Disesuaikan ke Area Admin)
   const [userProfile] = useState(() => {
     const storedUser = localStorage.getItem("userData");
     const storedRole = localStorage.getItem("userRole");
@@ -23,7 +24,6 @@ const MainLayout = ({ children }) => {
         const parsedUser = JSON.parse(storedUser);
         const fixName = parsedUser.name || parsedUser.username || parsedUser.user?.name || "User";
         
-        // Memastikan role yang tampil adalah AREA ADMIN
         let currentRole = storedRole || parsedUser.role || "AREA_ADMIN";
         if (currentRole.includes("SUPER")) {
           currentRole = "AREA_ADMIN";
@@ -47,6 +47,20 @@ const MainLayout = ({ children }) => {
 
   return (
     <div className="flex h-screen w-full bg-[#f8fafc] overflow-hidden font-sans">
+      {/* 2. TAMBAHKAN TOASTER DI SINI */}
+      <Toaster 
+        position="top-right"
+        reverseOrder={false}
+        toastOptions={{
+          duration: 3000,
+          style: {
+            borderRadius: '12px',
+            background: '#333',
+            color: '#fff',
+          },
+        }}
+      />
+
       <Sidebar open={openSidebar} setOpen={setOpenSidebar} />
       
       <div className="flex-1 flex flex-col overflow-hidden">
@@ -74,7 +88,6 @@ const MainLayout = ({ children }) => {
                       <Typography className="text-sm font-bold text-gray-800 capitalize leading-tight">
                         {userProfile.name.replace(/_/g, " ")}
                       </Typography>
-                      {/* ROLE DITAMPILKAN SEBAGAI AREA ADMIN */}
                       <Typography className="text-[10px] font-bold text-green-500 uppercase tracking-widest leading-tight">
                         {userProfile.role.replace(/_/g, " ")} • Online
                       </Typography>
@@ -88,24 +101,23 @@ const MainLayout = ({ children }) => {
                 </MenuHandler>
                 
                 <MenuList className="p-1 border-none shadow-lg">
-  {/* PATH HARUS SAMA PERSIS DENGAN YANG ADA DI APP.JS */}
-  <MenuItem 
-    onClick={() => navigate("/AdminArea/profile")} 
-    className="flex items-center gap-3 rounded-md"
-  >
-    <UserCircleIcon className="h-5 w-5 text-blue-gray-500" />
-    <Typography variant="small" className="font-bold text-blue-gray-800">
-      Profil Area Admin
-    </Typography>
-  </MenuItem>
-  
-  <hr className="my-1 border-blue-gray-50" />
-  
-  <MenuItem onClick={handleLogout} className="flex items-center gap-3 rounded-md hover:bg-red-50 group">
-    <PowerIcon className="h-5 w-5 text-red-500" />
-    <Typography variant="small" className="font-bold text-red-500">Keluar</Typography>
-  </MenuItem>
-</MenuList>
+                  <MenuItem 
+                    onClick={() => navigate("/AdminArea/profile")} 
+                    className="flex items-center gap-3 rounded-md"
+                  >
+                    <UserCircleIcon className="h-5 w-5 text-blue-gray-500" />
+                    <Typography variant="small" className="font-bold text-blue-gray-800">
+                      Profil Area Admin
+                    </Typography>
+                  </MenuItem>
+                  
+                  <hr className="my-1 border-blue-gray-50" />
+                  
+                  <MenuItem onClick={handleLogout} className="flex items-center gap-3 rounded-md hover:bg-red-50 group">
+                    <PowerIcon className="h-5 w-5 text-red-500" />
+                    <Typography variant="small" className="font-bold text-red-500">Keluar</Typography>
+                  </MenuItem>
+                </MenuList>
               </Menu>
             </div>
           </div>

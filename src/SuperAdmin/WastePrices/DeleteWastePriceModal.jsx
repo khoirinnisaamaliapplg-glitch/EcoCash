@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import axios from "axios";
 import { Dialog, DialogHeader, DialogBody, DialogFooter, Button, Typography, Spinner } from "@material-tailwind/react";
 import { ExclamationCircleIcon } from "@heroicons/react/24/outline";
+import { toast } from "react-toastify"; // Import Toast
 
 const DeleteWastePriceModal = ({ open, handleOpen, data, refreshData }) => {
   const [loading, setLoading] = useState(false);
@@ -11,28 +12,33 @@ const DeleteWastePriceModal = ({ open, handleOpen, data, refreshData }) => {
 
     setLoading(true);
     try {
-      const token = localStorage.getItem("token"); // Ambil token untuk otorisasi
+      const token = localStorage.getItem("token"); 
       
-      // Sesuai dengan controller backend Anda: exports.deleteWastePrice
       await axios.delete(`http://localhost:3000/api/waste-prices/${data.id}`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
       });
 
-      alert("Harga berhasil dihapus");
-      refreshData(); // Refresh list di halaman utama
-      handleOpen();  // Tutup modal
+      toast.success("Harga sampah berhasil dihapus!");
+      if (refreshData) refreshData(); 
+      handleOpen();  
     } catch (error) {
       console.error("Delete Error:", error.response?.data);
-      alert(error.response?.data?.message || "Gagal menghapus data");
+      const msg = error.response?.data?.message || "Gagal menghapus data";
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Dialog open={open} handler={handleOpen} size="xs" className="rounded-[28px]">
+    <Dialog 
+      open={open} 
+      handler={loading ? () => {} : handleOpen} 
+      size="xs" 
+      className="rounded-[28px]"
+    >
       <DialogHeader className="flex flex-col items-center pt-8">
         <div className="p-4 bg-red-50 rounded-full mb-3">
           <ExclamationCircleIcon className="h-10 w-10 text-red-500" />

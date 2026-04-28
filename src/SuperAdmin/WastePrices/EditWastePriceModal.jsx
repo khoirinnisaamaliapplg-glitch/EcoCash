@@ -4,12 +4,13 @@ import {
   Dialog, DialogHeader, DialogBody, DialogFooter, 
   Input, Button, Typography, Spinner, Select, Option 
 } from "@material-tailwind/react";
-import { PencilSquareIcon, BanknotesIcon, CheckCircleIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { PencilSquareIcon, BanknotesIcon, CheckCircleIcon } from "@heroicons/react/24/outline";
+import { toast } from "react-toastify"; // Import Toast
 
 const EditWastePriceModal = ({ open, handleOpen, data, refreshData }) => {
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false); // State untuk switch tampilan ke Sukses
+  const [isSuccess, setIsSuccess] = useState(false); 
   
   const [areas, setAreas] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -22,7 +23,7 @@ const EditWastePriceModal = ({ open, handleOpen, data, refreshData }) => {
   // 1. Load Data Dropdown
   useEffect(() => {
     if (open) {
-      setIsSuccess(false); // Reset status setiap kali modal dibuka
+      setIsSuccess(false); 
       const loadDropdownData = async () => {
         setLoadingData(true);
         try {
@@ -32,10 +33,15 @@ const EditWastePriceModal = ({ open, handleOpen, data, refreshData }) => {
             axios.get("http://localhost:3000/api/areas", config),
             axios.get("http://localhost:3000/api/waste-types", config)
           ]);
-          setAreas((areaRes.data.data || areaRes.data).filter(a => a.isActive));
-          setCategories((wasteRes.data.data || wasteRes.data).filter(c => c.isActive));
+          
+          const aData = areaRes.data.data || areaRes.data;
+          const wData = wasteRes.data.data || wasteRes.data;
+
+          setAreas(Array.isArray(aData) ? aData.filter(a => a.isActive) : []);
+          setCategories(Array.isArray(wData) ? wData.filter(c => c.isActive) : []);
         } catch (error) {
           console.error("Gagal load dropdown:", error);
+          toast.error("Gagal memuat data wilayah atau kategori.");
         } finally {
           setLoadingData(false);
         }
@@ -56,7 +62,9 @@ const EditWastePriceModal = ({ open, handleOpen, data, refreshData }) => {
   }, [data, open]);
 
   const handleUpdate = async () => {
-    if (!formData.areaId || !formData.wasteTypeId || !formData.pricePerKg) return;
+    if (!formData.areaId || !formData.wasteTypeId || !formData.pricePerKg) {
+      return toast.warning("Mohon lengkapi semua data!");
+    }
 
     setLoading(true);
     try {
@@ -71,10 +79,12 @@ const EditWastePriceModal = ({ open, handleOpen, data, refreshData }) => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      refreshData();
-      setIsSuccess(true); // Ganti tampilan modal jadi Sukses
+      toast.success("Harga berhasil diperbarui!");
+      if (refreshData) refreshData();
+      setIsSuccess(true); 
     } catch (error) {
-      alert("Gagal memperbarui data");
+      const msg = error.response?.data?.message || "Gagal memperbarui data";
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -83,11 +93,10 @@ const EditWastePriceModal = ({ open, handleOpen, data, refreshData }) => {
   return (
     <Dialog 
       open={open} 
-      handler={handleOpen} 
+      handler={loading ? () => {} : handleOpen} 
       size="sm" 
       className="rounded-[32px] overflow-visible shadow-2xl min-w-[90%] md:min-w-[450px]"
     >
-      {/* KONDISI 1: TAMPILAN SUKSES */}
       {isSuccess ? (
         <DialogBody className="flex flex-col items-center p-10 text-center">
           <div className="bg-green-50 p-5 rounded-full mb-4">
@@ -108,7 +117,6 @@ const EditWastePriceModal = ({ open, handleOpen, data, refreshData }) => {
           </Button>
         </DialogBody>
       ) : (
-        /* KONDISI 2: TAMPILAN FORM EDIT */
         <>
           <DialogHeader className="px-6 md:px-10 pt-8 flex justify-between items-center">
             <div className="flex items-center gap-4">
@@ -136,6 +144,7 @@ const EditWastePriceModal = ({ open, handleOpen, data, refreshData }) => {
                     label="Pilih Wilayah"
                     value={formData.areaId}
                     onChange={(val) => setFormData({ ...formData, areaId: val })}
+                    disabled={loading}
                   >
                     {areas.map((a) => <Option key={a.id} value={String(a.id)}>{a.name}</Option>)}
                   </Select>
@@ -148,6 +157,7 @@ const EditWastePriceModal = ({ open, handleOpen, data, refreshData }) => {
                       label="Pilih Jenis"
                       value={formData.wasteTypeId}
                       onChange={(val) => setFormData({ ...formData, wasteTypeId: val })}
+                      disabled={loading}
                     >
                       {categories.map((c) => <Option key={c.id} value={String(c.id)}>{c.name}</Option>)}
                     </Select>
@@ -161,6 +171,7 @@ const EditWastePriceModal = ({ open, handleOpen, data, refreshData }) => {
                       icon={<BanknotesIcon className="h-5 w-5 text-green-500" />}
                       className="!rounded-xl border-t-blue-gray-200 focus:!border-blue-500"
                       labelProps={{ className: "hidden" }}
+                      disabled={loading}
                     />
                   </div>
                 </div>
@@ -169,13 +180,19 @@ const EditWastePriceModal = ({ open, handleOpen, data, refreshData }) => {
           </DialogBody>
 
           <DialogFooter className="px-6 md:px-10 pb-10 pt-2 flex flex-col-reverse md:flex-row gap-4">
-            <Button variant="text" color="blue-gray" onClick={handleOpen} className="w-full md:w-auto normal-case font-bold">
+            <Button 
+              variant="text" 
+              color="blue-gray" 
+              onClick={handleOpen} 
+              className="w-full md:w-auto normal-case font-bold"
+              disabled={loading}
+            >
               Batal
             </Button>
             <Button 
               className="bg-blue-700 w-full md:flex-1 rounded-2xl py-4 flex justify-center items-center shadow-lg shadow-blue-100 normal-case text-base" 
               onClick={handleUpdate} 
-              disabled={loading}
+              disabled={loading || loadingData}
             >
               {loading ? <Spinner className="h-5 w-5" /> : "Update Sekarang"}
             </Button>

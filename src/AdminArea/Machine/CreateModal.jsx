@@ -52,7 +52,7 @@ const CreateModal = ({ open, handleOpen, refreshData }) => {
 
   const handleSubmit = async () => {
     if (!form.machineCode.trim() || !form.name.trim()) {
-      alert("Harap isi Machine Code dan Name");
+      alert("Harap isi Kode Mesin dan Nama");
       return;
     }
 
@@ -111,10 +111,10 @@ const CreateModal = ({ open, handleOpen, refreshData }) => {
           </div>
           <div>
             <Typography variant="h5" color="blue-gray" className="font-bold">
-              Register New Machine
+              Registrasi Mesin Baru
             </Typography>
             <Typography className="text-xs text-blue-600 font-bold uppercase tracking-tight">
-               Area: {userData?.areaName || "Your Assigned Area"} (ID: {userData?.areaId})
+                Area: {userData?.areaName || "Area Tugas Anda"} (ID: {userData?.areaId})
             </Typography>
           </div>
         </div>
@@ -127,15 +127,15 @@ const CreateModal = ({ open, handleOpen, refreshData }) => {
         {status === "success" ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
             <CheckCircleIcon className="h-20 w-20 text-green-500 mb-4" />
-            <Typography variant="h4" className="text-green-700 font-bold">Registration Success!</Typography>
-            <Typography className="text-gray-500">The machine has been registered to your area.</Typography>
+            <Typography variant="h4" className="text-green-700 font-bold">Registrasi Berhasil!</Typography>
+            <Typography className="text-gray-500">Mesin telah berhasil didaftarkan ke area Anda.</Typography>
           </div>
         ) : status === "error" ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
             <XCircleIcon className="h-20 w-20 text-red-500 mb-4" />
-            <Typography variant="h5" color="red" className="font-bold">Failed to Save</Typography>
+            <Typography variant="h5" color="red" className="font-bold">Gagal Menyimpan</Typography>
             <Typography color="red" className="mt-2">{errorDetails}</Typography>
-            <Button variant="outlined" color="red" onClick={() => setStatus(null)} className="mt-6">Try Again</Button>
+            <Button variant="outlined" color="red" onClick={() => setStatus(null)} className="mt-6">Coba Lagi</Button>
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -143,21 +143,21 @@ const CreateModal = ({ open, handleOpen, refreshData }) => {
             {/* COLUMN 1: UNIT INFO */}
             <div className="space-y-6">
               <div className="flex items-center gap-2 border-l-4 border-blue-500 pl-3">
-                <Typography className="font-bold text-gray-800 uppercase text-xs tracking-wider">Unit Identity</Typography>
+                <Typography className="font-bold text-gray-800 uppercase text-xs tracking-wider">Identitas Unit</Typography>
               </div>
               <div className="grid grid-cols-1 gap-4">
                 {/* Informasi Area - Read Only untuk Area Admin */}
                 <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
-                   <Typography className="text-[10px] uppercase font-bold text-gray-500">Current Management Area</Typography>
-                   <Typography className="text-sm font-bold text-blue-700">{userData?.areaName || "Assigned Area"} (ID: {userData?.areaId})</Typography>
+                   <Typography className="text-[10px] uppercase font-bold text-gray-500">Area Pengelolaan Saat Ini</Typography>
+                   <Typography className="text-sm font-bold text-blue-700">{userData?.areaName || "Area Tugas"} (ID: {userData?.areaId})</Typography>
                 </div>
 
-                <Input label="Machine Code (Unique)" name="machineCode" value={form.machineCode} onChange={handleChange} color="blue" />
-                <Input label="Display Name" name="name" value={form.name} onChange={handleChange} color="blue" />
+                <Input label="Kode Mesin (Unik)" name="machineCode" value={form.machineCode} onChange={handleChange} color="blue" />
+                <Input label="Nama Tampilan" name="name" value={form.name} onChange={handleChange} color="blue" />
                 
-                <Select label="Hardware Type" value={form.machineType} onChange={(v) => handleSelectChange("machineType", v)}>
-                  <Option value="BOX">BOX SYSTEM</Option>
-                  <Option value="CONTAINER">CONTAINER SYSTEM</Option>
+                <Select label="Tipe Perangkat Keras" value={form.machineType} onChange={(v) => handleSelectChange("machineType", v)}>
+                  <Option value="BOX">SISTEM BOX</Option>
+                  <Option value="CONTAINER">SISTEM KONTAINER</Option>
                 </Select>
               </div>
             </div>
@@ -165,35 +165,35 @@ const CreateModal = ({ open, handleOpen, refreshData }) => {
             {/* COLUMN 2: PLACEMENT */}
             <div className="space-y-6">
               <div className="flex items-center gap-2 border-l-4 border-green-500 pl-3">
-                <Typography className="font-bold text-gray-800 uppercase text-xs tracking-wider">GPS & Address</Typography>
+                <Typography className="font-bold text-gray-800 uppercase text-xs tracking-wider">GPS & Alamat</Typography>
               </div>
               <div className="grid grid-cols-1 gap-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Input label="Point Name (Building)" name="placeName" value={form.placeName} onChange={handleChange} />
-                  <Select label="Location Category" value={form.locationType} onChange={(v) => handleSelectChange("locationType", v)}>
+                  <Input label="Nama Lokasi (Gedung)" name="placeName" value={form.placeName} onChange={handleChange} />
+                  <Select label="Kategori Lokasi" value={form.locationType} onChange={(v) => handleSelectChange("locationType", v)}>
                     {locationOptions.map((opt) => (
                       <Option key={opt} value={opt}>{opt.replace("_", " ")}</Option>
                     ))}
                   </Select>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <Input label="Latitude" name="latitude" type="number" value={form.latitude} onChange={handleChange} />
-                  <Input label="Longitude" name="longitude" type="number" value={form.longitude} onChange={handleChange} />
+                  <Input label="Latitudo" name="latitude" type="number" value={form.latitude} onChange={handleChange} />
+                  <Input label="Longitudo" name="longitude" type="number" value={form.longitude} onChange={handleChange} />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <Input label="District" name="district" value={form.district} onChange={handleChange} />
-                  <Input label="Subdistrict" name="subdistrict" value={form.subdistrict} onChange={handleChange} />
+                  <Input label="Kecamatan" name="district" value={form.district} onChange={handleChange} />
+                  <Input label="Kelurahan" name="subdistrict" value={form.subdistrict} onChange={handleChange} />
                 </div>
-                <Textarea label="Full Address Details" name="address" rows={2} value={form.address} onChange={handleChange} />
+                <Textarea label="Detail Alamat Lengkap" name="address" rows={2} value={form.address} onChange={handleChange} />
               </div>
             </div>
 
             {/* INTERNAL NOTES */}
             <div className="lg:col-span-2 pt-2">
               <div className="flex items-center gap-2 border-l-4 border-orange-400 pl-3 mb-4">
-                <Typography className="font-bold text-gray-800 uppercase text-xs tracking-wider">Internal Description</Typography>
+                <Typography className="font-bold text-gray-800 uppercase text-xs tracking-wider">Deskripsi Internal</Typography>
               </div>
-              <Textarea label="Additional Notes" name="description" rows={2} value={form.description} onChange={handleChange} />
+              <Textarea label="Catatan Tambahan" name="description" rows={2} value={form.description} onChange={handleChange} />
             </div>
           </div>
         )}
@@ -203,7 +203,7 @@ const CreateModal = ({ open, handleOpen, refreshData }) => {
         {!status && (
           <>
             <Button variant="text" color="gray" onClick={handleClose} className="normal-case">
-              Cancel
+              Batal
             </Button>
             <Button 
               variant="gradient" 
@@ -212,7 +212,7 @@ const CreateModal = ({ open, handleOpen, refreshData }) => {
               disabled={loading} 
               className="flex items-center gap-2 normal-case"
             >
-              {loading ? <Spinner className="h-4 w-4" /> : "Confirm Registration"}
+              {loading ? <Spinner className="h-4 w-4" /> : "Konfirmasi Registrasi"}
             </Button>
           </>
         )}

@@ -1,22 +1,19 @@
 import React, { useState } from "react";
 import { 
   Dialog, DialogHeader, DialogBody, DialogFooter, 
-  Button, Typography, Spinner, Alert 
+  Button, Typography, Spinner 
 } from "@material-tailwind/react";
-import { 
-  TrashIcon, ExclamationTriangleIcon, InformationCircleIcon 
-} from "@heroicons/react/24/outline";
+import { ExclamationTriangleIcon } from "@heroicons/react/24/outline";
 import axios from "axios";
+import { toast } from "react-toastify"; // Import Toast
 
 const DeleteUserModal = ({ open, handleOpen, data, refreshData }) => {
   const [loading, setLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
 
   const handleDelete = async () => {
     if (!data?.id) return;
 
     setLoading(true);
-    setErrorMessage("");
 
     try {
       const token = localStorage.getItem("token");
@@ -29,21 +26,31 @@ const DeleteUserModal = ({ open, handleOpen, data, refreshData }) => {
         }
       });
 
+      // Feedback Sukses
+      toast.success(`Akun ${data?.name} berhasil dihapus.`);
+
       // Jika berhasil, refresh data di tabel dan tutup modal
       if (refreshData) refreshData();
       handleOpen();
       
     } catch (error) {
-      const msg = error.response?.data?.message || "Gagal menghapus pengguna";
-      setErrorMessage(msg);
       console.error("Delete Error:", error.response?.data);
+      const msg = error.response?.data?.message || "Gagal menghapus pengguna";
+      
+      // Feedback Error lewat Toast
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Dialog open={open} handler={handleOpen} size="xs" className="rounded-[28px] overflow-hidden">
+    <Dialog 
+      open={open} 
+      handler={loading ? () => {} : handleOpen} 
+      size="xs" 
+      className="rounded-[28px] overflow-hidden"
+    >
       <DialogHeader className="flex flex-col items-center pt-8 pb-4">
         <div className="p-4 bg-red-50 rounded-full mb-4">
           <ExclamationTriangleIcon className="h-10 w-10 text-red-500 animate-pulse" />
@@ -54,12 +61,6 @@ const DeleteUserModal = ({ open, handleOpen, data, refreshData }) => {
       </DialogHeader>
       
       <DialogBody className="px-8 text-center">
-        {errorMessage && (
-          <Alert color="red" className="mb-4 rounded-xl font-medium text-sm">
-            {errorMessage}
-          </Alert>
-        )}
-        
         <Typography className="text-gray-600 font-medium">
           Apakah Anda yakin ingin menghapus akun <span className="text-red-600 font-bold">{data?.name}</span>? 
           <br />Tindakan ini tidak dapat dibatalkan.

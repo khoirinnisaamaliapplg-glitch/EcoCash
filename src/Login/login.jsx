@@ -13,6 +13,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import ForgotPasswordModal from './ForgotPasswordModal';
 
+// 1. IMPORT TOASTIFY
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+
 const Login = () => {
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -33,79 +37,80 @@ const Login = () => {
     return () => clearInterval(interval);
   }, [dataHero.length]);
 
-  // --- LOGIKA API SESUAI POSTMAN ---
   const formik = useFormik({
     initialValues: { username: '', password: '' },
     validationSchema: Yup.object({
       username: Yup.string().required('Username wajib diisi'),
       password: Yup.string().required('Password wajib diisi'),
     }),
- // Taruh di paling atas file
+    onSubmit: async (values) => {
+      setIsLoading(true);
+      try {
+        const response = await axios.post('http://localhost:3000/api/auth/login', {
+          identifier: values.username,
+          password: values.password
+        });
 
-// ... di dalam onSubmit:
-onSubmit: async (values) => {
-  setIsLoading(true);
-  try {
-    const response = await axios.post('http://localhost:3000/api/auth/login', {
-      identifier: values.username, 
-      password: values.password
-    });
+        const loginData = response.data.data;
+        const token = loginData.token;
 
-    const loginData = response.data.data;
-    const token = loginData.token;
+        if (token) {
+          const decoded = jwtDecode(token);
+          const role = decoded.role;
 
-    if (token) {
-      // 1. Dekode token untuk mendapatkan role dan data user lainnya
-      const decoded = jwtDecode(token);
-      const role = decoded.role; // Pastikan di isi token ada field 'role'
+          localStorage.setItem("token", token);
+          localStorage.setItem("userRole", role);
+          localStorage.setItem("userData", JSON.stringify(decoded));
 
-      // 2. Simpan ke LocalStorage
-      localStorage.setItem("token", token);
-      localStorage.setItem("userRole", role);
-      localStorage.setItem("userData", JSON.stringify(decoded));
+          const userRole = role ? role.toUpperCase().trim() : "";
 
-      // 3. Navigasi berdasarkan Role dari hasil decode
-      const userRole = role ? role.toUpperCase().trim() : "";
+          // 2. TAMPILKAN TOAST BERHASIL
+          toast.success(`Selamat Datang, ${values.username}!`, {
+            position: "top-right",
+            autoClose: 2000,
+          });
 
-      switch (userRole) {
-        case "SUPER_ADMIN": 
-          navigate("/dashboard"); 
-          break;
-        case "AREA_ADMIN": 
-          navigate("/AdminArea/dashboard"); 
-          break;
-        case "MACHINE_OPERATOR": 
-          navigate("/operator/dashboard"); 
-          break;
-        case "STORE_ADMIN": 
-          navigate("/store/dashboard"); 
-          break;
-        default: 
-          alert(`Role "${userRole}" tidak dikenali atau tidak memiliki akses.`);
-          navigate("/");
+          // Kasih delay sedikit biar user sempat lihat toast-nya sebelum pindah halaman
+          setTimeout(() => {
+            switch (userRole) {
+              case "SUPER_ADMIN": navigate("/dashboard"); break;
+              case "AREA_ADMIN": navigate("/AdminArea/dashboard"); break;
+              case "MACHINE_OPERATOR": navigate("/operator/dashboard"); break;
+              case "STORE_ADMIN": navigate("/store/dashboard"); break;
+              default:
+                toast.warning(`Role "${userRole}" tidak memiliki akses.`);
+                navigate("/");
+            }
+          }, 1500);
+        }
+      } catch (error) {
+        console.error("Login Error:", error.response?.data);
+        
+        // 3. TAMPILKAN TOAST GAGAL
+        const errorMsg = error.response?.data?.message || "Terjadi kesalahan pada server";
+        toast.error(`Gagal Login: ${errorMsg}`, {
+          position: "top-right",
+        });
+      } finally {
+        setIsLoading(false);
       }
-    }
-  } catch (error) {
-    console.error("Login Error:", error.response?.data);
-    alert("Gagal Login: " + (error.response?.data?.message || "Terjadi kesalahan"));
-  } finally {
-    setIsLoading(false);
-  }},
+    },
   });
 
   return (
     <div className="h-screen w-full bg-white flex flex-col md:flex-row overflow-y-auto md:overflow-hidden font-sans">
       
-      {/* SISI KIRI: HERO (Layout dari Kode Kedua) */}
+      {/* 4. TARUH CONTAINER DI SINI (Bisa di mana saja dalam return) */}
+      <ToastContainer />
+
+      {/* SISI KIRI: HERO */}
       <div className="w-full md:w-1/2 h-full bg-blue-50/50 p-10 flex flex-col items-center justify-center text-center">
         <div className="w-full flex flex-col items-center justify-center">
-          
           <img 
             src="/login.png" 
             alt="Hero" 
             className="w-[280px] md:w-[380px] object-contain mb-8 mx-auto transform hover:scale-105 transition-transform duration-500 drop-shadow-xl"
           />
-          
           <div className="h-[120px] md:h-[140px] w-full flex flex-col items-center justify-center z-10">
             <AnimatePresence mode="wait">
               <motion.div
@@ -116,47 +121,36 @@ onSubmit: async (values) => {
                 transition={{ duration: 0.5 }}
                 className="flex flex-col items-center" 
               >
-                <Typography 
-                  variant="h2" 
-                  className="font-black text-3xl md:text-4xl leading-tight drop-shadow-md text-[#2b6cb0]"
-                >
+                <Typography variant="h2" className="font-black text-3xl md:text-4xl leading-tight drop-shadow-md text-[#2b6cb0]">
                   {dataHero[index].main}
                 </Typography>
-
-                <Typography 
-                  variant="h4" 
-                  className="font-extrabold text-xl md:text-2xl opacity-80 mt-2 tracking-wide text-[#2b6cb0]"
-                >
+                <Typography variant="h4" className="font-extrabold text-xl md:text-2xl opacity-80 mt-2 tracking-wide text-[#2b6cb0]">
                   & {dataHero[index].sub}
                 </Typography>
               </motion.div>
             </AnimatePresence>
           </div>
-
           <Typography className="text-gray-600 text-sm mt-6 max-w-md px-4 font-normal leading-relaxed hidden md:block text-center">
             EcoCash menghubungkan masyarakat Indonesia dengan teknologi AI-IoT dan sistem insentif digital Terpusat untuk mengubah sampah menjadi nilai ekonomi.
           </Typography>
-          
         </div>
       </div>
 
-      {/* SISI KANAN: FORM LOGIN (Layout dari Kode Kedua) */}
+      {/* SISI KANAN: FORM LOGIN */}
       <div className="w-full md:w-1/2 h-full p-8 md:p-10 flex flex-col justify-center items-center bg-white border-l border-gray-50">
         <Card color="transparent" shadow={false} className="w-full max-w-sm">
-          
           <div className="flex flex-col items-center mb-6">
             <img src="/logo1.png" alt="Logo" className="w-24 h-24 md:w-28 md:h-28 object-contain mb-2" />
             <Typography variant="h4" className="text-blue-gray-800 font-bold">Sign In</Typography>
           </div>
 
-          {/* Tombol Google Login */}
           <Button
             size="lg"
             variant="outlined"
             color="blue-gray"
             className="flex items-center justify-center gap-3 normal-case mb-6 border-gray-200 hover:bg-gray-50 h-11"
             fullWidth
-            onClick={() => alert('Fitur Google Login sedang dikembangkan!')}
+            onClick={() => toast.info('Fitur Google Login sedang dikembangkan!')}
           >
             <img src="/google.png" alt="google" className="h-5 w-5" />
             Login with Google

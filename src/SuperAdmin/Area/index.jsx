@@ -3,6 +3,7 @@ import MainLayout from "../MainLayout";
 import { Card, Typography, Button, Input, Chip } from "@material-tailwind/react";
 import { PlusIcon, MagnifyingGlassIcon, GlobeAsiaAustraliaIcon } from "@heroicons/react/24/outline";
 import axios from "axios";
+import { toast } from 'react-toastify'; // Import Toast
 
 // Import Modal
 import AddAreaModal from "./AddAreaModal";
@@ -12,7 +13,6 @@ import DeleteAreaModal from "./DeleteAreaModal";
 const TABLE_HEAD = ["Kode Wilayah", "Nama Area", "Lokasi Utama", "Tipe", "Action"];
 
 const AreaIndex = () => {
-  // 1. Inisialisasi dengan array kosong untuk menampung data API
   const [dataArea, setDataArea] = useState([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -22,7 +22,6 @@ const AreaIndex = () => {
   const [openDelete, setOpenDelete] = useState(false);
   const [selectedArea, setSelectedArea] = useState(null);
 
-  // 2. Fungsi untuk mengambil data dari API
   const fetchAreas = async () => {
     setLoading(true);
     try {
@@ -30,10 +29,10 @@ const AreaIndex = () => {
       const response = await axios.get("http://localhost:3000/api/areas/", {
         headers: { Authorization: `Bearer ${token}` }
       });
-      // Sesuaikan jika API membungkus data dalam properti 'data'
       setDataArea(response.data.data || response.data || []);
     } catch (error) {
       console.error("Gagal mengambil data area:", error);
+      toast.error("Gagal memuat data wilayah dari server."); // Tambah feedback error
     } finally {
       setLoading(false);
     }
@@ -43,7 +42,6 @@ const AreaIndex = () => {
     fetchAreas();
   }, []);
 
-  // 3. Logika Pencarian
   const filteredAreas = dataArea?.filter((area) =>
     area.name?.toLowerCase().includes(search.toLowerCase()) ||
     area.code?.toLowerCase().includes(search.toLowerCase())
@@ -59,17 +57,20 @@ const AreaIndex = () => {
     setOpenDelete(true);
   };
 
-  // 4. Fungsi Delete via API
+  // Update fungsi Delete
   const executeDelete = async (id) => {
     try {
       const token = localStorage.getItem("token");
       await axios.delete(`http://localhost:3000/api/areas/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      fetchAreas(); // Refresh data setelah hapus
+      
+      toast.success("Wilayah berhasil dihapus!"); // Ganti alert jadi toast
+      fetchAreas(); 
       setOpenDelete(false);
     } catch (error) {
-      alert("Gagal menghapus area");
+      const errorMsg = error.response?.data?.message || "Gagal menghapus wilayah.";
+      toast.error(errorMsg); // Ganti alert jadi toast error
     }
   };
 
@@ -154,7 +155,6 @@ const AreaIndex = () => {
         </Card>
       </div>
 
-      {/* Modal Components */}
       <AddAreaModal 
         open={openAdd} 
         setOpen={setOpenAdd} 

@@ -4,81 +4,113 @@ import {
   DialogHeader, 
   DialogBody, 
   DialogFooter, 
-  Input, 
   Button, 
   Select, 
   Option,
-  Typography 
+  Typography,
+  Alert
 } from "@material-tailwind/react";
-import { PencilSquareIcon } from "@heroicons/react/24/outline";
+import { PencilSquareIcon, InformationCircleIcon } from "@heroicons/react/24/outline";
+import axios from "axios";
 
-const EditMachineModal = ({ open, handleOpen, data }) => {
-  // State lokal untuk menampung perubahan input
-  const [formData, setFormData] = useState({ id: "", type: "", load: 0 });
+const EditMachineModal = ({ open, handleOpen, data, refreshData }) => {
+  const [status, setStatus] = useState("OPERATING");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    if (data) setFormData(data);
-  }, [data]);
+    if (data) {
+      setStatus(data.status || "OPERATING");
+    }
+    setError("");
+  }, [data, open]);
+
+  const handleSubmit = async () => {
+    setLoading(true);
+    setError("");
+    const token = localStorage.getItem("token");
+
+    try {
+      // MENGGUNAKAN PATCH: Hanya mengirimkan field status
+      await axios.patch(`http://localhost:3000/api/machines/${data.id}/status`, 
+        { status: status },
+        { 
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json"
+          } 
+        }
+      );
+      
+      refreshData();
+      handleOpen();
+    } catch (err) {
+      console.error("Update error:", err);
+      setError(err.response?.data?.message || "Gagal memperbarui status");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <Dialog 
       open={open} 
       handler={handleOpen} 
       size="xs" 
-      className="rounded-[28px] mx-4 md:mx-0 overflow-hidden"
+      className="rounded-[28px] overflow-hidden"
     >
       <DialogHeader className="px-8 pt-8 flex items-center gap-3">
         <div className="p-2 bg-blue-50 rounded-xl text-blue-600">
           <PencilSquareIcon className="h-6 w-6 stroke-[2]" />
         </div>
-        <Typography variant="h5" className="text-blue-900 font-black">Edit Unit AIoT</Typography>
+        <Typography variant="h5" className="text-blue-900 font-black">Update Kondisi Unit</Typography>
       </DialogHeader>
 
-      <DialogBody className="px-8 py-4 space-y-5 max-h-[70vh] overflow-y-auto">
+      <DialogBody className="px-8 py-4 space-y-5">
+        {error && (
+          <Alert color="red" icon={<InformationCircleIcon className="h-5 w-5" />} className="rounded-xl font-medium">
+            {error}
+          </Alert>
+        )}
+
         <div className="space-y-4">
-          <div className="space-y-1">
-            <Typography variant="small" className="text-blue-900 font-black ml-1 text-[10px] uppercase tracking-widest">ID Unit</Typography>
-            <Input 
-              value={formData.id} 
-              disabled 
-              color="blue" 
-              className="!border-t-blue-gray-100 bg-gray-50 rounded-xl"
-              labelProps={{ className: "hidden" }}
-            />
+          <div className="bg-blue-50/50 p-4 rounded-2xl border border-blue-100">
+             <Typography className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Detail Unit</Typography>
+             <Typography className="text-blue-900 font-bold">{data?.machineCode} - {data?.name}</Typography>
           </div>
 
           <div className="space-y-1">
-            <Typography variant="small" className="text-blue-900 font-black ml-1 text-[10px] uppercase tracking-widest">Jenis Mesin</Typography>
+            <Typography variant="small" className="text-blue-900 font-black ml-1 text-[10px] uppercase tracking-widest">Pilih Status Baru</Typography>
             <Select 
-              value={formData.type} 
-              label="Pilih Jenis"
+              value={status} 
+              onChange={(val) => setStatus(val)}
+              label="Pilih Status"
               className="rounded-xl"
             >
-              <Option value="Pencacah Plastik Otomatis">Pencacah Plastik Otomatis</Option>
-              <Option value="Mesin Press Hidrolik">Mesin Press Hidrolik</Option>
-              <Option value="Pemilah Magnetik">Pemilah Magnetik</Option>
+              <Option value="OPERATING">OPERATING (Berjalan)</Option>
+              <Option value="BROKEN">BROKEN (Rusak)</Option>
+              <Option value="MAINTENANCE">MAINTENANCE (Perbaikan)</Option>
             </Select>
-          </div>
-
-          <div className="space-y-1">
-            <Typography variant="small" className="text-blue-900 font-black ml-1 text-[10px] uppercase tracking-widest">Manual Load Update (%)</Typography>
-            <Input 
-              type="number"
-              value={formData.load}
-              color="blue" 
-              className="rounded-xl"
-              labelProps={{ className: "hidden" }}
-            />
           </div>
         </div>
       </DialogBody>
 
-      <DialogFooter className="px-8 pb-8 pt-2 flex flex-col-reverse md:flex-row gap-3">
-        <Button variant="text" color="blue-gray" onClick={handleOpen} className="w-full md:w-auto normal-case font-bold py-3">
-          Batal
+      <DialogFooter className="px-8 pb-8 pt-2 flex flex-col gap-3">
+        <Button 
+          className="w-full bg-blue-900 rounded-xl normal-case font-black py-3.5 flex justify-center items-center gap-2" 
+          onClick={handleSubmit}
+          loading={loading}
+        >
+          {loading ? "Menyimpan..." : "Simpan Perubahan"}
         </Button>
-        <Button className="w-full md:flex-1 bg-blue-900 rounded-xl normal-case font-black py-3.5 shadow-none" onClick={handleOpen}>
-          Simpan Perubahan
+        <Button 
+          variant="text" 
+          color="blue-gray" 
+          onClick={handleOpen} 
+          disabled={loading}
+          className="w-full normal-case font-bold py-3"
+        >
+          Batal
         </Button>
       </DialogFooter>
     </Dialog>

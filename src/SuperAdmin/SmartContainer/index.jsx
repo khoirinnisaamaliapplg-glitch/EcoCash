@@ -15,35 +15,42 @@ import {
 } from "@material-tailwind/react";
 import { PlusIcon, MagnifyingGlassIcon, ArrowPathIcon } from "@heroicons/react/24/outline";
 
+// TOASTIFY UNTUK NOTIFIKASI
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+
 const TABLE_HEAD = ["Machine Code", "Name & Place", "Area", "Location", "Status", "Action"];
 
 const SmartContainerIndex = () => {
+  // State untuk kontrol Modal
   const [openCreate, setOpenCreate] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
   const [openDetail, setOpenDetail] = useState(false);
   
+  // State untuk Data
   const [selectedData, setSelectedData] = useState(null);
   const [machines, setMachines] = useState([]); 
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
+  // FUNGSI GET ALL DATA
   const fetchMachines = async () => {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      // Jika data masih tidak muncul, coba hapus "?isActive=true" sementara untuk testing
+      // Menambahkan isActive=true sesuai permintaanmu
       const response = await axios.get("http://localhost:3000/api/machines?isActive=true", {
         headers: { Authorization: `Bearer ${token}` }
       });
       
-      console.log("Data dari API:", response.data); // Cek struktur data di console browser
-
-      // Menyesuaikan berbagai kemungkinan struktur response
+      // Mengantisipasi berbagai struktur respon API (data.data atau data langsung)
       const result = response.data.data || response.data;
       setMachines(Array.isArray(result) ? result : []);
+      
     } catch (error) {
       console.error("Gagal mengambil data mesin:", error.response || error);
+      toast.error("Gagal memuat data mesin dari server!");
     } finally {
       setLoading(false);
     }
@@ -53,7 +60,7 @@ const SmartContainerIndex = () => {
     fetchMachines();
   }, []);
 
-  // Filter pencarian (Aman terhadap data null/undefined)
+  // LOGIKA PENCARIAN
   const filteredMachines = machines.filter((item) => {
     const searchLower = search.toLowerCase();
     return (
@@ -64,12 +71,15 @@ const SmartContainerIndex = () => {
     );
   });
 
+  // HANDLER BUKA MODAL (Mengisi selectedData terlebih dahulu)
   const handleOpenEdit = (row) => { setSelectedData(row); setOpenEdit(true); };
   const handleOpenDelete = (row) => { setSelectedData(row); setOpenDelete(true); };
   const handleOpenDetail = (row) => { setSelectedData(row); setOpenDetail(true); };
 
   return (
     <MainLayout>
+      <ToastContainer position="top-right" autoClose={3000} />
+
       <div className="p-4 md:p-0 space-y-6">
         {/* Header Section */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
@@ -85,7 +95,10 @@ const SmartContainerIndex = () => {
             variant="text" 
             size="sm" 
             className="flex items-center gap-2 text-blue-600 font-bold hover:bg-blue-50"
-            onClick={fetchMachines}
+            onClick={() => {
+              fetchMachines();
+              toast.info("Memperbarui data...");
+            }}
           >
             <ArrowPathIcon className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Refresh Database
           </Button>
@@ -131,10 +144,8 @@ const SmartContainerIndex = () => {
                 {loading ? (
                   <tr>
                     <td colSpan={6} className="p-10 text-center">
-                      <div className="flex flex-col items-center gap-2">
-                        <Spinner className="h-8 w-8 text-blue-500" />
-                        <Typography className="text-gray-500 text-sm">Memuat data...</Typography>
-                      </div>
+                      <Spinner className="h-8 w-8 text-blue-500 mx-auto" />
+                      <Typography className="text-gray-500 text-sm mt-2">Memuat data...</Typography>
                     </td>
                   </tr>
                 ) : filteredMachines.length === 0 ? (
@@ -152,14 +163,11 @@ const SmartContainerIndex = () => {
 
                     return (
                       <tr key={row.id || index} className="hover:bg-blue-50/10 transition-colors">
-                        {/* 1. Machine Code */}
                         <td className={classes}>
                           <Typography variant="small" className="font-bold text-blue-900 uppercase">
                             {row.machineCode || "-"}
                           </Typography>
                         </td>
-
-                        {/* 2. Name & Place */}
                         <td className={classes}>
                           <Typography variant="small" className="font-semibold text-gray-800">
                             {row.name || "Unnamed"}
@@ -168,18 +176,14 @@ const SmartContainerIndex = () => {
                             {row.placeName || "No Place Name"}
                           </Typography>
                         </td>
-
-                        {/* 3. Area Name */}
                         <td className={classes}>
                           <Chip 
-                            value={row.area?.name || `ID Area: ${row.areaId || '?'}`} 
+                            value={row.area?.name || `ID: ${row.areaId || '?'}`} 
                             size="sm" 
                             variant="ghost" 
                             className="rounded-full w-fit bg-blue-50 text-blue-700 border-none normal-case" 
                           />
                         </td>
-
-                        {/* 4. Location */}
                         <td className={classes}>
                           <Typography variant="small" className="text-gray-700 font-medium">
                             {row.district || "-"}
@@ -188,8 +192,6 @@ const SmartContainerIndex = () => {
                             {row.subdistrict || "-"}
                           </Typography>
                         </td>
-
-                        {/* 5. Status */}
                         <td className={classes}>
                           <Chip
                             variant="ghost"
@@ -199,8 +201,6 @@ const SmartContainerIndex = () => {
                             className="text-[10px] font-bold rounded-lg"
                           />
                         </td>
-
-                        {/* 6. Action */}
                         <td className={classes}>
                           <div className="flex items-center gap-2">
                             <Button onClick={() => handleOpenDetail(row)} size="sm" variant="text" className="text-blue-600 capitalize text-xs font-bold">Detail</Button>
@@ -217,30 +217,31 @@ const SmartContainerIndex = () => {
           </div>
         </Card>
 
-        {/* Modals Container */}
+        {/* MODAL SECTION */}
         <CreateModal 
           open={openCreate} 
           handleOpen={() => setOpenCreate(false)} 
           refreshData={fetchMachines} 
         />
         
+        {/* Render modal hanya jika selectedData sudah terisi agar tidak Blank */}
         {selectedData && (
           <>
             <EditModal 
               open={openEdit} 
-              handleOpen={() => setOpenEdit(false)} 
+              handleOpen={() => { setOpenEdit(false); }} 
               data={selectedData} 
               refreshData={fetchMachines} 
             />
             <DeleteModal 
               open={openDelete} 
-              handleOpen={() => setOpenDelete(false)} 
+              handleOpen={() => { setOpenDelete(false); }} 
               data={selectedData} 
               refreshData={fetchMachines} 
             />
             <DetailModal 
               open={openDetail} 
-              handleOpen={() => setOpenDetail(false)} 
+              handleOpen={() => { setOpenDetail(false); }} 
               data={selectedData} 
             />
           </>

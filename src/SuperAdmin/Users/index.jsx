@@ -3,6 +3,9 @@ import MainLayout from "../MainLayout";
 import { Card, Typography, Button, Input, Chip, Avatar } from "@material-tailwind/react";
 import { PlusIcon, MagnifyingGlassIcon, QrCodeIcon } from "@heroicons/react/24/outline";
 import axios from "axios";
+import { toast } from 'react-toastify'; // Import Toast
+
+// Import Modal
 import CreateUserModal from "./CreateUserModal";
 import EditUserModal from "./EditUserModal";
 import DeleteUserModal from "./DeleteUserModal";
@@ -16,17 +19,21 @@ const UserIndex = () => {
   const [selectedUser, setSelectedUser] = useState(null);
   const [users, setUsers] = useState([]);
   const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(true);
 
   const fetchUsers = async () => {
+    setLoading(true);
     try {
       const token = localStorage.getItem("token");
       const response = await axios.get("http://localhost:3000/api/users", {
         headers: { Authorization: `Bearer ${token}` }
       });
-      // Menyesuaikan struktur response data dari controller getUsers
-      setUsers(response.data.data || []);
+      setUsers(response.data.data || response.data || []);
     } catch (error) {
       console.error("Gagal mengambil data user:", error);
+      toast.error("Gagal memuat data pengguna."); // Feedback error
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -40,12 +47,11 @@ const UserIndex = () => {
     user?.username?.toLowerCase().includes(search.toLowerCase())
   );
 
-  // Sesuaikan dengan validRoles di Backend
   const getRoleColor = (role) => {
     switch (role) {
       case "SUPER_ADMIN": return "blue";
       case "AREA_ADMIN": return "green";
-      case "MACHINE_OPERATOR": return "orange"; // Ubah dari OPERATOR
+      case "MACHINE_OPERATOR": return "orange";
       case "STORE_ADMIN": return "purple";
       case "REGULAR_USER": return "teal";
       default: return "gray";
@@ -92,7 +98,7 @@ const UserIndex = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredUsers?.length > 0 ? (
+                {!loading && filteredUsers?.length > 0 ? (
                   filteredUsers.map((row) => (
                     <tr key={row.id} className="hover:bg-blue-50/20 transition-colors border-b border-blue-gray-50/50">
                       <td className="p-5">
@@ -120,7 +126,6 @@ const UserIndex = () => {
                         <Chip 
                           variant="ghost" 
                           size="sm" 
-                          // Ubah snake_case jadi teks biasa (contoh: AREA ADMIN)
                           value={row.role?.replace("_", " ") || "USER"} 
                           color={getRoleColor(row.role)} 
                           className="text-[10px] font-bold" 
@@ -129,8 +134,7 @@ const UserIndex = () => {
                       <td className="p-5">
                         <div className="flex flex-col">
                            <Typography className="text-xs font-semibold text-gray-700">
-                             {/* Jika API kamu me-return objek area, tampilkan namanya. Jika tidak, ID-nya. */}
-                             {row.area?.name || `Area ID: ${row.areaId || "Pusat"}`}
+                             {row.area?.name || (row.areaId ? `Area ID: ${row.areaId}` : "Pusat")}
                            </Typography>
                         </div>
                       </td>
@@ -153,7 +157,7 @@ const UserIndex = () => {
                 ) : (
                   <tr>
                     <td colSpan={6} className="p-10 text-center text-gray-400">
-                      Tidak ada data user ditemukan.
+                      {loading ? "Sedang memuat..." : "Tidak ada data user ditemukan."}
                     </td>
                   </tr>
                 )}
@@ -164,11 +168,21 @@ const UserIndex = () => {
       </div>
 
       <CreateUserModal open={openCreate} handleOpen={() => setOpenCreate(false)} refreshData={fetchUsers} />
-      {/* Pastikan Modal Edit & Delete juga menerima data terbaru */}
+      
       {selectedUser && (
         <>
-          <EditUserModal open={openEdit} handleOpen={() => setOpenEdit(false)} data={selectedUser} refreshData={fetchUsers} />
-          <DeleteUserModal open={openDelete} handleOpen={() => setOpenDelete(false)} data={selectedUser} refreshData={fetchUsers} />
+          <EditUserModal 
+            open={openEdit} 
+            handleOpen={() => setOpenEdit(false)} 
+            data={selectedUser} 
+            refreshData={fetchUsers} 
+          />
+          <DeleteUserModal 
+            open={openDelete} 
+            handleOpen={() => setOpenDelete(false)} 
+            data={selectedUser} 
+            refreshData={fetchUsers} 
+          />
         </>
       )}
     </MainLayout>

@@ -18,6 +18,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { useFormik } from "formik";
 import axios from "axios";
+import { toast } from "react-toastify"; // Import Toast
 
 const CreateUserModal = ({ open, handleOpen, refreshData }) => {
   const [isLoading, setIsLoading] = useState(false);
@@ -34,6 +35,7 @@ const CreateUserModal = ({ open, handleOpen, refreshData }) => {
         setAreas(response.data.data || []);
       } catch (err) {
         console.error("Gagal mengambil data area:", err);
+        toast.error("Gagal memuat daftar area.");
       }
     };
     if (open) fetchAreas();
@@ -53,7 +55,7 @@ const CreateUserModal = ({ open, handleOpen, refreshData }) => {
     onSubmit: async (values, { resetForm }) => {
       // Validasi sederhana
       if (!values.areaId || !values.role) {
-        alert("Harap pilih Role dan Lokasi Area!");
+        toast.warning("Harap pilih Role dan Lokasi Area!");
         return;
       }
 
@@ -61,7 +63,6 @@ const CreateUserModal = ({ open, handleOpen, refreshData }) => {
       try {
         const token = localStorage.getItem("token");
         
-        // PAYLOAD: Harus identik dengan format Postman
         const payload = {
           name: values.name.trim(),
           username: values.username.toLowerCase().trim(),
@@ -69,40 +70,69 @@ const CreateUserModal = ({ open, handleOpen, refreshData }) => {
           password: values.password,
           role: values.role,
           phoneNumber: values.phoneNumber ? values.phoneNumber.trim() : null,
-          areaId: Number(values.areaId), // WAJIB Konversi ke Number
+          areaId: Number(values.areaId),
         };
 
         const response = await axios.post("http://localhost:3000/api/users", payload, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        alert(response.data.message || "User Berhasil Didaftarkan!");
+        toast.success(response.data.message || "User Berhasil Didaftarkan!");
         resetForm();
         handleOpen();
         if (refreshData) refreshData();
       } catch (error) {
-        // Menangkap pesan error spesifik (seperti "User already exists")
         const errorMsg = error.response?.data?.message || "Terjadi kesalahan server";
-        alert(`Gagal: ${errorMsg}`);
+        toast.error(`Gagal: ${errorMsg}`);
       } finally {
         setIsLoading(false);
       }
     },
   });
 
+  const handleClose = () => {
+    formik.resetForm();
+    handleOpen();
+  };
+
   return (
-    <Dialog open={open} handler={handleOpen} size="md" className="rounded-[28px]">
-      <DialogHeader className="px-8 pt-8 text-blue-900">Registrasi User Baru</DialogHeader>
+    <Dialog open={open} handler={handleClose} size="md" className="rounded-[28px]">
+      <DialogHeader className="px-8 pt-8 text-blue-900 font-bold">Registrasi User Baru</DialogHeader>
       <form onSubmit={formik.handleSubmit}>
         <DialogBody className="px-8 py-4 space-y-4 overflow-visible">
-          <Input label="Nama Lengkap" icon={<UserIcon className="h-4 w-4" />} {...formik.getFieldProps("name")} required />
-          <Input label="Username" icon={<UserCircleIcon className="h-4 w-4" />} {...formik.getFieldProps("username")} required />
-          <Input label="Email" type="email" icon={<EnvelopeIcon className="h-4 w-4" />} {...formik.getFieldProps("email")} required />
-          <Input label="Phone" icon={<PhoneIcon className="h-4 w-4" />} {...formik.getFieldProps("phoneNumber")} />
-          <Input type="password" label="Password" icon={<KeyIcon className="h-4 w-4" />} {...formik.getFieldProps("password")} required />
+          <Input 
+            label="Nama Lengkap" 
+            icon={<UserIcon className="h-4 w-4" />} 
+            {...formik.getFieldProps("name")} 
+            required 
+          />
+          <Input 
+            label="Username" 
+            icon={<UserCircleIcon className="h-4 w-4" />} 
+            {...formik.getFieldProps("username")} 
+            required 
+          />
+          <Input 
+            label="Email" 
+            type="email" 
+            icon={<EnvelopeIcon className="h-4 w-4" />} 
+            {...formik.getFieldProps("email")} 
+            required 
+          />
+          <Input 
+            label="Phone" 
+            icon={<PhoneIcon className="h-4 w-4" />} 
+            {...formik.getFieldProps("phoneNumber")} 
+          />
+          <Input 
+            type="password" 
+            label="Password" 
+            icon={<KeyIcon className="h-4 w-4" />} 
+            {...formik.getFieldProps("password")} 
+            required 
+          />
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* SELECT ROLE */}
             <Select 
               label="Pilih Role" 
               value={formik.values.role}
@@ -115,7 +145,6 @@ const CreateUserModal = ({ open, handleOpen, refreshData }) => {
               <Option value="REGULAR_USER">Regular User</Option>
             </Select>
 
-            {/* SELECT AREA (ID) */}
             <Select 
               label="Lokasi Penempatan Area" 
               key={formik.values.areaId ? "has-val" : "no-val"}
@@ -132,7 +161,7 @@ const CreateUserModal = ({ open, handleOpen, refreshData }) => {
         </DialogBody>
 
         <DialogFooter className="px-8 pb-8 gap-3">
-          <Button variant="text" color="red" onClick={() => { formik.resetForm(); handleOpen(); }}>
+          <Button variant="text" color="red" onClick={handleClose}>
             Batal
           </Button>
           <Button type="submit" disabled={isLoading} className="bg-[#2b6cb0]">

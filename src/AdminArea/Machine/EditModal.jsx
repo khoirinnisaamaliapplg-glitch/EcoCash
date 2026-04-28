@@ -6,42 +6,97 @@ import {
   DialogFooter,
   Input,
   Button,
+  Typography,
+  IconButton,
+  Textarea,
+  Spinner,
   Select,
   Option,
-  Typography,
 } from "@material-tailwind/react";
-import { CheckCircleIcon, XCircleIcon, ShieldCheckIcon } from "@heroicons/react/24/solid";
+import { 
+  XMarkIcon, 
+  CheckCircleIcon, 
+  XCircleIcon, 
+  PencilSquareIcon,
+  CpuChipIcon
+} from "@heroicons/react/24/outline";
 import axios from "axios";
 
-const EditModal = ({ open, setOpen, selectedArea, refreshData }) => {
+const EditModal = ({ open, handleOpen, data, refreshData }) => {
+  // 1. State Management
+  const [formData, setFormData] = useState({
+    machineCode: "",
+    name: "",
+    areaId: "",
+    machineType: "BOX",
+    locationType: "OTHER",
+    placeName: "",
+    latitude: "0",
+    longitude: "0",
+    address: "",
+    district: "",
+    subdistrict: "",
+    description: "",
+  });
+  
+  const [areas, setAreas] = useState([]);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState(null); // 'success' | 'error' | null
-  const [errorMessage, setErrorMessage] = useState("");
-  
-  const [formData, setFormData] = useState({ 
-    name: "", 
-    province: "", 
-    code: "", 
-    regencyName: "", 
-    regencyType: "" 
-  });
+  const [errorDetails, setErrorDetails] = useState("");
 
+  // 2. Inisialisasi data & Bersihkan ID (Logika dari Kode Kedua)
   useEffect(() => {
-    if (open && selectedArea) {
+    if (data && open) {
       setFormData({
-        name: selectedArea.name || "",
-        province: selectedArea.province || "",
-        code: selectedArea.code || "",
-        regencyName: selectedArea.regencyName || "",
-        regencyType: selectedArea.regencyType || "",
+        id: parseInt(data.id),
+        machineCode: data.machineCode || "",
+        name: data.name || "",
+        areaId: data.areaId?.toString() || "",
+        machineType: data.machineType || "BOX",
+        locationType: data.locationType || "OTHER",
+        placeName: data.placeName || "",
+        latitude: data.latitude?.toString() || "0",
+        longitude: data.longitude?.toString() || "0",
+        address: data.address || "",
+        district: data.district || "",
+        subdistrict: data.subdistrict || "",
+        description: data.description || "",
       });
     }
-  }, [selectedArea, open]);
+  }, [data, open]);
 
+  // 3. Load Daftar Area untuk Dropdown Select
+  useEffect(() => {
+    if (open) {
+      const fetchAreas = async () => {
+        try {
+          const token = localStorage.getItem("token");
+          const response = await axios.get("http://localhost:3000/api/areas", {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          setAreas(response.data.data || response.data);
+        } catch (err) {
+          console.error("Gagal load daftar area:", err);
+        }
+      };
+      fetchAreas();
+    }
+  }, [open]);
+
+  // 4. Handler Perubahan Input
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSelectChange = (name, value) => {
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  // 5. Fungsi Update (PATCH)
   const handleUpdate = async () => {
-    if (!formData.name) {
-      setErrorMessage("Nama Area tidak boleh kosong");
-      setStatus("error");
+    if (!formData.name?.trim()) {
+      alert("Nama mesin wajib diisi.");
       return;
     }
 
@@ -51,117 +106,174 @@ const EditModal = ({ open, setOpen, selectedArea, refreshData }) => {
     try {
       const token = localStorage.getItem("token");
       
-      // Mengirimkan data yang diperbarui
-      await axios.patch(`http://localhost:3000/api/areas/${selectedArea.id}`, formData, {
+      const payload = {
+        machineCode: formData.machineCode?.trim(),
+        name: formData.name?.trim(),
+        areaId: parseInt(formData.areaId),
+        machineType: formData.machineType,
+        locationType: formData.locationType,
+        latitude: formData.latitude,
+        longitude: formData.longitude,
+        address: formData.address,
+        placeName: formData.placeName,
+        district: formData.district,
+        subdistrict: formData.subdistrict,
+        description: formData.description
+      };
+
+      await axios.patch(`http://localhost:3000/api/machines/${formData.id}`, payload, {
         headers: { 
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json"
-        }
+        },
       });
 
       setStatus("success");
-      
       setTimeout(() => {
-        handleClose();
+        setStatus(null);
+        handleOpen();
         if (refreshData) refreshData();
       }, 1500);
-      
+
     } catch (error) {
-      console.error("Gagal update area:", error.response?.data);
-      const msg = error.response?.data?.message || "Terjadi kesalahan pada server.";
-      setErrorMessage(msg);
+      console.error("PATCH ERROR:", error.response?.data);
       setStatus("error");
+      setErrorDetails(error.response?.data?.message || "Gagal memperbarui data mesin.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleClose = () => {
-    setOpen(false);
-    setTimeout(() => {
-      setStatus(null);
-      setErrorMessage("");
-    }, 300);
-  };
+  const locationOptions = [
+    "OFFICE", "HOTEL", "MALL", "MARKET", "SCHOOL_CAMPUS", 
+    "RT_RW", "PARK", "HOSPITAL", "OTHER"
+  ];
 
   return (
     <Dialog 
       open={open} 
-      handler={handleClose} 
-      size="sm"
-      className="rounded-2xl p-2 md:p-4"
+      handler={handleOpen} 
+      size="xl" 
+      className="rounded-xl max-h-[95vh] overflow-hidden flex flex-col shadow-2xl"
     >
-      {status === "success" ? (
-        <div className="flex flex-col items-center py-10">
-          <CheckCircleIcon className="h-20 w-20 text-green-500 mb-4 animate-bounce" />
-          <Typography variant="h4" color="blue-gray" className="font-bold">Wilayah Diperbarui!</Typography>
-          <Typography className="text-gray-600 font-medium text-center px-4">Informasi administratif wilayah berhasil disimpan.</Typography>
+      {/* Header - Style Visual Rapi */}
+      <DialogHeader className="flex justify-between items-center border-b border-gray-100 px-6 py-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-orange-50 rounded-lg">
+            <PencilSquareIcon className="h-6 w-6 text-orange-600" />
+          </div>
+          <div>
+            <Typography variant="h5" color="blue-gray" className="font-bold">
+              Edit Data Mesin
+            </Typography>
+            <Typography className="text-xs text-blue-600 font-bold uppercase tracking-tight">
+              ID Database: {formData.id}
+            </Typography>
+          </div>
         </div>
-      ) : status === "error" ? (
-        <div className="flex flex-col items-center py-10 text-center">
-          <XCircleIcon className="h-20 w-20 text-red-500 mb-4" />
-          <Typography variant="h4" color="blue-gray" className="font-bold">Gagal Update</Typography>
-          <Typography className="text-red-500 font-medium px-6 mt-2">{errorMessage}</Typography>
-          <Button className="mt-6 bg-red-500 rounded-xl" onClick={() => setStatus(null)}>Coba Lagi</Button>
-        </div>
-      ) : (
-        <>
-          <DialogHeader className="flex flex-col items-start gap-1">
-            <div className="flex items-center gap-2 text-blue-900">
-              <ShieldCheckIcon className="h-6 w-6" />
-              <Typography variant="h5" className="font-bold uppercase tracking-tight">Area Management</Typography>
-            </div>
-            <Typography className="text-xs text-gray-500 font-normal">Pembaruan data wilayah terbatas untuk Admin Area.</Typography>
-          </DialogHeader>
+        <IconButton variant="text" color="blue-gray" onClick={handleOpen}>
+          <XMarkIcon className="h-5 w-5" strokeWidth={2} />
+        </IconButton>
+      </DialogHeader>
 
-          <DialogBody className="space-y-5 max-h-[65vh] overflow-y-auto pr-2">
-            <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl mb-2">
-              <Typography className="text-[10px] font-bold text-blue-700 uppercase tracking-widest">Identitas Wilayah (Read Only)</Typography>
-              <Typography className="text-sm font-bold text-blue-900">Kode: {formData.code} — {formData.regencyType}</Typography>
-            </div>
-
-            <div className="flex flex-col gap-4">
-              <Input 
-                label="Nama Display Area" 
-                value={formData.name} 
-                onChange={(e) => setFormData({...formData, name: e.target.value})} 
-                color="blue" 
-              />
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input 
-                  label="Kabupaten/Kota" 
-                  value={formData.regencyName} 
-                  onChange={(e) => setFormData({...formData, regencyName: e.target.value})} 
-                  color="blue" 
-                />
-                <Input 
-                  label="Provinsi" 
-                  value={formData.province} 
-                  onChange={(e) => setFormData({...formData, province: e.target.value})} 
-                  color="blue" 
-                />
+      {/* Body - Layout Grid 2 Kolom */}
+      <DialogBody className="overflow-y-auto px-6 py-4 flex-grow">
+        {status === "success" ? (
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <CheckCircleIcon className="h-20 w-20 text-green-500 mb-4 animate-bounce" />
+            <Typography variant="h4" className="text-green-700 font-bold">Update Berhasil!</Typography>
+            <Typography className="text-gray-500">Informasi mesin telah diperbarui.</Typography>
+          </div>
+        ) : status === "error" ? (
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <XCircleIcon className="h-20 w-20 text-red-500 mb-4" />
+            <Typography variant="h5" color="red" className="font-bold">Gagal Update</Typography>
+            <Typography color="red" className="mt-2 text-sm">{errorDetails}</Typography>
+            <Button variant="outlined" color="red" onClick={() => setStatus(null)} className="mt-6 rounded-lg">Coba Lagi</Button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            
+            {/* Kolom 1: Identitas & Area */}
+            <div className="space-y-6">
+              <div className="flex items-center gap-2 border-l-4 border-blue-500 pl-3">
+                <Typography className="font-bold text-gray-800 uppercase text-xs tracking-wider">Identitas & Area</Typography>
               </div>
-              
-              <div className="opacity-60 pointer-events-none">
-                <Input 
-                  label="Kode Wilayah" 
-                  value={formData.code} 
-                  disabled
-                  className="bg-gray-100"
-                />
+              <div className="grid grid-cols-1 gap-4">
+                <Select 
+                  label="Area Lokasi" 
+                  value={formData.areaId} 
+                  onChange={(v) => handleSelectChange("areaId", v)}
+                >
+                  {areas.map((a) => (
+                    <Option key={a.id} value={a.id.toString()}>{a.name}</Option>
+                  ))}
+                </Select>
+                <Input label="Kode Mesin" name="machineCode" value={formData.machineCode} onChange={handleChange} />
+                <Input label="Nama Tampilan Mesin" name="name" value={formData.name} onChange={handleChange} color="blue" />
+                <Select label="Tipe Sistem" value={formData.machineType} onChange={(v) => handleSelectChange("machineType", v)}>
+                  <Option value="BOX">BOX SYSTEM</Option>
+                  <Option value="CONTAINER">CONTAINER SYSTEM</Option>
+                </Select>
               </div>
             </div>
-          </DialogBody>
 
-          <DialogFooter className="flex flex-col-reverse md:flex-row gap-2 border-t border-gray-100 pt-4">
-            <Button variant="text" color="red" onClick={handleClose} disabled={loading} className="w-full md:w-auto rounded-xl normal-case">Batal</Button>
-            <Button className="bg-blue-600 w-full md:w-auto rounded-xl px-10 normal-case" onClick={handleUpdate} disabled={loading}>
-              {loading ? "Menyimpan..." : "Update Informasi"}
+            {/* Kolom 2: Lokasi & Koordinat */}
+            <div className="space-y-6">
+              <div className="flex items-center gap-2 border-l-4 border-green-500 pl-3">
+                <Typography className="font-bold text-gray-800 uppercase text-xs tracking-wider">Lokasi & Koordinat</Typography>
+              </div>
+              <div className="grid grid-cols-1 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Input label="Nama Tempat/Gedung" name="placeName" value={formData.placeName} onChange={handleChange} />
+                  <Select label="Kategori Lokasi" value={formData.locationType} onChange={(v) => handleSelectChange("locationType", v)}>
+                    {locationOptions.map((opt) => (
+                      <Option key={opt} value={opt}>{opt.replace("_", " ")}</Option>
+                    ))}
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <Input label="Latitude" name="latitude" value={formData.latitude} onChange={handleChange} />
+                  <Input label="Longitude" name="longitude" value={formData.longitude} onChange={handleChange} />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <Input label="Kecamatan" name="district" value={formData.district} onChange={handleChange} />
+                  <Input label="Kelurahan" name="subdistrict" value={formData.subdistrict} onChange={handleChange} />
+                </div>
+                <Textarea label="Alamat Lengkap" name="address" rows={2} value={formData.address} onChange={handleChange} />
+              </div>
+            </div>
+
+            {/* Deskripsi */}
+            <div className="lg:col-span-2 pt-2">
+              <div className="flex items-center gap-2 border-l-4 border-orange-400 pl-3 mb-4">
+                <Typography className="font-bold text-gray-800 uppercase text-xs tracking-wider">Informasi Tambahan</Typography>
+              </div>
+              <Textarea label="Catatan Deskripsi" name="description" rows={2} value={formData.description} onChange={handleChange} />
+            </div>
+          </div>
+        )}
+      </DialogBody>
+
+      {/* Footer */}
+      <DialogFooter className="border-t border-gray-100 p-4 gap-2">
+        {!status && (
+          <>
+            <Button variant="text" color="red" onClick={handleOpen} disabled={loading} className="normal-case rounded-lg">
+              Batal
             </Button>
-          </DialogFooter>
-        </>
-      )}
+            <Button 
+              variant="gradient" 
+              color="blue" 
+              onClick={handleUpdate} 
+              disabled={loading} 
+              className="flex items-center gap-2 normal-case rounded-lg px-8"
+            >
+              {loading ? <Spinner className="h-4 w-4" /> : "Simpan Perubahan"}
+            </Button>
+          </>
+        )}
+      </DialogFooter>
     </Dialog>
   );
 };
