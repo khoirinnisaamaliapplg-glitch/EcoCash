@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react"; // Tambahkan useEffect
 import {
   Dialog,
   DialogHeader,
@@ -17,25 +17,32 @@ import {
   XCircleIcon,
   ShoppingBagIcon,
   CurrencyDollarIcon,
-  CubeIcon,
-  BuildingStorefrontIcon // Icon tambahan untuk Store
+  BuildingStorefrontIcon
 } from "@heroicons/react/24/outline";
 import axios from "axios";
 
-const AddProductModal = ({ open, handleOpen, refreshData }) => {
+// Terima prop storeId dari ProdukIndex
+const AddProductModal = ({ open, handleOpen, refreshData, storeId }) => {
   const initialState = {
     name: "",
     price: "",
     stock: "",
     weight: "",
     description: "",
-    storeId: "", // Sekarang kosong, menunggu input user
+    storeId: "", 
   };
 
   const [form, setForm] = useState(initialState);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState(null);
   const [errorDetails, setErrorDetails] = useState("");
+
+  // Sinkronisasi: Update form.storeId ketika modal dibuka dan storeId tersedia
+  useEffect(() => {
+    if (open && storeId) {
+      setForm((prev) => ({ ...prev, storeId: storeId }));
+    }
+  }, [open, storeId]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -51,9 +58,9 @@ const AddProductModal = ({ open, handleOpen, refreshData }) => {
   };
 
   const handleSubmit = async () => {
-    // Validasi: Sekarang storeId wajib diisi manual
+    // Validasi dasar
     if (!form.name.trim() || !form.price || !form.storeId) {
-      alert("Mohon isi Nama Produk, Harga, dan ID Toko!");
+      alert("Data belum lengkap!");
       return;
     }
 
@@ -65,7 +72,7 @@ const AddProductModal = ({ open, handleOpen, refreshData }) => {
         price: Number(form.price),
         stock: Number(form.stock || 0),
         weight: Number(form.weight || 0),
-        storeId: Number(form.storeId), // Pastikan jadi angka jika API minta number
+        storeId: Number(form.storeId), 
       };
 
       const response = await axios.post("http://localhost:3000/api/products", payload, {
@@ -126,15 +133,16 @@ const AddProductModal = ({ open, handleOpen, refreshData }) => {
             <div className="space-y-4">
               <Typography className="font-bold text-gray-800 text-xs uppercase">Store & Harga</Typography>
               
-              {/* INPUT STORE ID MANUAL DI SINI */}
+              {/* INPUT STORE ID SEKARANG READ-ONLY / DISABLED KARENA OTOMATIS */}
               <Input 
-                label="ID Toko (Store ID)" 
+                label="ID Toko (Terisi Otomatis)" 
                 name="storeId" 
                 type="number"
+                disabled // User tidak perlu ubah ini manual
                 icon={<BuildingStorefrontIcon className="h-4 w-4" />}
                 value={form.storeId} 
                 onChange={handleChange}
-                color="orange" // Dibedakan warnanya agar mencolok
+                className="bg-gray-50"
               />
 
               <Input 
@@ -163,7 +171,7 @@ const AddProductModal = ({ open, handleOpen, refreshData }) => {
               variant="gradient" 
               color="blue" 
               onClick={handleSubmit} 
-              disabled={loading}
+              disabled={loading || !form.storeId} // Tombol mati jika storeId belum ada
               className="flex items-center gap-2"
             >
               {loading ? <Spinner className="h-4 w-4" /> : "Simpan"}

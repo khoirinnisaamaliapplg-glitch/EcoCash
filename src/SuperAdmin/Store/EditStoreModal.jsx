@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from "react";
+import axios from "axios";
 import { 
   Dialog, DialogHeader, DialogBody, DialogFooter, 
   Input, Button, Typography, Textarea 
 } from "@material-tailwind/react";
 import { PencilSquareIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { toast } from "react-toastify";
 
-const EditStoreModal = ({ open, handleOpen, data, onConfirm }) => {
+const EditStoreModal = ({ open, handleOpen, data, onSuccess }) => {
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     address: "",
@@ -22,9 +25,8 @@ const EditStoreModal = ({ open, handleOpen, data, onConfirm }) => {
     }
   });
 
-  // Sinkronisasi data saat modal dibuka
   useEffect(() => {
-    if (data) {
+    if (data && open) {
       setFormData({
         name: data.name || "",
         address: data.address || "",
@@ -56,25 +58,40 @@ const EditStoreModal = ({ open, handleOpen, data, onConfirm }) => {
     }
   };
 
-  const handleSubmit = () => {
-    // Konstruksi Payload sesuai kebutuhan backend
-    const payload = {
-      name: formData.name.trim(),
-      address: formData.address.trim(),
-      district: formData.district.trim(),
-      subdistrict: formData.subdistrict.trim(),
-      latitude: parseFloat(formData.latitude) || 0,
-      longitude: parseFloat(formData.longitude) || 0,
-      areaId: Number(formData.areaId),
-      admin: {
-        name: formData.admin.name.trim(),
-        username: formData.admin.username.toLowerCase().trim(),
-        email: formData.admin.email.toLowerCase().trim(),
-        phoneNumber: formData.admin.phoneNumber
-      }
-    };
+  const handleSubmit = async () => {
+    setLoading(true);
+    try {
+      // Konstruksi payload untuk PATCH
+      const payload = {
+        name: formData.name.trim(),
+        address: formData.address.trim(),
+        district: formData.district.trim(),
+        subdistrict: formData.subdistrict.trim(),
+        latitude: parseFloat(formData.latitude) || 0,
+        longitude: parseFloat(formData.longitude) || 0,
+        areaId: Number(formData.areaId),
+        admin: {
+          name: formData.admin.name.trim(),
+          username: formData.admin.username.toLowerCase().trim(),
+          email: formData.admin.email.toLowerCase().trim(),
+          phoneNumber: formData.admin.phoneNumber
+        }
+      };
 
-    onConfirm(payload);
+      // MENGGUNAKAN PATCH
+      await axios.patch(`http://localhost:3000/api/stores/${data.id}`, payload, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+      });
+
+      toast.success("Berhasil update data toko (PATCH)!");
+      onSuccess(); 
+      handleOpen(); 
+    } catch (error) {
+      console.error("Patch error detail:", error.response?.data);
+      toast.error(error.response?.data?.message || "Gagal update toko dengan metode PATCH");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -84,24 +101,19 @@ const EditStoreModal = ({ open, handleOpen, data, onConfirm }) => {
           <div className="p-2.5 bg-blue-50 rounded-xl">
             <PencilSquareIcon className="h-6 w-6 text-blue-600" />
           </div>
-          <Typography variant="h5" className="text-blue-900 font-bold">Edit Unit Toko</Typography>
+          <Typography variant="h5" className="text-blue-900 font-bold">Edit Unit Toko (PATCH)</Typography>
         </div>
         <XMarkIcon className="h-5 w-5 cursor-pointer text-gray-400" onClick={handleOpen} />
       </DialogHeader>
 
       <DialogBody className="px-8 py-4 space-y-6 overflow-y-auto max-h-[70vh]">
-        
-        {/* SEKSI INFORMASI TOKO */}
+        {/* Konten Form Tetap Sama Seperti Sebelumnya */}
         <div className="space-y-4">
-          <Typography className="font-bold text-blue-600 border-b pb-1 text-xs uppercase tracking-wider">
-            Informasi Toko
-          </Typography>
-          
+          <Typography className="font-bold text-blue-600 border-b pb-1 text-xs uppercase tracking-wider">Informasi Toko</Typography>
           <div className="space-y-1">
             <Typography variant="small" className="text-blue-900 font-bold ml-1">Nama Toko</Typography>
             <Input name="name" value={formData.name} onChange={handleChange} labelProps={{ className: "hidden" }} className="!rounded-xl !border-blue-gray-100 focus:!border-blue-500" />
           </div>
-
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
               <Typography variant="small" className="text-blue-900 font-bold ml-1">Kecamatan</Typography>
@@ -112,7 +124,6 @@ const EditStoreModal = ({ open, handleOpen, data, onConfirm }) => {
               <Input name="subdistrict" value={formData.subdistrict} onChange={handleChange} labelProps={{ className: "hidden" }} className="!rounded-xl !border-blue-gray-100 focus:!border-blue-500" />
             </div>
           </div>
-
           <div className="grid grid-cols-3 gap-4">
             <div className="space-y-1">
               <Typography variant="small" className="text-blue-900 font-bold ml-1">ID Area</Typography>
@@ -127,24 +138,18 @@ const EditStoreModal = ({ open, handleOpen, data, onConfirm }) => {
               <Input name="longitude" value={formData.longitude} onChange={handleChange} labelProps={{ className: "hidden" }} className="!rounded-xl !border-blue-gray-100 focus:!border-blue-500" />
             </div>
           </div>
-
           <div className="space-y-1">
             <Typography variant="small" className="text-blue-900 font-bold ml-1">Alamat Lengkap</Typography>
             <Textarea name="address" value={formData.address} onChange={handleChange} labelProps={{ className: "hidden" }} className="!rounded-xl !border-blue-gray-100 focus:!border-blue-500" />
           </div>
         </div>
 
-        {/* SEKSI AKUN ADMIN */}
         <div className="space-y-4 pt-2">
-          <Typography className="font-bold text-green-600 border-b pb-1 text-xs uppercase tracking-wider">
-            Akun Admin Toko
-          </Typography>
-          
+          <Typography className="font-bold text-green-600 border-b pb-1 text-xs uppercase tracking-wider">Akun Admin Toko</Typography>
           <div className="space-y-1">
             <Typography variant="small" className="text-blue-900 font-bold ml-1">Nama Admin</Typography>
             <Input name="admin.name" value={formData.admin.name} onChange={handleChange} labelProps={{ className: "hidden" }} className="!rounded-xl !border-blue-gray-100 focus:!border-blue-500" />
           </div>
-
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
               <Typography variant="small" className="text-blue-900 font-bold ml-1">Username</Typography>
@@ -155,26 +160,21 @@ const EditStoreModal = ({ open, handleOpen, data, onConfirm }) => {
               <Input name="admin.email" type="email" value={formData.admin.email} onChange={handleChange} labelProps={{ className: "hidden" }} className="!rounded-xl !border-blue-gray-100 focus:!border-blue-500" />
             </div>
           </div>
-
           <div className="space-y-1">
             <Typography variant="small" className="text-blue-900 font-bold ml-1">Nomor WhatsApp</Typography>
             <Input name="admin.phoneNumber" value={formData.admin.phoneNumber} onChange={handleChange} labelProps={{ className: "hidden" }} className="!rounded-xl !border-blue-gray-100 focus:!border-blue-500" />
           </div>
-          
-          <Typography className="text-[10px] text-gray-400 italic">
-            *Password tidak ditampilkan demi keamanan. Hubungi admin sistem untuk reset password.
-          </Typography>
         </div>
-
       </DialogBody>
 
       <DialogFooter className="px-8 pb-8 pt-2 gap-3">
         <Button variant="text" color="red" onClick={handleOpen} className="normal-case font-bold">Batal</Button>
         <Button 
-          className="bg-[#2b6cb0] px-10 rounded-xl normal-case font-bold shadow-none hover:shadow-lg transition-all" 
+          className="bg-[#2b6cb0] px-10 rounded-xl normal-case font-bold" 
           onClick={handleSubmit}
+          loading={loading}
         >
-          Simpan Perubahan
+          Simpan (PATCH)
         </Button>
       </DialogFooter>
     </Dialog>

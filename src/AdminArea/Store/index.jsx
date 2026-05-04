@@ -17,7 +17,7 @@ import {
   BuildingStorefrontIcon,
 } from "@heroicons/react/24/outline";
 
-// Import Modal - Pastikan file ini ada di folder yang sama
+// Import Modal - Pastikan file ini sesuai dengan struktur folder Anda
 import CreateStoreModal from "./CreateStoreModal";
 import EditStoreModal from "./EditStoreModal";
 import DeleteStoreModal from "./DeleteStoreModal";
@@ -41,12 +41,17 @@ const StoreIndex = () => {
     headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
   }), []);
 
-  // --- 1. READ (Get All Stores) ---
+  // --- 1. READ (Get All Stores & Filter Active Only) ---
   const fetchStores = useCallback(async () => {
     try {
       setLoading(true);
       const response = await axios.get(`${API_URL}?search=${searchTerm}`, getAuthHeader());
-      setStores(response.data.data || []);
+      
+      // LOGIKA FILTER: Hanya menampilkan toko yang statusnya aktif (isActive: true)
+      const allData = response.data.data || [];
+      const activeOnly = allData.filter(store => store.isActive !== false);
+      
+      setStores(activeOnly);
     } catch (error) {
       console.error("Gagal mengambil data:", error);
     } finally {
@@ -83,9 +88,10 @@ const StoreIndex = () => {
   // --- 4. DELETE (Soft Delete via Patch) ---
   const handleDelete = async (id) => {
     try {
-      // Sesuai praktik umum Admin Area, kita ubah isActive jadi false
+      // Mengubah isActive menjadi false sesuai kebutuhan Soft Delete
       await axios.patch(`${API_URL}/${id}`, { isActive: false }, getAuthHeader());
       setOpenDelete(false);
+      // Panggil fetchStores agar data yang baru saja diubah statusnya langsung hilang (terfilter)
       fetchStores();
     } catch (error) {
       alert(error.response?.data?.message || "Gagal menghapus toko");
@@ -105,12 +111,12 @@ const StoreIndex = () => {
               </Typography>
             </div>
             <Typography className="text-gray-500 text-sm italic">
-              Kelola toko dan unit area EcoCash
+              Daftar toko aktif EcoCash
             </Typography>
           </div>
           <Button
             onClick={() => setOpenCreate(true)}
-            className="flex items-center gap-2 bg-green-500 rounded-xl shadow-none hover:shadow-lg"
+            className="flex items-center gap-2 bg-green-500 rounded-xl shadow-none hover:shadow-lg capitalize"
           >
             <PlusIcon className="h-5 w-5 stroke-[3]" /> Tambah Toko
           </Button>
@@ -145,7 +151,7 @@ const StoreIndex = () => {
                 {loading ? (
                   <tr><td colSpan={6} className="p-10 text-center text-gray-400 italic">Memuat data...</td></tr>
                 ) : stores.length === 0 ? (
-                  <tr><td colSpan={6} className="p-10 text-center text-gray-400 italic">Data tidak tersedia</td></tr>
+                  <tr><td colSpan={6} className="p-10 text-center text-gray-400 italic">Tidak ada toko aktif ditemukan</td></tr>
                 ) : (
                   stores.map((row) => (
                     <tr key={row.id} className="hover:bg-blue-50/20 border-b border-blue-gray-50 transition-colors">
@@ -161,14 +167,14 @@ const StoreIndex = () => {
                       </td>
                       <td className="p-4">
                         <Typography className="text-sm font-medium">{row.admin?.name || "-"}</Typography>
-                        <Typography className="text-[11px] text-gray-400">{row.admin?.email}</Typography>
+                        <Typography className="text-[11px] text-gray-400">{row.admin?.email || ""}</Typography>
                       </td>
                       <td className="p-4">
                         <Chip
                           size="sm"
                           variant="ghost"
-                          value={row.isActive !== false ? "Active" : "Inactive"}
-                          color={row.isActive !== false ? "green" : "red"}
+                          value="Active"
+                          color="green"
                           className="rounded-full"
                         />
                       </td>

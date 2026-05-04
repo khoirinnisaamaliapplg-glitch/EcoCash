@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import MainLayout from "../MainLayout"; 
 import CreateModal from "./CreateModal";
 import EditModal from "./EditModal";
@@ -11,67 +11,101 @@ import {
   Button, 
   Input, 
   Chip, 
-  Spinner 
+  Spinner,
+  IconButton
 } from "@material-tailwind/react";
-import { PlusIcon, MagnifyingGlassIcon, ArrowPathIcon } from "@heroicons/react/24/outline";
+import { 
+  PlusIcon, 
+  MagnifyingGlassIcon, 
+  ArrowPathIcon,
+  ChevronRightIcon, 
+  ChevronLeftIcon,
+  ChevronUpDownIcon 
+} from "@heroicons/react/24/outline";
 
-// TOASTIFY UNTUK NOTIFIKASI
+// TOASTIFY & DEBOUNCE
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { useDebounce } from "use-debounce";
 
-const TABLE_HEAD = ["Machine Code", "Name & Place", "Area", "Location", "Status", "Action"];
+const TABLE_HEAD = [
+  { label: "Machine Code", value: "machineCode" },
+  { label: "Name & Place", value: "name" },
+  { label: "Area", value: "areaId" },
+  { label: "Location", value: "district" },
+  { label: "Status", value: "isActive" },
+  { label: "Action", value: null },
+];
 
 const SmartContainerIndex = () => {
-  // State untuk kontrol Modal
+  // --- States ---
+  const [machines, setMachines] = useState([]); 
+  const [loading, setLoading] = useState(true);
+  
+  // State Query (Pagination, Search, Sort)
+  const [search, setSearch] = useState("");
+  const [debouncedSearch] = useDebounce(search, 500);
+  const [page, setPage] = useState(1);
+  const [limit] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalData, setTotalData] = useState(0);
+  const [sortBy, setSortBy] = useState("createdAt");
+  const [sortOrder, setSortOrder] = useState("desc");
+
+  // State Modal
   const [openCreate, setOpenCreate] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
   const [openDetail, setOpenDetail] = useState(false);
-  
-  // State untuk Data
   const [selectedData, setSelectedData] = useState(null);
-  const [machines, setMachines] = useState([]); 
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
 
-  // FUNGSI GET ALL DATA
-  const fetchMachines = async () => {
+  // --- Functions ---
+
+  const fetchMachines = useCallback(async () => {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      // Menambahkan isActive=true sesuai permintaanmu
-      const response = await axios.get("http://localhost:3000/api/machines?isActive=true", {
-        headers: { Authorization: `Bearer ${token}` }
+      const response = await axios.get("http://localhost:3000/api/machines", {
+        headers: { Authorization: `Bearer ${token}` },
+        params: {
+          isActive: true, // Filter default sesuai permintaan
+          page,
+          limit,
+          search: debouncedSearch,
+          sortBy,
+          sortOrder,
+        }
       });
       
-      // Mengantisipasi berbagai struktur respon API (data.data atau data langsung)
-      const result = response.data.data || response.data;
-      setMachines(Array.isArray(result) ? result : []);
+      const result = response.data;
+      setMachines(result.data || []);
+      setTotalPages(result.pagination?.totalPages || 1);
+      setTotalData(result.pagination?.totalItems || 0);
       
     } catch (error) {
-      console.error("Gagal mengambil data mesin:", error.response || error);
-      toast.error("Gagal memuat data mesin dari server!");
+      console.error("Gagal mengambil data mesin:", error);
+      toast.error("Gagal memuat data mesin!");
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, limit, debouncedSearch, sortBy, sortOrder]);
 
   useEffect(() => {
     fetchMachines();
-  }, []);
+  }, [fetchMachines]);
 
-  // LOGIKA PENCARIAN
-  const filteredMachines = machines.filter((item) => {
-    const searchLower = search.toLowerCase();
-    return (
-      item.name?.toLowerCase().includes(searchLower) ||
-      item.machineCode?.toLowerCase().includes(searchLower) ||
-      item.placeName?.toLowerCase().includes(searchLower) ||
-      item.district?.toLowerCase().includes(searchLower)
-    );
-  });
+  // Reset ke halaman 1 jika mencari sesuatu
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch]);
 
-  // HANDLER BUKA MODAL (Mengisi selectedData terlebih dahulu)
+  const handleSort = (value) => {
+    if (!value) return;
+    const isAsc = sortBy === value && sortOrder === "asc";
+    setSortOrder(isAsc ? "desc" : "asc");
+    setSortBy(value);
+  };
+
   const handleOpenEdit = (row) => { setSelectedData(row); setOpenEdit(true); };
   const handleOpenDelete = (row) => { setSelectedData(row); setOpenDelete(true); };
   const handleOpenDetail = (row) => { setSelectedData(row); setOpenDetail(true); };
@@ -132,10 +166,19 @@ const SmartContainerIndex = () => {
               <thead>
                 <tr className="bg-[#f8fbff]">
                   {TABLE_HEAD.map((head) => (
-                    <th key={head} className="p-5 border-b border-blue-50">
-                      <Typography className="font-bold text-[#2b6cb0] uppercase text-[10px] tracking-widest">
-                        {head}
-                      </Typography>
+                    <th 
+                      key={head.label} 
+                      onClick={() => handleSort(head.value)}
+                      className={`p-5 border-b border-blue-50 ${head.value ? "cursor-pointer hover:bg-blue-100/30 transition-colors" : ""}`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <Typography className="font-bold text-[#2b6cb0] uppercase text-[10px] tracking-widest">
+                          {head.label}
+                        </Typography>
+                        {head.value && (
+                          <ChevronUpDownIcon className={`h-4 w-4 ${sortBy === head.value ? "text-blue-700" : "text-gray-400"}`} />
+                        )}
+                      </div>
                     </th>
                   ))}
                 </tr>
@@ -148,7 +191,7 @@ const SmartContainerIndex = () => {
                       <Typography className="text-gray-500 text-sm mt-2">Memuat data...</Typography>
                     </td>
                   </tr>
-                ) : filteredMachines.length === 0 ? (
+                ) : machines.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="p-10 text-center">
                       <Typography className="text-gray-500 font-medium">
@@ -157,8 +200,8 @@ const SmartContainerIndex = () => {
                     </td>
                   </tr>
                 ) : (
-                  filteredMachines.map((row, index) => {
-                    const isLast = index === filteredMachines.length - 1;
+                  machines.map((row, index) => {
+                    const isLast = index === machines.length - 1;
                     const classes = isLast ? "p-5" : "p-5 border-b border-blue-50/50";
 
                     return (
@@ -203,9 +246,9 @@ const SmartContainerIndex = () => {
                         </td>
                         <td className={classes}>
                           <div className="flex items-center gap-2">
-                            <Button onClick={() => handleOpenDetail(row)} size="sm" variant="text" className="text-blue-600 capitalize text-xs font-bold">Detail</Button>
-                            <Button onClick={() => handleOpenEdit(row)} size="sm" className="bg-green-500 shadow-none rounded-lg capitalize">Edit</Button>
-                            <Button onClick={() => handleOpenDelete(row)} size="sm" className="bg-red-400 shadow-none rounded-lg capitalize">Hapus</Button>
+                            <Button onClick={() => handleOpenDetail(row)} size="sm" variant="text" className="text-blue-600 capitalize text-xs font-bold shadow-none hover:bg-blue-50">Detail</Button>
+                            <Button onClick={() => handleOpenEdit(row)} size="sm" className="bg-green-500 shadow-none rounded-lg capitalize hover:shadow-md">Edit</Button>
+                            <Button onClick={() => handleOpenDelete(row)} size="sm" className="bg-red-400 shadow-none rounded-lg capitalize hover:shadow-md">Hapus</Button>
                           </div>
                         </td>
                       </tr>
@@ -214,6 +257,37 @@ const SmartContainerIndex = () => {
                 )}
               </tbody>
             </table>
+          </div>
+
+          {/* Pagination Footer */}
+          <div className="flex items-center justify-between p-5 border-t border-blue-50 bg-white">
+            <Typography variant="small" className="font-medium text-gray-600">
+              Menampilkan <span className="text-blue-700">{machines.length}</span> dari <span className="text-blue-700">{totalData}</span> mesin
+            </Typography>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outlined"
+                size="sm"
+                onClick={() => setPage((p) => Math.max(p - 1, 1))}
+                disabled={page === 1 || loading}
+                className="flex items-center gap-1 border-blue-gray-100"
+              >
+                <ChevronLeftIcon className="h-3 w-3 stroke-[3]" /> Prev
+              </Button>
+              <div className="flex items-center gap-1 px-2">
+                <Typography variant="small" className="font-bold text-blue-700">{page}</Typography>
+                <Typography variant="small" className="font-normal text-gray-500">/ {totalPages}</Typography>
+              </div>
+              <Button
+                variant="outlined"
+                size="sm"
+                onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
+                disabled={page === totalPages || loading}
+                className="flex items-center gap-1 border-blue-gray-100"
+              >
+                Next <ChevronRightIcon className="h-3 w-3 stroke-[3]" />
+              </Button>
+            </div>
           </div>
         </Card>
 
@@ -224,7 +298,6 @@ const SmartContainerIndex = () => {
           refreshData={fetchMachines} 
         />
         
-        {/* Render modal hanya jika selectedData sudah terisi agar tidak Blank */}
         {selectedData && (
           <>
             <EditModal 
