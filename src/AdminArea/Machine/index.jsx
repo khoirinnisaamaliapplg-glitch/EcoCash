@@ -12,9 +12,19 @@ import {
   Input, 
   Chip, 
   Spinner,
-  IconButton // Sudah ditambahkan
+  IconButton,
+  Select,
+  Option
 } from "@material-tailwind/react";
-import { PlusIcon, MagnifyingGlassIcon, ArrowPathIcon, UserPlusIcon } from "@heroicons/react/24/outline";
+import { 
+  PlusIcon, 
+  MagnifyingGlassIcon, 
+  ArrowPathIcon, 
+  UserPlusIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon 
+} from "@heroicons/react/24/outline";
+import { toast } from "react-hot-toast";
 
 const TABLE_HEAD = ["Machine Code", "Name & Place", "Operator", "Location", "Status", "Action"];
 
@@ -27,7 +37,12 @@ const MachineManagement = () => {
   const [selectedData, setSelectedData] = useState(null);
   const [machines, setMachines] = useState([]); 
   const [loading, setLoading] = useState(true);
+  
+  // States untuk Filter, Search, dan Pagination
   const [search, setSearch] = useState("");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
 
   const rawUser = localStorage.getItem("userData") || localStorage.getItem("user");
   const userData = rawUser ? JSON.parse(rawUser) : null;
@@ -47,7 +62,8 @@ const MachineManagement = () => {
         setMachines(myAreaMachines);
       }
     } catch (error) {
-      console.error("Gagal mengambil data mesin:", error);
+      toast.error("Gagal mengambil data mesin");
+      console.error(error);
     } finally {
       setLoading(false);
     }
@@ -57,22 +73,38 @@ const MachineManagement = () => {
     fetchMachines();
   }, []);
 
-  const filteredMachines = machines.filter((item) => {
-    const searchLower = search.toLowerCase();
-    return (
-      item.name?.toLowerCase().includes(searchLower) ||
-      item.machineCode?.toLowerCase().includes(searchLower) ||
-      item.placeName?.toLowerCase().includes(searchLower)
-    );
+  // LOGIKA FILTER DAN SEARCH
+  const filteredData = machines.filter((item) => {
+    const matchesSearch = 
+      item.name?.toLowerCase().includes(search.toLowerCase()) ||
+      item.machineCode?.toLowerCase().includes(search.toLowerCase()) ||
+      item.placeName?.toLowerCase().includes(search.toLowerCase());
+    
+    const matchesStatus = 
+      filterStatus === "all" ? true : 
+      filterStatus === "active" ? item.isActive === true : 
+      item.isActive === false;
+
+    return matchesSearch && matchesStatus;
   });
+
+  // LOGIKA PAGINATION
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = filteredData.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
 
   const handleOpenEdit = (row) => { setSelectedData(row); setOpenEdit(true); };
   const handleOpenDelete = (row) => { setSelectedData(row); setOpenDelete(true); };
   const handleOpenAssign = (row) => { setSelectedData(row); setOpenAssign(true); };
 
+  // Reset page ke 1 jika search/filter berubah
+  useEffect(() => { setCurrentPage(1); }, [search, filterStatus]);
+
   return (
     <MainLayout>
       <div className="p-4 md:p-0 space-y-6">
+        {/* Header Section */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
             <Typography variant="h4" className="text-[#2b6cb0] font-bold text-2xl md:text-3xl">
@@ -86,13 +118,17 @@ const MachineManagement = () => {
             variant="text" 
             size="sm" 
             className="flex items-center gap-2 text-blue-600 font-bold hover:bg-blue-50"
-            onClick={fetchMachines}
+            onClick={() => {
+                fetchMachines();
+                toast.success("Data diperbarui");
+            }}
           >
             <ArrowPathIcon className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Refresh Data
           </Button>
         </div>
 
-        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+        {/* Action Bar (Add, Filter, Search) */}
+        <div className="grid grid-cols-1 md:grid-cols-3 items-center gap-4">
           <Button 
             onClick={() => setOpenCreate(true)}
             className="flex items-center justify-center gap-2 bg-[#2196F3] normal-case text-sm px-5 py-3 rounded-xl shadow-none hover:shadow-lg transition-all"
@@ -100,18 +136,28 @@ const MachineManagement = () => {
             <PlusIcon className="h-5 w-5 stroke-[3]" /> Add Unit
           </Button>
           
-          <div className="w-full md:w-80">
-            <Input
-              label="Cari di area ini..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              icon={<MagnifyingGlassIcon className="h-5 w-5" />}
-              className="bg-white rounded-xl"
-              color="blue"
-            />
-          </div>
+          <Select 
+            label="Filter Status" 
+            value={filterStatus} 
+            onChange={(val) => setFilterStatus(val)}
+            className="bg-white rounded-xl"
+          >
+            <Option value="all">Semua Status</Option>
+            <Option value="active">Operasional</Option>
+            <Option value="inactive">Non-Aktif</Option>
+          </Select>
+
+          <Input
+            label="Cari Kode atau Lokasi..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            icon={<MagnifyingGlassIcon className="h-5 w-5" />}
+            className="bg-white rounded-xl"
+            color="blue"
+          />
         </div>
 
+        {/* Table Section */}
         <Card className="w-full border border-blue-50 shadow-sm rounded-2xl overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[1000px] table-auto text-left">
@@ -131,12 +177,12 @@ const MachineManagement = () => {
                   <tr>
                     <td colSpan={6} className="p-10 text-center"><Spinner className="mx-auto" /></td>
                   </tr>
-                ) : filteredMachines.length === 0 ? (
+                ) : currentItems.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="p-10 text-center text-gray-500">Data tidak ditemukan.</td>
                   </tr>
                 ) : (
-                  filteredMachines.map((row) => (
+                  currentItems.map((row) => (
                     <tr key={row.id} className="hover:bg-blue-50/10 transition-colors border-b border-blue-50/50">
                       <td className="p-5">
                         <Typography variant="small" className="font-bold text-blue-900 uppercase">
@@ -187,6 +233,35 @@ const MachineManagement = () => {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination Controls */}
+          {!loading && filteredData.length > 0 && (
+            <div className="flex items-center justify-between p-5 border-t border-blue-50 bg-[#f8fbff]">
+              <Typography variant="small" className="text-gray-600 font-medium">
+                Halaman {currentPage} dari {totalPages} ({filteredData.length} total unit)
+              </Typography>
+              <div className="flex gap-2">
+                <IconButton
+                  size="sm"
+                  variant="outlined"
+                  color="blue"
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeftIcon className="h-4 w-4" />
+                </IconButton>
+                <IconButton
+                  size="sm"
+                  variant="outlined"
+                  color="blue"
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                >
+                  <ChevronRightIcon className="h-4 w-4" />
+                </IconButton>
+              </div>
+            </div>
+          )}
         </Card>
 
         {/* Modals */}

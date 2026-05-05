@@ -25,7 +25,7 @@ import { toast } from "react-hot-toast";
 const CreateModal = ({ open, setOpen, refreshData }) => {
   const [isLoading, setIsLoading] = useState(false);
 
-  // 1. Ambil data admin dari localStorage (mendapatkan areaId)
+  // Ambil data admin dari localStorage
   const rawUser = localStorage.getItem("userData") || localStorage.getItem("user");
   const userData = rawUser ? JSON.parse(rawUser) : null;
 
@@ -37,44 +37,46 @@ const CreateModal = ({ open, setOpen, refreshData }) => {
       password: "",
       phoneNumber: "",
     },
-    // Validasi sederhana sebelum kirim
     onSubmit: async (values, { resetForm }) => {
-      // Proteksi jika areaId tidak ada
+      // 1. Proteksi Awal
       if (!userData?.areaId) {
         toast.error("Gagal: ID Area Admin tidak terdeteksi. Silakan login ulang.");
         return;
       }
 
       setIsLoading(true);
+      // Menggunakan loading toast dengan ID untuk diupdate nanti
       const loadToast = toast.loading("Sedang mendaftarkan operator...");
 
       try {
         const token = localStorage.getItem("token");
         
-        // 2. Persiapkan Payload sesuai kebutuhan Backend
         const payload = {
           name: values.name.trim(),
           username: values.username.toLowerCase().trim(),
           email: values.email.toLowerCase().trim(),
           password: values.password,
           phoneNumber: values.phoneNumber ? values.phoneNumber.trim() : null,
-          role: "MACHINE_OPERATOR", // Hardcoded karena ini modal khusus operator
-          areaId: Number(userData.areaId), // Pastikan bertipe Number
+          role: "MACHINE_OPERATOR",
+          areaId: Number(userData.areaId),
         };
 
-        // 3. Eksekusi API
         const response = await axios.post("http://localhost:3000/api/users", payload, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        // 4. Handle Berhasil
-        toast.success(response.data.message || "Operator Berhasil Didaftarkan!", { id: loadToast });
+        // 2. Handle Berhasil
+        toast.success(response.data.message || "Operator Berhasil Didaftarkan!", { 
+            id: loadToast,
+            duration: 4000 
+        });
+        
         resetForm();
         setOpen(false); 
-        if (refreshData) refreshData(); // Panggil fungsi fetch di halaman utama
+        if (refreshData) refreshData();
 
       } catch (error) {
-        // 5. Handle Error dari Backend
+        // 3. Handle Error yang lebih spesifik
         const errorMsg = error.response?.data?.message || "Terjadi kesalahan pada server";
         toast.error(`Gagal: ${errorMsg}`, { id: loadToast });
         console.error("Submission Error:", error.response?.data);
@@ -88,6 +90,8 @@ const CreateModal = ({ open, setOpen, refreshData }) => {
     if (!isLoading) {
       formik.resetForm();
       setOpen(false);
+    } else {
+      toast("Harap tunggu hingga proses selesai", { icon: "⏳" });
     }
   };
 
@@ -104,10 +108,14 @@ const CreateModal = ({ open, setOpen, refreshData }) => {
             Registrasi Operator
           </Typography>
           <Typography className="text-gray-500 text-sm font-medium">
-            Penempatan di <span className="text-blue-600 font-bold">Area ID: {userData?.areaId || "N/A"}</span>
+            Penempatan di <span className="text-blue-600 font-bold uppercase">Area ID: {userData?.areaId || "N/A"}</span>
           </Typography>
         </div>
-        <button onClick={handleClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+        <button 
+          onClick={handleClose} 
+          className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+          type="button"
+        >
             <XMarkIcon className="h-5 w-5 text-gray-400" />
         </button>
       </DialogHeader>
@@ -118,43 +126,52 @@ const CreateModal = ({ open, setOpen, refreshData }) => {
             <Input 
               size="lg"
               label="Nama Lengkap" 
+              className="rounded-xl"
               icon={<UserIcon className="h-4 w-4" />} 
               {...formik.getFieldProps("name")} 
               required 
+              disabled={isLoading}
             />
             <Input 
               size="lg"
               label="Username" 
+              className="rounded-xl"
               icon={<UserCircleIcon className="h-4 w-4" />} 
               {...formik.getFieldProps("username")} 
               required 
+              disabled={isLoading}
             />
             <Input 
               size="lg"
               label="Email" 
               type="email" 
+              className="rounded-xl"
               icon={<EnvelopeIcon className="h-4 w-4" />} 
               {...formik.getFieldProps("email")} 
               required 
+              disabled={isLoading}
             />
             <Input 
               size="lg"
               label="Nomor WhatsApp" 
               placeholder="Contoh: 08123456789"
+              className="rounded-xl"
               icon={<PhoneIcon className="h-4 w-4" />} 
               {...formik.getFieldProps("phoneNumber")} 
+              disabled={isLoading}
             />
             <Input 
               size="lg"
               type="password" 
               label="Password" 
+              className="rounded-xl"
               icon={<KeyIcon className="h-4 w-4" />} 
               {...formik.getFieldProps("password")} 
               required 
+              disabled={isLoading}
             />
           </div>
           
-          {/* Info Badge */}
           <div className="bg-blue-50/50 p-4 rounded-2xl border border-blue-100 flex items-start gap-3">
             <IdentificationIcon className="h-6 w-6 text-blue-600 mt-0.5" />
             <div>

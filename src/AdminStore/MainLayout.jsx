@@ -28,7 +28,6 @@ const MainLayout = ({ children }) => {
         
         return {
           name: fixName,
-          // Mengutamakan role STORE_ADMIN
           role: storedRole || parsedUser.role || "STORE_ADMIN"
         };
       } catch (e) {
@@ -45,13 +44,17 @@ const MainLayout = ({ children }) => {
 
   return (
     <div className="flex h-screen w-full bg-[#fcfcfd] overflow-hidden font-sans">
-      {/* Toast Notification Container */}
+      
+      {/* 
+          FIX: Tambahkan properti style zIndex agar toast muncul di atas modal 
+      */}
       <ToastContainer 
         position="top-right"
         autoClose={3000}
         theme="colored"
         pauseOnHover
         closeOnClick
+        style={{ zIndex: 99999 }} 
       />
 
       <Sidebar open={openSidebar} setOpen={setOpenSidebar} />
@@ -73,13 +76,11 @@ const MainLayout = ({ children }) => {
           </div>
 
           <div className="flex items-center gap-2 md:gap-6">
-            {/* Notification Bell */}
             <IconButton variant="text" color="blue-gray" className="hidden sm:inline-block relative">
               <BellIcon className="h-6 w-6" />
               <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
             </IconButton>
             
-            {/* User Profile Menu */}
             <div className="flex items-center gap-3 border-l pl-4 md:pl-6 border-gray-100">
               <Menu>
                 <MenuHandler>
@@ -93,7 +94,6 @@ const MainLayout = ({ children }) => {
                       </Typography>
                     </div>
                     
-                    {/* Profile Circle - Using Amber color for Store Admin identity */}
                     <div className="w-9 h-9 md:w-11 md:h-11 bg-amber-500 rounded-full flex items-center justify-center text-white text-sm md:text-lg font-bold shadow-md uppercase border-2 border-white">
                       {userProfile.name.charAt(0)}
                     </div>
@@ -101,7 +101,10 @@ const MainLayout = ({ children }) => {
                   </div>
                 </MenuHandler>
                 
-                <MenuList className="p-1 border-none shadow-xl rounded-xl">
+                {/* 
+                    Tambahkan z-index pada MenuList juga jika perlu agar tidak tertutup 
+                */}
+                <MenuList className="p-1 border-none shadow-xl rounded-xl z-[10001]">
                   <MenuItem onClick={() => navigate("/store/profile")} className="flex items-center gap-3 rounded-lg py-2">
                     <UserCircleIcon className="h-5 w-5 text-gray-500" />
                     <Typography variant="small" className="font-semibold text-gray-800">Profil Toko</Typography>
@@ -122,7 +125,6 @@ const MainLayout = ({ children }) => {
           <div className="min-h-[calc(100vh-64px)] flex flex-col">
             <div className="flex-1 p-4 md:p-6 lg:p-8">
               <div className="max-w-7xl mx-auto">
-                {/* Dashboard / Page Content */}
                 {children}
               </div>
             </div>

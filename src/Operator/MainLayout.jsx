@@ -87,13 +87,18 @@ const MainLayout = ({ children }) => {
 
   return (
     <div className="flex h-screen w-full bg-[#f8fafc] overflow-hidden font-sans">
-      {/* TOAST CONTAINER */}
+      
+      {/* 
+          FIX 1: Tambahkan zIndex 99999 agar Toast 
+          selalu di depan Modal Material Tailwind 
+      */}
       <ToastContainer 
         position="top-right"
         autoClose={3000}
         theme="colored"
         pauseOnHover
         closeOnClick
+        style={{ zIndex: 99999 }}
       />
 
       <Sidebar 
@@ -157,7 +162,8 @@ const MainLayout = ({ children }) => {
                   </div>
                 </MenuHandler>
                 
-                <MenuList className="p-2 border-none shadow-2xl rounded-2xl min-w-[180px]">
+                {/* FIX 2: Tambahkan z-[10001] agar menu dropdown tidak tertutup sidebar/header */}
+                <MenuList className="p-2 border-none shadow-2xl rounded-2xl min-w-[180px] z-[10001]">
                   <MenuItem 
                     onClick={() => navigate(isOperator ? "/operator/profile" : isAreaAdmin ? "/area/profile" : isStoreAdmin ? "/store/profile" : "/profile")} 
                     className="flex items-center gap-3 rounded-xl py-3"

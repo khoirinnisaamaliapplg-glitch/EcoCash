@@ -11,21 +11,22 @@ import {
   Option,
   Spinner,
 } from "@material-tailwind/react";
-import { XMarkIcon, UserGroupIcon, CheckCircleIcon } from "@heroicons/react/24/outline";
+import { XMarkIcon, UserGroupIcon } from "@heroicons/react/24/outline";
 import axios from "axios";
+// 1. Import toast
+import { toast } from "react-hot-toast";
 
 const AssignOperatorModal = ({ open, handleOpen, machineData, refreshData }) => {
   const [operators, setOperators] = useState([]);
   const [selectedOperatorId, setSelectedOperatorId] = useState("");
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
-  const [status, setStatus] = useState(null);
   const [errorInfo, setErrorInfo] = useState("");
 
   const rawUser = localStorage.getItem("userData") || localStorage.getItem("user");
   const userData = rawUser ? JSON.parse(rawUser) : null;
 
-  // 1. Fetch Operator yang tersedia di area yang sama
+  // 1. Fetch Operator yang tersedia
   useEffect(() => {
     if (open && userData?.areaId) {
       const fetchOperators = async () => {
@@ -37,11 +38,9 @@ const AssignOperatorModal = ({ open, handleOpen, machineData, refreshData }) => 
             headers: { Authorization: `Bearer ${token}` },
           });
 
-          // Menangani struktur response backend (response.data.data)
           const allUsers = response.data.data || [];
           
           if (Array.isArray(allUsers)) {
-            // Filter hanya MACHINE_OPERATOR dan yang satu Area ID
             const filtered = allUsers.filter(user => 
               user.role === "MACHINE_OPERATOR" && 
               Number(user.areaId) === Number(userData.areaId)
@@ -50,11 +49,11 @@ const AssignOperatorModal = ({ open, handleOpen, machineData, refreshData }) => 
           }
         } catch (err) {
           console.error("Gagal ambil operator:", err);
-          if (err.response?.status === 403) {
-            setErrorInfo("Akses Ditolak: Anda tidak punya izin melihat daftar user.");
-          } else {
-            setErrorInfo("Gagal memuat data petugas.");
-          }
+          const msg = err.response?.status === 403 
+            ? "Akses Ditolak: Izin melihat user tidak ada." 
+            : "Gagal memuat data petugas.";
+          setErrorInfo(msg);
+          toast.error(msg);
         } finally {
           setFetching(false);
         }
@@ -62,7 +61,6 @@ const AssignOperatorModal = ({ open, handleOpen, machineData, refreshData }) => 
       fetchOperators();
     }
     
-    // Set default select jika mesin sudah punya operator sebelumnya
     if (machineData?.operatorId) {
       setSelectedOperatorId(machineData.operatorId.toString());
     } else {
@@ -70,36 +68,36 @@ const AssignOperatorModal = ({ open, handleOpen, machineData, refreshData }) => 
     }
   }, [open, machineData, userData?.areaId]);
 
-  // 2. Fungsi Assign menggunakan PATCH dengan ID Mesin Dinamis
+  // 2. Fungsi Assign
   const handleAssign = async () => {
-    // Validasi: Harus ada operator terpilih dan ID Mesin harus valid
     if (!selectedOperatorId || !machineData?.id) {
-      alert("Pilih operator terlebih dahulu!");
+      toast.error("Pilih operator terlebih dahulu!");
       return;
     };
 
     setLoading(true);
+    // 2. Loading Toast
+    const toastId = toast.loading("Memperbarui operator mesin...");
+
     try {
       const token = localStorage.getItem("token");
       
-      // Sesuai instruksi backend: /api/machines/{id}/assign-operator
       await axios.patch(
         `http://localhost:3000/api/machines/${machineData.id}/assign-operator`,
         { operatorId: parseInt(selectedOperatorId) },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      setStatus("success");
+      // 3. Success Toast
+      toast.success("Operator berhasil ditugaskan!", { id: toastId });
       
-      // Beri jeda 1.5 detik agar user bisa melihat feedback "Berhasil"
-      setTimeout(() => {
-        setStatus(null);
-        handleOpen(); // Tutup Modal
-        if (refreshData) refreshData(); // Refresh tabel mesin di halaman utama
-      }, 1500);
+      handleOpen(); 
+      if (refreshData) refreshData();
     } catch (error) {
       console.error("Patch Error:", error.response?.data);
-      alert(error.response?.data?.message || "Gagal memperbarui operator.");
+      const errorMsg = error.response?.data?.message || "Gagal memperbarui operator.";
+      // 4. Error Toast
+      toast.error(errorMsg, { id: toastId });
     } finally {
       setLoading(false);
     }
@@ -120,65 +118,57 @@ const AssignOperatorModal = ({ open, handleOpen, machineData, refreshData }) => 
       </DialogHeader>
 
       <DialogBody className="px-6 py-8">
-        {status === "success" ? (
-          <div className="flex flex-col items-center text-center py-4">
-            <CheckCircleIcon className="h-16 w-16 text-green-500 mb-2" />
-            <Typography variant="h5" color="green">Berhasil Disimpan!</Typography>
-            <Typography className="text-sm text-gray-500">Operator mesin telah diperbarui.</Typography>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {/* Info Mesin yang dipilih */}
-            <div>
-              <Typography variant="small" color="blue-gray" className="mb-1 font-bold">Mesin Terpilih</Typography>
-              <div className="p-3 bg-gray-50 rounded-xl border border-dashed border-gray-300">
-                <Typography className="text-sm font-bold text-blue-900">{machineData?.machineCode || "Tanpa Kode"}</Typography>
-                <Typography className="text-xs text-gray-600">{machineData?.name || "Unit Mesin"}</Typography>
-              </div>
+        <div className="space-y-6">
+          {/* Info Mesin */}
+          <div>
+            <Typography variant="small" color="blue-gray" className="mb-1 font-bold">Mesin Terpilih</Typography>
+            <div className="p-3 bg-gray-50 rounded-xl border border-dashed border-gray-300">
+              <Typography className="text-sm font-bold text-blue-900">{machineData?.machineCode || "Tanpa Kode"}</Typography>
+              <Typography className="text-xs text-gray-600">{machineData?.name || "Unit Mesin"}</Typography>
             </div>
+          </div>
 
-            {/* Dropdown Pemilihan Operator */}
-            <div>
-              <Typography variant="small" color="blue-gray" className="mb-2 font-bold">Pilih Petugas Lapangan</Typography>
-              
-              {fetching ? (
-                <div className="flex justify-center p-4"><Spinner color="blue" /></div>
-              ) : errorInfo ? (
-                <div className="p-3 bg-red-50 border border-red-100 rounded-lg text-center">
-                   <Typography className="text-[11px] text-red-700">{errorInfo}</Typography>
-                </div>
-              ) : operators.length > 0 ? (
-                <Select 
-                  label="Daftar Operator" 
-                  value={selectedOperatorId} 
-                  onChange={(v) => setSelectedOperatorId(v)}
-                  color="blue"
-                >
-                  {operators.map((op) => (
-                    <Option key={op.id} value={op.id.toString()}>
-                      {op.name}
-                    </Option>
-                  ))}
-                </Select>
-              ) : (
-                <div className="p-3 bg-orange-50 rounded-lg border border-orange-100 text-center">
-                   <Typography className="text-[11px] text-orange-700 italic">
-                     Tidak ditemukan operator di Area ID: {userData?.areaId}
-                   </Typography>
-                </div>
-              )}
-            </div>
+          {/* Dropdown Operator */}
+          <div>
+            <Typography variant="small" color="blue-gray" className="mb-2 font-bold">Pilih Petugas Lapangan</Typography>
+            
+            {fetching ? (
+              <div className="flex justify-center p-4"><Spinner color="blue" /></div>
+            ) : errorInfo ? (
+              <div className="p-3 bg-red-50 border border-red-100 rounded-lg text-center">
+                 <Typography className="text-[11px] text-red-700">{errorInfo}</Typography>
+              </div>
+            ) : operators.length > 0 ? (
+              <Select 
+                label="Daftar Operator" 
+                value={selectedOperatorId} 
+                onChange={(v) => setSelectedOperatorId(v)}
+                color="blue"
+              >
+                {operators.map((op) => (
+                  <Option key={op.id} value={op.id.toString()}>
+                    {op.name}
+                  </Option>
+                ))}
+              </Select>
+            ) : (
+              <div className="p-3 bg-orange-50 rounded-lg border border-orange-100 text-center">
+                 <Typography className="text-[11px] text-orange-700 italic">
+                   Tidak ditemukan operator di Area ID: {userData?.areaId}
+                 </Typography>
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </DialogBody>
 
       <DialogFooter className="border-t border-gray-100 p-4 gap-2">
-        <Button variant="text" color="red" onClick={handleOpen} className="normal-case">Batal</Button>
+        <Button variant="text" color="red" onClick={handleOpen} disabled={loading} className="normal-case">Batal</Button>
         <Button 
           variant="gradient" 
           color="blue" 
           onClick={handleAssign} 
-          disabled={loading || !selectedOperatorId || operators.length === 0 || status === "success"}
+          disabled={loading || !selectedOperatorId || operators.length === 0}
           className="flex items-center gap-2 normal-case"
         >
           {loading ? <Spinner className="h-4 w-4" /> : "Simpan Perubahan"}

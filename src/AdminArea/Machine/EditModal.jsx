@@ -15,15 +15,13 @@ import {
 } from "@material-tailwind/react";
 import { 
   XMarkIcon, 
-  CheckCircleIcon, 
-  XCircleIcon, 
   PencilSquareIcon,
-  CpuChipIcon
 } from "@heroicons/react/24/outline";
 import axios from "axios";
+// 1. Import toast
+import { toast } from "react-hot-toast";
 
 const EditModal = ({ open, handleOpen, data, refreshData }) => {
-  // 1. State Management
   const [formData, setFormData] = useState({
     machineCode: "",
     name: "",
@@ -41,10 +39,7 @@ const EditModal = ({ open, handleOpen, data, refreshData }) => {
   
   const [areas, setAreas] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [status, setStatus] = useState(null); // 'success' | 'error' | null
-  const [errorDetails, setErrorDetails] = useState("");
 
-  // 2. Inisialisasi data & Bersihkan ID (Logika dari Kode Kedua)
   useEffect(() => {
     if (data && open) {
       setFormData({
@@ -65,7 +60,6 @@ const EditModal = ({ open, handleOpen, data, refreshData }) => {
     }
   }, [data, open]);
 
-  // 3. Load Daftar Area untuk Dropdown Select
   useEffect(() => {
     if (open) {
       const fetchAreas = async () => {
@@ -77,13 +71,13 @@ const EditModal = ({ open, handleOpen, data, refreshData }) => {
           setAreas(response.data.data || response.data);
         } catch (err) {
           console.error("Gagal load daftar area:", err);
+          toast.error("Gagal memuat daftar area");
         }
       };
       fetchAreas();
     }
   }, [open]);
 
-  // 4. Handler Perubahan Input
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -93,15 +87,15 @@ const EditModal = ({ open, handleOpen, data, refreshData }) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // 5. Fungsi Update (PATCH)
   const handleUpdate = async () => {
+    // 2. Validasi dengan Toast
     if (!formData.name?.trim()) {
-      alert("Nama mesin wajib diisi.");
-      return;
+      return toast.error("Nama mesin wajib diisi!");
     }
 
     setLoading(true);
-    setStatus(null);
+    // 3. Loading Toast
+    const toastId = toast.loading("Sedang memperbarui data mesin...");
 
     try {
       const token = localStorage.getItem("token");
@@ -128,17 +122,17 @@ const EditModal = ({ open, handleOpen, data, refreshData }) => {
         },
       });
 
-      setStatus("success");
-      setTimeout(() => {
-        setStatus(null);
-        handleOpen();
-        if (refreshData) refreshData();
-      }, 1500);
+      // 4. Success Toast
+      toast.success("Data mesin berhasil diperbarui!", { id: toastId });
+      
+      handleOpen();
+      if (refreshData) refreshData();
 
     } catch (error) {
       console.error("PATCH ERROR:", error.response?.data);
-      setStatus("error");
-      setErrorDetails(error.response?.data?.message || "Gagal memperbarui data mesin.");
+      const errorMsg = error.response?.data?.message || "Gagal memperbarui data mesin.";
+      // 5. Error Toast
+      toast.error(errorMsg, { id: toastId });
     } finally {
       setLoading(false);
     }
@@ -156,7 +150,6 @@ const EditModal = ({ open, handleOpen, data, refreshData }) => {
       size="xl" 
       className="rounded-xl max-h-[95vh] overflow-hidden flex flex-col shadow-2xl"
     >
-      {/* Header - Style Visual Rapi */}
       <DialogHeader className="flex justify-between items-center border-b border-gray-100 px-6 py-4">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-orange-50 rounded-lg">
@@ -176,103 +169,81 @@ const EditModal = ({ open, handleOpen, data, refreshData }) => {
         </IconButton>
       </DialogHeader>
 
-      {/* Body - Layout Grid 2 Kolom */}
       <DialogBody className="overflow-y-auto px-6 py-4 flex-grow">
-        {status === "success" ? (
-          <div className="flex flex-col items-center justify-center py-20 text-center">
-            <CheckCircleIcon className="h-20 w-20 text-green-500 mb-4 animate-bounce" />
-            <Typography variant="h4" className="text-green-700 font-bold">Update Berhasil!</Typography>
-            <Typography className="text-gray-500">Informasi mesin telah diperbarui.</Typography>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Kolom 1: Identitas & Area */}
+          <div className="space-y-6">
+            <div className="flex items-center gap-2 border-l-4 border-blue-500 pl-3">
+              <Typography className="font-bold text-gray-800 uppercase text-xs tracking-wider">Identitas & Area</Typography>
+            </div>
+            <div className="grid grid-cols-1 gap-4">
+              <Select 
+                label="Area Lokasi" 
+                value={formData.areaId} 
+                onChange={(v) => handleSelectChange("areaId", v)}
+              >
+                {areas.map((a) => (
+                  <Option key={a.id} value={a.id.toString()}>{a.name}</Option>
+                ))}
+              </Select>
+              <Input label="Kode Mesin" name="machineCode" value={formData.machineCode} onChange={handleChange} />
+              <Input label="Nama Tampilan Mesin" name="name" value={formData.name} onChange={handleChange} color="blue" />
+              <Select label="Tipe Sistem" value={formData.machineType} onChange={(v) => handleSelectChange("machineType", v)}>
+                <Option value="BOX">BOX SYSTEM</Option>
+                <Option value="CONTAINER">CONTAINER SYSTEM</Option>
+              </Select>
+            </div>
           </div>
-        ) : status === "error" ? (
-          <div className="flex flex-col items-center justify-center py-20 text-center">
-            <XCircleIcon className="h-20 w-20 text-red-500 mb-4" />
-            <Typography variant="h5" color="red" className="font-bold">Gagal Update</Typography>
-            <Typography color="red" className="mt-2 text-sm">{errorDetails}</Typography>
-            <Button variant="outlined" color="red" onClick={() => setStatus(null)} className="mt-6 rounded-lg">Coba Lagi</Button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            
-            {/* Kolom 1: Identitas & Area */}
-            <div className="space-y-6">
-              <div className="flex items-center gap-2 border-l-4 border-blue-500 pl-3">
-                <Typography className="font-bold text-gray-800 uppercase text-xs tracking-wider">Identitas & Area</Typography>
-              </div>
-              <div className="grid grid-cols-1 gap-4">
-                <Select 
-                  label="Area Lokasi" 
-                  value={formData.areaId} 
-                  onChange={(v) => handleSelectChange("areaId", v)}
-                >
-                  {areas.map((a) => (
-                    <Option key={a.id} value={a.id.toString()}>{a.name}</Option>
+
+          {/* Kolom 2: Lokasi & Koordinat */}
+          <div className="space-y-6">
+            <div className="flex items-center gap-2 border-l-4 border-green-500 pl-3">
+              <Typography className="font-bold text-gray-800 uppercase text-xs tracking-wider">Lokasi & Koordinat</Typography>
+            </div>
+            <div className="grid grid-cols-1 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Input label="Nama Tempat/Gedung" name="placeName" value={formData.placeName} onChange={handleChange} />
+                <Select label="Kategori Lokasi" value={formData.locationType} onChange={(v) => handleSelectChange("locationType", v)}>
+                  {locationOptions.map((opt) => (
+                    <Option key={opt} value={opt}>{opt.replace("_", " ")}</Option>
                   ))}
                 </Select>
-                <Input label="Kode Mesin" name="machineCode" value={formData.machineCode} onChange={handleChange} />
-                <Input label="Nama Tampilan Mesin" name="name" value={formData.name} onChange={handleChange} color="blue" />
-                <Select label="Tipe Sistem" value={formData.machineType} onChange={(v) => handleSelectChange("machineType", v)}>
-                  <Option value="BOX">BOX SYSTEM</Option>
-                  <Option value="CONTAINER">CONTAINER SYSTEM</Option>
-                </Select>
               </div>
-            </div>
-
-            {/* Kolom 2: Lokasi & Koordinat */}
-            <div className="space-y-6">
-              <div className="flex items-center gap-2 border-l-4 border-green-500 pl-3">
-                <Typography className="font-bold text-gray-800 uppercase text-xs tracking-wider">Lokasi & Koordinat</Typography>
+              <div className="grid grid-cols-2 gap-4">
+                <Input label="Latitude" name="latitude" value={formData.latitude} onChange={handleChange} />
+                <Input label="Longitude" name="longitude" value={formData.longitude} onChange={handleChange} />
               </div>
-              <div className="grid grid-cols-1 gap-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Input label="Nama Tempat/Gedung" name="placeName" value={formData.placeName} onChange={handleChange} />
-                  <Select label="Kategori Lokasi" value={formData.locationType} onChange={(v) => handleSelectChange("locationType", v)}>
-                    {locationOptions.map((opt) => (
-                      <Option key={opt} value={opt}>{opt.replace("_", " ")}</Option>
-                    ))}
-                  </Select>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <Input label="Latitude" name="latitude" value={formData.latitude} onChange={handleChange} />
-                  <Input label="Longitude" name="longitude" value={formData.longitude} onChange={handleChange} />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <Input label="Kecamatan" name="district" value={formData.district} onChange={handleChange} />
-                  <Input label="Kelurahan" name="subdistrict" value={formData.subdistrict} onChange={handleChange} />
-                </div>
-                <Textarea label="Alamat Lengkap" name="address" rows={2} value={formData.address} onChange={handleChange} />
+              <div className="grid grid-cols-2 gap-4">
+                <Input label="Kecamatan" name="district" value={formData.district} onChange={handleChange} />
+                <Input label="Kelurahan" name="subdistrict" value={formData.subdistrict} onChange={handleChange} />
               </div>
-            </div>
-
-            {/* Deskripsi */}
-            <div className="lg:col-span-2 pt-2">
-              <div className="flex items-center gap-2 border-l-4 border-orange-400 pl-3 mb-4">
-                <Typography className="font-bold text-gray-800 uppercase text-xs tracking-wider">Informasi Tambahan</Typography>
-              </div>
-              <Textarea label="Catatan Deskripsi" name="description" rows={2} value={formData.description} onChange={handleChange} />
+              <Textarea label="Alamat Lengkap" name="address" rows={2} value={formData.address} onChange={handleChange} />
             </div>
           </div>
-        )}
+
+          {/* Deskripsi */}
+          <div className="lg:col-span-2 pt-2">
+            <div className="flex items-center gap-2 border-l-4 border-orange-400 pl-3 mb-4">
+              <Typography className="font-bold text-gray-800 uppercase text-xs tracking-wider">Informasi Tambahan</Typography>
+            </div>
+            <Textarea label="Catatan Deskripsi" name="description" rows={2} value={formData.description} onChange={handleChange} />
+          </div>
+        </div>
       </DialogBody>
 
-      {/* Footer */}
       <DialogFooter className="border-t border-gray-100 p-4 gap-2">
-        {!status && (
-          <>
-            <Button variant="text" color="red" onClick={handleOpen} disabled={loading} className="normal-case rounded-lg">
-              Batal
-            </Button>
-            <Button 
-              variant="gradient" 
-              color="blue" 
-              onClick={handleUpdate} 
-              disabled={loading} 
-              className="flex items-center gap-2 normal-case rounded-lg px-8"
-            >
-              {loading ? <Spinner className="h-4 w-4" /> : "Simpan Perubahan"}
-            </Button>
-          </>
-        )}
+        <Button variant="text" color="red" onClick={handleOpen} disabled={loading} className="normal-case rounded-lg">
+          Batal
+        </Button>
+        <Button 
+          variant="gradient" 
+          color="blue" 
+          onClick={handleUpdate} 
+          disabled={loading} 
+          className="flex items-center gap-2 normal-case rounded-lg px-8"
+        >
+          {loading ? <Spinner className="h-4 w-4" /> : "Simpan Perubahan"}
+        </Button>
       </DialogFooter>
     </Dialog>
   );

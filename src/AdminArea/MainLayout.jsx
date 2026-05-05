@@ -8,6 +8,7 @@ import {
   MagnifyingGlassIcon, BellIcon, ChevronDownIcon, UserCircleIcon, PowerIcon, Bars3Icon 
 } from "@heroicons/react/24/outline";
 import { useNavigate } from "react-router-dom";
+
 // 1. IMPORT TOASTER
 import { Toaster } from "react-hot-toast";
 
@@ -47,10 +48,17 @@ const MainLayout = ({ children }) => {
 
   return (
     <div className="flex h-screen w-full bg-[#f8fafc] overflow-hidden font-sans">
-      {/* 2. TAMBAHKAN TOASTER DI SINI */}
+      
+      {/* 
+          FIX: Tambahkan containerStyle dengan zIndex tinggi 
+          Agar muncul di atas Modal Material Tailwind
+      */}
       <Toaster 
         position="top-right"
         reverseOrder={false}
+        containerStyle={{
+          zIndex: 99999, // Memastikan di atas modal
+        }}
         toastOptions={{
           duration: 3000,
           style: {
@@ -100,7 +108,8 @@ const MainLayout = ({ children }) => {
                   </div>
                 </MenuHandler>
                 
-                <MenuList className="p-1 border-none shadow-lg">
+                {/* z-index untuk Dropdown Menu */}
+                <MenuList className="p-1 border-none shadow-lg z-[10001]">
                   <MenuItem 
                     onClick={() => navigate("/AdminArea/profile")} 
                     className="flex items-center gap-3 rounded-md"

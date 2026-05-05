@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { Dialog, DialogHeader, DialogBody, DialogFooter, Button, Typography } from "@material-tailwind/react";
 import { ExclamationTriangleIcon, TrashIcon, CheckCircleIcon, XCircleIcon } from "@heroicons/react/24/outline";
+// 1. IMPORT TOAST
+import { toast } from "react-hot-toast";
 
 const DeleteAreaModal = ({ open, handleOpen, data, confirmDelete }) => {
   const [loading, setLoading] = useState(false);
@@ -8,11 +10,15 @@ const DeleteAreaModal = ({ open, handleOpen, data, confirmDelete }) => {
   const [errorMessage, setErrorMessage] = useState("");
 
   const handleConfirm = async () => {
+    // 2. TAMPILKAN TOAST LOADING
+    const toastId = toast.loading("Menghapus data wilayah...");
+    
     setLoading(true);
     try {
       await confirmDelete(data.id);
       
-      // Jika berhasil, tampilkan status sukses
+      // Jika berhasil, update toast dan tampilkan status sukses
+      toast.success("Data wilayah berhasil dihapus", { id: toastId });
       setStatus("success");
       
       // Tunggu 2 detik lalu tutup modal
@@ -21,7 +27,11 @@ const DeleteAreaModal = ({ open, handleOpen, data, confirmDelete }) => {
       }, 2000);
     } catch (error) {
       console.error("Error saat menghapus:", error);
-      setErrorMessage(error.response?.data?.message || "Gagal menghapus data wilayah.");
+      const msg = error.response?.data?.message || "Gagal menghapus data wilayah.";
+      
+      // 3. TAMPILKAN TOAST ERROR
+      toast.error(msg, { id: toastId });
+      setErrorMessage(msg);
       setStatus("error");
     } finally {
       setLoading(false);

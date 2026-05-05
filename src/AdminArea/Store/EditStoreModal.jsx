@@ -4,9 +4,10 @@ import {
   Input, Button, Typography, Textarea 
 } from "@material-tailwind/react";
 import { PencilSquareIcon, XMarkIcon } from "@heroicons/react/24/outline";
+// 1. Import toast
+import { toast } from "react-hot-toast";
 
 const EditStoreModal = ({ open, handleOpen, data, onConfirm }) => {
-  // Ambil nama area dari data login untuk display
   const authData = JSON.parse(localStorage.getItem("user") || "{}");
   const areaName = authData.area?.name || data?.area?.name || "Area Terdaftar";
 
@@ -26,7 +27,6 @@ const EditStoreModal = ({ open, handleOpen, data, onConfirm }) => {
     }
   });
 
-  // Sinkronisasi data saat modal dibuka atau data berubah
   useEffect(() => {
     if (data && open) {
       setFormData({
@@ -60,7 +60,21 @@ const EditStoreModal = ({ open, handleOpen, data, onConfirm }) => {
     }
   };
 
+  // 2. Logika Submit dengan Validasi Toast
   const handleSubmit = () => {
+    // Validasi Sederhana
+    if (!formData.name || !formData.admin.name || !formData.admin.email) {
+      toast.error("Nama Toko, Nama Admin, dan Email wajib diisi!");
+      return;
+    }
+
+    // Validasi Format Email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.admin.email)) {
+      toast.error("Format email tidak valid!");
+      return;
+    }
+
     const payload = {
       name: formData.name.trim(),
       address: formData.address.trim(),

@@ -8,41 +8,29 @@ import {
   Spinner,
 } from "@material-tailwind/react";
 import { ExclamationTriangleIcon } from "@heroicons/react/24/outline";
-import axios from "axios";
-import { toast } from 'react-toastify';
+// Menggunakan react-hot-toast agar konsisten dengan komponen Index & Edit sebelumnya
+import { toast } from "react-hot-toast";
 
-const DeleteStoreModal = ({ open, handleOpen, data, onSuccess }) => {
+const DeleteStoreModal = ({ open, handleOpen, data, onConfirm }) => {
   const [loading, setLoading] = useState(false);
 
   const handleDelete = async () => {
-    const storeId = data?.id; 
-    
-    if (!storeId) {
+    if (!data?.id) {
       toast.error("Gagal menghapus: ID Toko tidak ditemukan.");
       return;
     }
 
     setLoading(true);
     try {
-      const token = localStorage.getItem("token");
+      // Kita memanggil onConfirm yang dikirim dari StoreIndex.jsx
+      // onConfirm di Index biasanya sudah menangani axios.patch/delete dan toast internal
+      await onConfirm(); 
       
-      // Memanggil API DELETE sesuai dokumentasi image_1e0d75.png
-      await axios.delete(`http://localhost:3000/api/stores/${storeId}`, {
-        headers: { 
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json"
-        },
-      });
-
-      toast.success(`Toko "${data?.name || ""}" berhasil dinonaktifkan!`);
-
-      if (onSuccess) onSuccess(); // Memanggil fetchStores di parent
-      handleOpen(); // Menutup modal
-      
+      // Note: Jika onConfirm di StoreIndex tidak return promise, 
+      // pastikan handleOpen() tetap terpanggil melalui flow di parent.
     } catch (error) {
-      console.error("Detail Error Delete Store:", error.response);
-      const errorMsg = error.response?.data?.message || "Terjadi kesalahan pada server.";
-      toast.error(`Gagal Menghapus: ${errorMsg}`);
+      // Error handling tambahan jika fungsi onConfirm melempar error
+      console.error("Delete Error:", error);
     } finally {
       setLoading(false);
     }
@@ -53,26 +41,32 @@ const DeleteStoreModal = ({ open, handleOpen, data, onSuccess }) => {
       open={open} 
       handler={loading ? () => {} : handleOpen} 
       size="xs" 
-      className="rounded-2xl shadow-2xl"
+      className="rounded-[28px] shadow-2xl border border-red-50"
     >
       <DialogBody className="text-center p-8">
         <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-red-50">
           <ExclamationTriangleIcon className="h-12 w-12 text-red-500" />
         </div>
         
-        <Typography variant="h5" color="blue-gray" className="font-bold mb-3">
+        <Typography variant="h5" className="text-red-900 font-bold mb-3">
           Konfirmasi Hapus Toko
         </Typography>
         
         <Typography className="font-normal text-gray-600">
-          Apakah Anda yakin ingin menghapus toko <br />
-          <strong className="text-red-700">
+          Apakah Anda yakin ingin menonaktifkan toko <br />
+          <strong className="text-red-700 font-bold text-lg">
             {data?.name || "ini"}
           </strong>?
         </Typography>
         
-        <Typography variant="small" className="mt-4 text-gray-400 italic border-t pt-4">
-          ID: {data?.id} (Soft Delete aktif)
+        <div className="mt-6 p-3 bg-gray-50 rounded-xl border border-dashed border-gray-300">
+          <Typography variant="small" className="text-gray-500 font-mono">
+            ID Unit: #{data?.id}
+          </Typography>
+        </div>
+
+        <Typography className="text-[10px] text-gray-400 mt-4 italic">
+          *Data tidak akan dihapus permanen, hanya diubah status menjadi non-aktif.
         </Typography>
       </DialogBody>
 
@@ -82,7 +76,7 @@ const DeleteStoreModal = ({ open, handleOpen, data, onSuccess }) => {
           color="blue-gray" 
           onClick={handleOpen} 
           disabled={loading}
-          className="capitalize"
+          className="capitalize font-bold"
         >
           Batal
         </Button>
@@ -91,9 +85,15 @@ const DeleteStoreModal = ({ open, handleOpen, data, onSuccess }) => {
           color="red" 
           onClick={handleDelete}
           disabled={loading}
-          className="flex items-center gap-2 capitalize"
+          className="flex items-center gap-2 capitalize font-bold shadow-red-200 shadow-lg"
         >
-          {loading ? <Spinner className="h-4 w-4" /> : "Ya, Hapus Sekarang"}
+          {loading ? (
+            <>
+              <Spinner className="h-4 w-4" /> Memproses...
+            </>
+          ) : (
+            "Ya, Nonaktifkan"
+          )}
         </Button>
       </DialogFooter>
     </Dialog>

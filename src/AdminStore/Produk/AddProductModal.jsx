@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react"; // Tambahkan useEffect
+import React, { useState, useEffect } from "react";
 import {
   Dialog,
   DialogHeader,
@@ -13,15 +13,14 @@ import {
 } from "@material-tailwind/react";
 import {
   XMarkIcon,
-  CheckCircleIcon,
-  XCircleIcon,
   ShoppingBagIcon,
   CurrencyDollarIcon,
   BuildingStorefrontIcon
 } from "@heroicons/react/24/outline";
 import axios from "axios";
+// 1. Import toast
+import toast from "react-hot-toast";
 
-// Terima prop storeId dari ProdukIndex
 const AddProductModal = ({ open, handleOpen, refreshData, storeId }) => {
   const initialState = {
     name: "",
@@ -34,10 +33,7 @@ const AddProductModal = ({ open, handleOpen, refreshData, storeId }) => {
 
   const [form, setForm] = useState(initialState);
   const [loading, setLoading] = useState(false);
-  const [status, setStatus] = useState(null);
-  const [errorDetails, setErrorDetails] = useState("");
 
-  // Sinkronisasi: Update form.storeId ketika modal dibuka dan storeId tersedia
   useEffect(() => {
     if (open && storeId) {
       setForm((prev) => ({ ...prev, storeId: storeId }));
@@ -51,44 +47,49 @@ const AddProductModal = ({ open, handleOpen, refreshData, storeId }) => {
 
   const handleClose = () => {
     setForm(initialState);
-    setStatus(null);
-    setErrorDetails("");
     setLoading(false);
     handleOpen();
   };
 
   const handleSubmit = async () => {
-    // Validasi dasar
-    if (!form.name.trim() || !form.price || !form.storeId) {
-      alert("Data belum lengkap!");
-      return;
-    }
+    // 2. Validasi dengan Toast Error
+    if (!form.name.trim()) return toast.error("Nama produk wajib diisi!");
+    if (!form.price || Number(form.price) <= 0) return toast.error("Harga harus lebih dari 0!");
+    if (!form.storeId) return toast.error("ID Toko tidak ditemukan!");
 
     setLoading(true);
+    
+    // 3. Gunakan toast.promise untuk UX yang lebih baik
+    const token = localStorage.getItem("token");
+    const payload = {
+      ...form,
+      price: Number(form.price),
+      stock: Number(form.stock || 0),
+      weight: Number(form.weight || 0),
+      storeId: Number(form.storeId), 
+    };
+
+    const postAction = axios.post("http://localhost:3000/api/products", payload, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    toast.promise(postAction, {
+      loading: 'Sedang menyimpan produk...',
+      success: () => {
+        handleClose();
+        if (refreshData) refreshData();
+        return <b>Produk berhasil ditambahkan!</b>;
+      },
+      error: (err) => err.response?.data?.message || "Gagal menyimpan produk.",
+    }, {
+      style: { minWidth: '250px' },
+      success: { duration: 3000 },
+    });
+
     try {
-      const token = localStorage.getItem("token");
-      const payload = {
-        ...form,
-        price: Number(form.price),
-        stock: Number(form.stock || 0),
-        weight: Number(form.weight || 0),
-        storeId: Number(form.storeId), 
-      };
-
-      const response = await axios.post("http://localhost:3000/api/products", payload, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (response.status === 200 || response.status === 201) {
-        setStatus("success");
-        setTimeout(() => {
-          handleClose();
-          if (refreshData) refreshData();
-        }, 1500);
-      }
+      await postAction;
     } catch (error) {
-      setStatus("error");
-      setErrorDetails(error.response?.data?.message || "Gagal menyimpan produk.");
+      console.error(error);
     } finally {
       setLoading(false);
     }
@@ -101,8 +102,8 @@ const AddProductModal = ({ open, handleOpen, refreshData, storeId }) => {
           <div className="p-2 bg-blue-50 rounded-xl">
             <ShoppingBagIcon className="h-6 w-6 text-blue-600" />
           </div>
-          <Typography variant="h5" color="blue-gray" className="font-black uppercase">
-            Tambah Produk
+          <Typography variant="h5" color="blue-gray" className="font-black uppercase tracking-tight">
+            Tambah Produk Baru
           </Typography>
         </div>
         <IconButton variant="text" color="blue-gray" onClick={handleClose}>
@@ -111,73 +112,101 @@ const AddProductModal = ({ open, handleOpen, refreshData, storeId }) => {
       </DialogHeader>
 
       <DialogBody className="px-6 py-4 overflow-y-auto max-h-[70vh]">
-        {status === "success" ? (
-          <div className="flex flex-col items-center justify-center py-12">
-            <CheckCircleIcon className="h-20 w-20 text-green-500 mb-4 animate-bounce" />
-            <Typography variant="h4" className="text-green-700">Berhasil!</Typography>
-          </div>
-        ) : status === "error" ? (
-          <div className="flex flex-col items-center justify-center py-12">
-            <XCircleIcon className="h-20 w-20 text-red-500 mb-4" />
-            <Typography variant="h5" color="red">{errorDetails}</Typography>
-            <Button variant="outlined" color="red" onClick={() => setStatus(null)} className="mt-4">Coba Lagi</Button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              <Typography className="font-bold text-gray-800 text-xs uppercase">Informasi Produk</Typography>
-              <Input label="Nama Produk" name="name" value={form.name} onChange={handleChange} />
-              <Textarea label="Deskripsi" name="description" value={form.description} onChange={handleChange} />
-            </div>
-
-            <div className="space-y-4">
-              <Typography className="font-bold text-gray-800 text-xs uppercase">Store & Harga</Typography>
-              
-              {/* INPUT STORE ID SEKARANG READ-ONLY / DISABLED KARENA OTOMATIS */}
-              <Input 
-                label="ID Toko (Terisi Otomatis)" 
-                name="storeId" 
-                type="number"
-                disabled // User tidak perlu ubah ini manual
-                icon={<BuildingStorefrontIcon className="h-4 w-4" />}
-                value={form.storeId} 
-                onChange={handleChange}
-                className="bg-gray-50"
-              />
-
-              <Input 
-                label="Harga (Rp)" 
-                name="price" 
-                type="number" 
-                icon={<CurrencyDollarIcon className="h-4 w-4" />} 
-                value={form.price} 
-                onChange={handleChange} 
-              />
-              
-              <div className="grid grid-cols-2 gap-4">
-                <Input label="Stok" name="stock" type="number" value={form.stock} onChange={handleChange} />
-                <Input label="Berat (Gr)" name="weight" type="number" value={form.weight} onChange={handleChange} />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {/* Bagian Kiri: Identitas */}
+          <div className="space-y-5">
+            <div>
+              <Typography className="font-bold text-blue-900 text-[11px] uppercase tracking-wider mb-2">
+                Informasi Produk
+              </Typography>
+              <div className="space-y-4">
+                <Input 
+                  label="Nama Produk" 
+                  name="name" 
+                  value={form.name} 
+                  onChange={handleChange} 
+                  color="blue"
+                />
+                <Textarea 
+                  label="Deskripsi Detail" 
+                  name="description" 
+                  value={form.description} 
+                  onChange={handleChange} 
+                  color="blue"
+                />
               </div>
             </div>
           </div>
-        )}
+
+          {/* Bagian Kanan: Logistik & Harga */}
+          <div className="space-y-5">
+            <div>
+              <Typography className="font-bold text-blue-900 text-[11px] uppercase tracking-wider mb-2">
+                Store & Harga
+              </Typography>
+              <div className="space-y-4">
+                <Input 
+                  label="ID Toko" 
+                  name="storeId" 
+                  disabled 
+                  icon={<BuildingStorefrontIcon className="h-4 w-4" />}
+                  value={form.storeId} 
+                  className="bg-gray-50/50"
+                />
+
+                <Input 
+                  label="Harga Jual (Rp)" 
+                  name="price" 
+                  type="number" 
+                  icon={<CurrencyDollarIcon className="h-4 w-4" />} 
+                  value={form.price} 
+                  onChange={handleChange}
+                  color="blue"
+                />
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <Input 
+                    label="Jumlah Stok" 
+                    name="stock" 
+                    type="number" 
+                    value={form.stock} 
+                    onChange={handleChange}
+                    color="blue"
+                  />
+                  <Input 
+                    label="Berat (Gram)" 
+                    name="weight" 
+                    type="number" 
+                    value={form.weight} 
+                    onChange={handleChange}
+                    color="blue"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </DialogBody>
 
-      <DialogFooter className="p-4 gap-2">
-        {!status && (
-          <>
-            <Button variant="text" color="red" onClick={handleClose}>Batal</Button>
-            <Button 
-              variant="gradient" 
-              color="blue" 
-              onClick={handleSubmit} 
-              disabled={loading || !form.storeId} // Tombol mati jika storeId belum ada
-              className="flex items-center gap-2"
-            >
-              {loading ? <Spinner className="h-4 w-4" /> : "Simpan"}
-            </Button>
-          </>
-        )}
+      <DialogFooter className="p-6 gap-3 border-t border-gray-50">
+        <Button 
+          variant="text" 
+          color="red" 
+          onClick={handleClose} 
+          className="normal-case font-bold"
+          disabled={loading}
+        >
+          Batal
+        </Button>
+        <Button 
+          variant="gradient" 
+          color="blue" 
+          onClick={handleSubmit} 
+          disabled={loading || !form.storeId}
+          className="flex items-center gap-2 px-8 rounded-xl normal-case"
+        >
+          {loading ? <Spinner className="h-4 w-4" /> : "Simpan Produk"}
+        </Button>
       </DialogFooter>
     </Dialog>
   );

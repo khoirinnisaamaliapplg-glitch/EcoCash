@@ -5,6 +5,8 @@ import {
   Input, Button, Typography, Select, Option, Spinner 
 } from "@material-tailwind/react";
 import { BanknotesIcon, PlusCircleIcon } from "@heroicons/react/24/outline";
+// 1. Import toast
+import { toast } from "react-hot-toast";
 
 const CreateWasteModal = ({ open, handleOpen, refreshData }) => {
   const [loading, setLoading] = useState(false);
@@ -16,7 +18,6 @@ const CreateWasteModal = ({ open, handleOpen, refreshData }) => {
     pricePerKg: "" 
   });
 
-  // Ambil data user untuk mendapatkan areaId secara otomatis
   const rawUser = localStorage.getItem("userData") || localStorage.getItem("user");
   const userData = rawUser ? JSON.parse(rawUser) : null;
 
@@ -28,13 +29,13 @@ const CreateWasteModal = ({ open, handleOpen, refreshData }) => {
           const token = localStorage.getItem("token");
           const config = { headers: { Authorization: `Bearer ${token}` } };
 
-          // Hanya fetch waste-types karena areaId sudah didapat dari login
           const wasteRes = await axios.get("http://localhost:3000/api/waste-types", config);
           const wData = Array.isArray(wasteRes.data) ? wasteRes.data : (wasteRes.data.data || []);
 
           setCategories(wData.filter(c => c.isActive));
         } catch (error) {
           console.error("Fetch Waste Types Error:", error);
+          toast.error("Gagal memuat kategori sampah");
         } finally {
           setLoadingData(false);
         }
@@ -44,27 +45,39 @@ const CreateWasteModal = ({ open, handleOpen, refreshData }) => {
   }, [open]);
 
   const handleSubmit = async () => {
-    // Validasi: Pastikan jenis sampah, harga, dan areaId user tersedia
-    if (!formData.wasteTypeId || !formData.pricePerKg) return alert("Harap isi semua field!");
-    if (!userData?.areaId) return alert("Error: ID Wilayah tidak ditemukan pada akun Anda.");
+    // 2. Validasi Input dengan Toast
+    if (!formData.wasteTypeId || !formData.pricePerKg) {
+      return toast.error("Harap isi semua field!");
+    }
+    if (!userData?.areaId) {
+      return toast.error("ID Wilayah tidak ditemukan pada akun Anda.");
+    }
     
     setLoading(true);
+    // 3. Tampilkan Loading Toast
+    const toastId = toast.loading("Sedang menyimpan harga sampah...");
+
     try {
       const token = localStorage.getItem("token");
       await axios.post("http://localhost:3000/api/waste-prices", 
         {
-          areaId: Number(userData.areaId), // Otomatis dari user login
+          areaId: Number(userData.areaId),
           wasteTypeId: Number(formData.wasteTypeId),
           pricePerKg: parseFloat(formData.pricePerKg)
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       
-      refreshData(); // Refresh list di halaman utama
-      handleOpen();  // Tutup modal
-      setFormData({ wasteTypeId: "", pricePerKg: "" }); // Reset form
+      // 4. Sukses Toast
+      toast.success("Harga sampah berhasil ditambahkan!", { id: toastId });
+      
+      refreshData(); 
+      handleOpen();  
+      setFormData({ wasteTypeId: "", pricePerKg: "" }); 
     } catch (error) {
-      alert(error.response?.data?.message || "Gagal menyimpan harga");
+      const msg = error.response?.data?.message || "Gagal menyimpan harga";
+      // 5. Gagal Toast
+      toast.error(msg, { id: toastId });
     } finally {
       setLoading(false);
     }
@@ -94,7 +107,6 @@ const CreateWasteModal = ({ open, handleOpen, refreshData }) => {
           <div className="flex justify-center py-10"><Spinner color="blue" className="h-10 w-10" /></div>
         ) : (
           <div className="space-y-6">
-            {/* Jenis Sampah */}
             <div className="w-full">
               <Typography variant="small" className="font-bold mb-2 text-blue-gray-700">
                 Kategori Sampah
@@ -113,7 +125,6 @@ const CreateWasteModal = ({ open, handleOpen, refreshData }) => {
               </Select>
             </div>
 
-            {/* Harga per Kg */}
             <div className="w-full">
               <Typography variant="small" className="font-bold mb-2 text-blue-gray-700">
                 Harga Jual (per Kg)
@@ -124,7 +135,7 @@ const CreateWasteModal = ({ open, handleOpen, refreshData }) => {
                 value={formData.pricePerKg} 
                 onChange={(e) => setFormData({...formData, pricePerKg: e.target.value})}
                 icon={<BanknotesIcon className="h-5 w-5 text-blue-500" />}
-                className="!border-t-blue-gray-200 focus:!border-blue-500"
+                className="!border-t-blue-gray-200 focus:!border-blue-500 font-bold"
                 labelProps={{ className: "hidden" }}
               />
             </div>
@@ -137,6 +148,7 @@ const CreateWasteModal = ({ open, handleOpen, refreshData }) => {
           variant="text" 
           color="red" 
           onClick={handleOpen} 
+          disabled={loading}
           className="w-full md:w-auto normal-case font-bold"
         >
           Batal

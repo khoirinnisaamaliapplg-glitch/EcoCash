@@ -5,6 +5,8 @@ import {
   Input, Button, Typography, Spinner 
 } from "@material-tailwind/react";
 import { BanknotesIcon, PencilSquareIcon } from "@heroicons/react/24/outline";
+// 1. Import toast
+import { toast } from "react-hot-toast";
 
 const EditPriceModal = ({ open, handleOpen, data, refreshData }) => {
   const [loading, setLoading] = useState(false);
@@ -13,26 +15,25 @@ const EditPriceModal = ({ open, handleOpen, data, refreshData }) => {
   // Sinkronisasi data saat modal dibuka
   useEffect(() => {
     if (open && data) {
-      // Mengambil harga lama dari data yang dipilih
       setPrice(data.pricePerKg || "");
     }
   }, [data, open]);
 
   const handlePatch = async () => {
-    // Validasi input
+    // 2. Validasi dengan Toast Error
     if (!price || isNaN(price) || parseFloat(price) <= 0) {
-      return alert("Harap masukkan harga yang valid dan lebih dari 0!");
+      return toast.error("Harap masukkan harga yang valid dan lebih dari 0!");
     }
     
     setLoading(true);
+    // 3. Gunakan loading toast untuk memberikan feedback instan
+    const toastId = toast.loading("Sedang memperbarui harga...");
+
     try {
       const token = localStorage.getItem("token");
       
-      // LOGIKA: Menggunakan axios.patch untuk update parsial
-      // Endpoint: http://localhost:3000/api/waste-prices/:id
       await axios.patch(`http://localhost:3000/api/waste-prices/${data.id}`, 
         {
-          // Kita HANYA mengirimkan field yang ingin diubah saja
           pricePerKg: parseFloat(price)
         },
         { 
@@ -40,11 +41,17 @@ const EditPriceModal = ({ open, handleOpen, data, refreshData }) => {
         }
       );
       
-      refreshData(); // Refresh list di halaman utama agar harga berubah
-      handleOpen();  // Tutup modal
+      // 4. Toast Sukses
+      toast.success("Harga berhasil diperbarui!", { id: toastId });
+      
+      refreshData(); 
+      handleOpen();  
     } catch (error) {
       console.error("Patch Error:", error);
-      alert(error.response?.data?.message || "Gagal memperbarui harga sampah");
+      const errorMsg = error.response?.data?.message || "Gagal memperbarui harga sampah";
+      
+      // 5. Toast Gagal
+      toast.error(errorMsg, { id: toastId });
     } finally {
       setLoading(false);
     }
@@ -55,7 +62,6 @@ const EditPriceModal = ({ open, handleOpen, data, refreshData }) => {
       open={open} 
       handler={handleOpen} 
       size="xs" 
-      // mx-4 md:mx-0 agar di HP tidak mentok layar
       className="rounded-[25px] md:rounded-[35px] shadow-2xl overflow-hidden mx-4 md:mx-0"
     >
       <DialogHeader className="flex flex-col items-start gap-1 pt-8 px-6 md:px-10">
@@ -79,9 +85,8 @@ const EditPriceModal = ({ open, handleOpen, data, refreshData }) => {
             size="lg" 
             type="number"
             placeholder="Contoh: 5500"
-            // Styling input sesuai tema Material Tailwind yang bersih
             className="rounded-xl font-black text-blue-700 !border-t-blue-gray-200 focus:!border-green-500" 
-            labelProps={{ className: "hidden" }} // Sembunyikan label bawaan MT
+            labelProps={{ className: "hidden" }} 
             icon={<BanknotesIcon className="h-5 w-5 text-green-500" />}
             value={price}
             onChange={(e) => setPrice(e.target.value)}
@@ -90,25 +95,24 @@ const EditPriceModal = ({ open, handleOpen, data, refreshData }) => {
       </DialogBody>
 
       <DialogFooter className="px-6 md:px-10 pb-8 md:pb-10 pt-4 flex flex-col-reverse md:flex-row gap-3">
-        {/* Tombol Batal */}
         <Button 
           variant="text" 
           color="red" 
           onClick={handleOpen} 
+          disabled={loading}
           className="w-full md:w-auto rounded-xl font-bold normal-case py-3"
         >
           Batal
         </Button>
-        {/* Tombol Simpan - Pakai Patch */}
         <Button 
           className="bg-green-600 w-full md:flex-1 rounded-xl shadow-green-100 shadow-lg font-black py-3 normal-case flex justify-center items-center" 
           onClick={handlePatch}
           disabled={loading}
         >
           {loading ? (
-            <Spinner className="h-4 w-4 mr-2" />
+            <Spinner className="h-4 w-4" />
           ) : (
-            "Simpan Perubahan (Patch)"
+            "Simpan Perubahan"
           )}
         </Button>
       </DialogFooter>

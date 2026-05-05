@@ -8,6 +8,8 @@ import {
 import { 
   CpuChipIcon, ArrowPathIcon, PencilSquareIcon, MapPinIcon 
 } from "@heroicons/react/24/outline";
+// 1. Import toast
+import { toast } from "react-hot-toast";
 
 const SmartContainerIndex = () => {
   const [machines, setMachines] = useState([]);
@@ -17,17 +19,35 @@ const SmartContainerIndex = () => {
 
   const token = localStorage.getItem("token");
 
-  const fetchMachines = useCallback(async () => {
+  const fetchMachines = useCallback(async (isManual = false) => {
     if (!token) return;
     setLoading(true);
+    
+    // 2. Tampilkan loading toast jika ditarik manual
+    const loadToast = isManual ? toast.loading("Sinkronisasi data...") : null;
+
     try {
       const response = await axios.get("http://localhost:3000/api/machines/my", {
         headers: { Authorization: `Bearer ${token}` },
       });
       const result = response.data.data || [];
       setMachines(result);
+      
+      // 3. Update toast menjadi sukses
+      if (isManual) {
+        toast.success("Data berhasil diperbarui", { id: loadToast });
+      }
     } catch (err) {
-      console.error("Kesalahan pengambilan data:", err.response?.data?.message || err.message);
+      const errMsg = err.response?.data?.message || err.message;
+      console.error("Kesalahan pengambilan data:", errMsg);
+      
+      // 4. Update toast menjadi error
+      if (isManual) {
+        toast.error(`Gagal sinkronisasi: ${errMsg}`, { id: loadToast });
+      } else {
+        toast.error("Gagal memuat data mesin");
+      }
+
       if (err.response?.status === 403 || err.response?.status === 401) {
         setMachines([]);
       }
@@ -62,7 +82,6 @@ const SmartContainerIndex = () => {
     <MainLayout>
       <div className="space-y-6 md:space-y-8 pb-10">
         
-        {/* HEADER - Nama Petugas & ID sudah dihapus */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 px-2 mt-4">
           <div>
             <Typography variant="h3" className="text-blue-900 font-black flex items-center gap-3 text-2xl md:text-3xl uppercase">
@@ -75,24 +94,25 @@ const SmartContainerIndex = () => {
           </div>
           
           <Button 
-            onClick={fetchMachines} 
+            // 5. Tambahkan argumen true untuk trigger toast manual
+            onClick={() => fetchMachines(true)} 
             variant="outline"
-            className="flex items-center gap-3 border-2 border-blue-600 text-blue-600 rounded-2xl normal-case py-3 px-6 font-black"
+            className="flex items-center gap-3 border-2 border-blue-600 text-blue-600 rounded-2xl normal-case py-3 px-6 font-black active:scale-95 transition-transform"
           >
             <ArrowPathIcon className={`h-5 w-5 ${loading ? "animate-spin" : ""}`} /> Perbarui Data
           </Button>
         </div>
 
         {/* DAFTAR MESIN */}
-        {loading ? (
+        {loading && machines.length === 0 ? (
           <div className="p-20 text-center">
             <Spinner className="h-12 w-12 mx-auto mb-4 text-blue-600" />
-            <Typography className="animate-pulse font-bold text-blue-900">Mensinkronisasi...</Typography>
+            <Typography className="animate-pulse font-bold text-blue-900 uppercase">Mensinkronisasi...</Typography>
           </div>
         ) : machines.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {machines.map((item) => (
-              <Card key={item.id} className="p-6 rounded-[2.5rem] border border-white bg-white/80 backdrop-blur-md shadow-xl shadow-blue-900/5">
+              <Card key={item.id} className="p-6 rounded-[2.5rem] border border-white bg-white/80 backdrop-blur-md shadow-xl shadow-blue-900/5 hover:shadow-blue-900/10 transition-shadow">
                 <div className="flex justify-between items-start mb-6">
                   <div className="h-14 w-14 rounded-2xl bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-200">
                     <CpuChipIcon className="h-8 w-8" />
@@ -134,7 +154,7 @@ const SmartContainerIndex = () => {
                 <Button 
                   fullWidth 
                   color="blue" 
-                  className="rounded-xl py-3 font-black shadow-lg shadow-blue-100 flex items-center justify-center gap-2"
+                  className="rounded-xl py-3 font-black shadow-lg shadow-blue-100 flex items-center justify-center gap-2 uppercase text-xs active:scale-95 transition-transform"
                   onClick={() => { setSelectedMachine(item); setOpenEdit(true); }}
                 >
                   <PencilSquareIcon className="h-4 w-4" /> Perbarui Status
@@ -156,7 +176,7 @@ const SmartContainerIndex = () => {
           open={openEdit} 
           handleOpen={() => setOpenEdit(false)} 
           data={selectedMachine} 
-          refreshData={fetchMachines} 
+          refreshData={() => fetchMachines(false)} 
         />
       )}
     </MainLayout>

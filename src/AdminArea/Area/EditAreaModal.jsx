@@ -12,6 +12,8 @@ import {
 } from "@material-tailwind/react";
 import { CheckCircleIcon, XCircleIcon } from "@heroicons/react/24/solid";
 import axios from "axios";
+// 1. IMPORT TOAST
+import { toast } from "react-hot-toast";
 
 const EditAreaModal = ({ open, setOpen, selectedArea, refreshData }) => {
   const [loading, setLoading] = useState(false);
@@ -39,7 +41,9 @@ const EditAreaModal = ({ open, setOpen, selectedArea, refreshData }) => {
   }, [selectedArea, open]);
 
   const handleUpdate = async () => {
+    // 2. TOAST UNTUK VALIDASI
     if (!formData.name || !formData.code) {
+      toast.error("Nama dan Kode Area wajib diisi!");
       setErrorMessage("Nama dan Kode Area tidak boleh kosong");
       setStatus("error");
       return;
@@ -47,11 +51,11 @@ const EditAreaModal = ({ open, setOpen, selectedArea, refreshData }) => {
 
     setLoading(true);
     setStatus(null);
+    const toastId = toast.loading("Sedang memperbarui data...");
 
     try {
       const token = localStorage.getItem("token");
       
-      // MENGGANTI axios.put MENJADI axios.patch
       await axios.patch(`http://localhost:3000/api/areas/${selectedArea.id}`, formData, {
         headers: { 
           Authorization: `Bearer ${token}`,
@@ -59,6 +63,8 @@ const EditAreaModal = ({ open, setOpen, selectedArea, refreshData }) => {
         }
       });
 
+      // 3. TOAST SUKSES
+      toast.success("Wilayah berhasil diperbarui!", { id: toastId });
       setStatus("success");
       
       setTimeout(() => {
@@ -69,6 +75,9 @@ const EditAreaModal = ({ open, setOpen, selectedArea, refreshData }) => {
     } catch (error) {
       console.error("Gagal update area:", error.response?.data);
       const msg = error.response?.data?.message || "Terjadi kesalahan pada server.";
+      
+      // 4. TOAST ERROR
+      toast.error(msg, { id: toastId });
       setErrorMessage(msg);
       setStatus("error");
     } finally {

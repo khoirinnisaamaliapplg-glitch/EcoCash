@@ -1,9 +1,39 @@
-import React from "react";
+import React, { useState } from "react"; // Tambahkan useState
 import MainLayout from "./MainLayout";
 import { Card, Typography, Button, Input, Switch, Avatar } from "@material-tailwind/react";
-import { Cog6ToothIcon, GlobeAltIcon, CpuChipIcon, ShieldCheckIcon, CloudArrowUpIcon } from "@heroicons/react/24/outline";
+import { GlobeAltIcon, CpuChipIcon, ShieldCheckIcon, CloudArrowUpIcon } from "@heroicons/react/24/outline";
 
 const SystemSettingIndex = () => {
+  // 1. Inisialisasi State untuk formulir
+  const [settings, setSettings] = useState({
+    systemName: "EcoCash Indonesia",
+    adminEmail: "admin@ecocash.id",
+    timeZone: "(GMT+07:00) Jakarta",
+    currency: "IDR (Rp)",
+    mqttUrl: "mqtt://broker.ecocash-aiot.com:1883",
+    refreshInterval: 30,
+    twoFactor: true,
+    maintenanceMode: false
+  });
+
+  // 2. Handler untuk perubahan input text/number
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setSettings((prev) => ({ ...prev, [name]: value }));
+  };
+
+  // 3. Handler untuk perubahan Switch
+  const handleSwitch = (name) => {
+    setSettings((prev) => ({ ...prev, [name]: !prev[name] }));
+  };
+
+  // 4. Handler saat tombol Save diklik
+  const handleSave = () => {
+    console.log("Data yang disimpan:", settings);
+    alert("Konfigurasi sistem berhasil diperbarui!");
+    // Di sini kamu bisa panggil fungsi API seperti axios.post('/api/settings', settings)
+  };
+
   return (
     <MainLayout>
       <div className="space-y-6">
@@ -14,7 +44,7 @@ const SystemSettingIndex = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           
-          {/* SISI KIRI: Identitas Sistem */}
+          {/* SISI KIRI */}
           <div className="lg:col-span-1 space-y-6">
             <Card className="p-6 rounded-[32px] border border-blue-50 shadow-sm text-center">
               <div className="flex justify-center mb-4">
@@ -35,7 +65,7 @@ const SystemSettingIndex = () => {
               <Typography className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">v3.0 - AIoT Integrated</Typography>
               <div className="mt-6 space-y-3">
                 <Button fullWidth variant="outlined" color="blue" className="rounded-xl normal-case py-2 text-[11px]">Download Backup Data</Button>
-                <Button fullWidth className="bg-[#ef5350] rounded-xl normal-case py-2 text-[11px] shadow-none">Reset System</Button>
+                <Button fullWidth className="bg-[#ef5350] rounded-xl normal-case py-2 text-[11px] shadow-none" onClick={() => alert("Sistem direset!")}>Reset System</Button>
               </div>
             </Card>
 
@@ -46,17 +76,25 @@ const SystemSettingIndex = () => {
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <Typography className="text-xs font-bold text-gray-600">Two-Factor Auth</Typography>
-                  <Switch color="blue" defaultChecked />
+                  <Switch 
+                    color="blue" 
+                    checked={settings.twoFactor} 
+                    onChange={() => handleSwitch('twoFactor')} 
+                  />
                 </div>
                 <div className="flex items-center justify-between">
                   <Typography className="text-xs font-bold text-gray-600">Maintenance Mode</Typography>
-                  <Switch color="red" />
+                  <Switch 
+                    color="red" 
+                    checked={settings.maintenanceMode} 
+                    onChange={() => handleSwitch('maintenanceMode')} 
+                  />
                 </div>
               </div>
             </Card>
           </div>
 
-          {/* SISI KANAN: Detail Konfigurasi */}
+          {/* SISI KANAN */}
           <div className="lg:col-span-2 space-y-6">
             <Card className="p-8 rounded-[32px] border border-blue-50 shadow-sm space-y-8">
               
@@ -67,10 +105,10 @@ const SystemSettingIndex = () => {
                   <Typography className="text-sm font-bold text-blue-900 uppercase tracking-wider">General Configuration</Typography>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Input label="System Name" defaultValue="EcoCash Indonesia" className="rounded-xl" />
-                  <Input label="Admin Email" defaultValue="admin@ecocash.id" className="rounded-xl" />
-                  <Input label="Time Zone" defaultValue="(GMT+07:00) Jakarta" className="rounded-xl" />
-                  <Input label="Currency Symbol" defaultValue="IDR (Rp)" className="rounded-xl" />
+                  <Input label="System Name" name="systemName" value={settings.systemName} onChange={handleChange} className="rounded-xl" />
+                  <Input label="Admin Email" name="adminEmail" value={settings.adminEmail} onChange={handleChange} className="rounded-xl" />
+                  <Input label="Time Zone" name="timeZone" value={settings.timeZone} onChange={handleChange} className="rounded-xl" />
+                  <Input label="Currency Symbol" name="currency" value={settings.currency} onChange={handleChange} className="rounded-xl" />
                 </div>
               </div>
 
@@ -81,17 +119,17 @@ const SystemSettingIndex = () => {
                   <Typography className="text-sm font-bold text-blue-900 uppercase tracking-wider">AIoT & Server Link</Typography>
                 </div>
                 <div className="space-y-4">
-                  <Input label="MQTT Broker URL" defaultValue="mqtt://broker.ecocash-aiot.com:1883" className="rounded-xl" />
+                  <Input label="MQTT Broker URL" name="mqttUrl" value={settings.mqttUrl} onChange={handleChange} className="rounded-xl" />
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Input label="API Key Sync" type="password" value="**************" className="rounded-xl" />
-                    <Input label="Refresh Interval (Seconds)" defaultValue="30" type="number" className="rounded-xl" />
+                    <Input label="API Key Sync" type="password" value="**************" disabled className="rounded-xl" />
+                    <Input label="Refresh Interval (Sec)" name="refreshInterval" type="number" value={settings.refreshInterval} onChange={handleChange} className="rounded-xl" />
                   </div>
                 </div>
               </div>
 
               <div className="flex justify-end gap-3 pt-4 border-t border-gray-50">
-                <Button variant="text" color="blue-gray" className="rounded-xl normal-case font-bold">Discard</Button>
-                <Button className="bg-[#2b6cb0] rounded-xl normal-case px-10 font-bold shadow-none">Save Changes</Button>
+                <Button variant="text" color="blue-gray" className="rounded-xl normal-case font-bold" onClick={() => window.location.reload()}>Discard</Button>
+                <Button className="bg-[#2b6cb0] rounded-xl normal-case px-10 font-bold shadow-none" onClick={handleSave}>Save Changes</Button>
               </div>
             </Card>
           </div>

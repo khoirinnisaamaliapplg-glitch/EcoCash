@@ -5,6 +5,8 @@ import {
   Button, Typography, Spinner 
 } from "@material-tailwind/react";
 import { TrashIcon } from "@heroicons/react/24/outline";
+// 1. Import toast
+import { toast } from "react-hot-toast";
 
 const DeleteWasteModal = ({ open, handleOpen, data, refreshData }) => {
   const [loading, setLoading] = useState(false);
@@ -12,20 +14,28 @@ const DeleteWasteModal = ({ open, handleOpen, data, refreshData }) => {
   const handleDelete = async () => {
     if (!data?.id) return;
 
+    // 2. Tampilkan toast loading
+    const toastId = toast.loading("Sedang menghapus data harga...");
     setLoading(true);
+
     try {
       const token = localStorage.getItem("token");
       
-      // LOGIKA: Menggunakan axios.delete ke endpoint spesifik ID
       await axios.delete(`http://localhost:3000/api/waste-prices/${data.id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
+      
+      // 3. Update toast menjadi sukses
+      toast.success("Data harga berhasil dihapus!", { id: toastId });
       
       refreshData(); // Refresh list data di halaman utama
       handleOpen();  // Tutup modal
     } catch (error) {
       console.error("Delete Error:", error);
-      alert(error.response?.data?.message || "Gagal menghapus data harga");
+      const errorMsg = error.response?.data?.message || "Gagal menghapus data harga";
+      
+      // 4. Update toast menjadi error
+      toast.error(errorMsg, { id: toastId });
     } finally {
       setLoading(false);
     }
@@ -64,7 +74,7 @@ const DeleteWasteModal = ({ open, handleOpen, data, refreshData }) => {
           disabled={loading}
         >
           {loading ? (
-            <Spinner className="h-4 w-4 mr-2" />
+            <Spinner className="h-4 w-4" />
           ) : (
             "Ya, Hapus Harga"
           )}
