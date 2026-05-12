@@ -10,7 +10,7 @@ import {
   ShieldCheckIcon 
 } from "@heroicons/react/24/outline";
 import EditProfileModal from "./EditProfileModal";
-import axios from "axios";
+import api from "../../utils/api";
 
 const ProfileIndex = () => {
   const [openEdit, setOpenEdit] = useState(false);
@@ -28,29 +28,35 @@ const ProfileIndex = () => {
 
   // 1. Fungsi Fetch Profile Data
   const fetchProfile = async () => {
-    setLoading(true);
-    try {
-      const token = localStorage.getItem("token");
-      // Ganti URL ini sesuai endpoint profile/me di backend kamu
-      const response = await axios.get("http://localhost:3000/api/v1/auth/me", {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      const data = response.data.data || response.data;
-      setUserData({
-        name: data.name || "User EcoCash",
-        username: data.username || "-",
-        email: data.email || "-",
-        role: data.role || "Member",
-        location: data.location || "Belum diatur",
-        bio: data.bio || "Tidak ada biografi."
-      });
-    } catch (error) {
-      console.error("Gagal mengambil profile:", error);
-    } finally {
-      setLoading(false);
+  setLoading(true);
+  try {
+    // 1. Cukup panggil endpoint-nya saja
+    // Interceptor di api.js sudah otomatis mengambil token dari localStorage
+    const response = await api.get("/auth/me");
+    
+    // 2. Mapping data dengan fallback (cadangan) jika data kosong
+    const data = response.data.data || response.data;
+    
+    setUserData({
+      name: data.name || "User EcoCash",
+      username: data.username || "-",
+      email: data.email || "-",
+      role: data.role || "Member",
+      location: data.location || "Belum diatur",
+      bio: data.bio || "Tidak ada biografi."
+    });
+  } catch (error) {
+    // 3. Error handling yang lebih informatif
+    console.error("Gagal mengambil profile:", error.response?.data || error.message);
+    
+    // Opsional: Jika error 401 (unauthorized), bisa arahkan ke login
+    if (error.response?.status === 401) {
+      toast.error("Sesi habis, silakan login kembali.");
     }
-  };
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
     fetchProfile();

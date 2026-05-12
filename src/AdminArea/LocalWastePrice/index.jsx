@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import MainLayout from "../MainLayout";
-import axios from "axios";
+import api from "../../utils/api"; 
 import { 
   Card, Typography, Button, Spinner, Chip, IconButton, 
   Input, Select, Option 
@@ -38,7 +38,7 @@ const LocalWastePrice = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.get("http://localhost:3000/api/v1/waste-prices", {
+      const response = await api.get("/waste-prices", {
         headers: { Authorization: `Bearer ${token}` }
       });
       

@@ -10,7 +10,7 @@ import {
   ShieldCheckIcon 
 } from "@heroicons/react/24/outline";
 import EditProfileModal from "./EditProfileModal";
-import axios from "axios";
+import api from "../../utils/api";
 
 const ProfileIndex = () => {
   const [openEdit, setOpenEdit] = useState(false);
@@ -32,7 +32,7 @@ const ProfileIndex = () => {
     try {
       const token = localStorage.getItem("token");
       // Ganti URL ini sesuai endpoint profile/me di backend kamu
-      const response = await axios.get("http://localhost:3000/api/v1/auth/me", {
+      const response = await api.get("/auth/me", {
         headers: { Authorization: `Bearer ${token}` }
       });
       

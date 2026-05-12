@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Dialog, DialogHeader, DialogBody, DialogFooter, Button, Input, Spinner } from "@material-tailwind/react";
-import axios from "axios";
+import api from "../../utils/api"; 
 import { toast } from "react-toastify"; // Import Toast
 
 const EditWasteTypeModal = ({ open, handleOpen, data, refreshData, apiUrl }) => {
@@ -22,7 +22,7 @@ const EditWasteTypeModal = ({ open, handleOpen, data, refreshData, apiUrl }) => 
       // Pastikan apiUrl tidak memiliki double slash (//)
       const cleanUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
       
-      await axios.patch(
+      await api.patch(
         `${cleanUrl}/${data.id}`, 
         { name: name.trim() }, 
         {

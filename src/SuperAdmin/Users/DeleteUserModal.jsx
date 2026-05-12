@@ -4,7 +4,7 @@ import {
   Button, Typography, Spinner 
 } from "@material-tailwind/react";
 import { ExclamationTriangleIcon } from "@heroicons/react/24/outline";
-import axios from "axios";
+import api from "../../utils/api";
 import { toast } from "react-toastify"; // Import Toast
 
 const DeleteUserModal = ({ open, handleOpen, data, refreshData }) => {
@@ -20,7 +20,7 @@ const DeleteUserModal = ({ open, handleOpen, data, refreshData }) => {
       const cleanId = String(data.id).replace(':', '');
 
       // Menjalankan request DELETE ke API
-      await axios.delete(`http://localhost:3000/api/v1/admin/users/${cleanId}`, {
+      await api.delete(`/admin/users/${cleanId}`, {
         headers: { 
           Authorization: `Bearer ${token}` 
         }

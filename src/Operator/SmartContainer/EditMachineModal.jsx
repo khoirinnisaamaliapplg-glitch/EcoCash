@@ -10,7 +10,7 @@ import {
   Typography
 } from "@material-tailwind/react";
 import { PencilSquareIcon } from "@heroicons/react/24/outline";
-import axios from "axios";
+import api from "../../utils/api";
 // 1. Import toast
 import { toast } from "react-hot-toast";
 
@@ -29,8 +29,8 @@ const EditMachineModal = ({ open, handleOpen, data, refreshData }) => {
     const token = localStorage.getItem("token");
 
     // 2. Bungkus request dalam toast.promise
-    const updatePromise = axios.patch(
-      `http://localhost:3000/api/v1/machines/${data.id}/status`, 
+    const updatePromise = api.patch(
+      `/machines/${data.id}/status`, 
       { status: status },
       { 
         headers: { 

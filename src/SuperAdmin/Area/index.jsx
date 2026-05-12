@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import MainLayout from "../MainLayout";
-import { Card, Typography, Button, Input, Chip, IconButton } from "@material-tailwind/react";
+import { Card, Typography, Button, Input, Chip } from "@material-tailwind/react";
 import { 
   PlusIcon, 
   MagnifyingGlassIcon, 
@@ -9,7 +9,8 @@ import {
   ChevronLeftIcon,
   ChevronUpDownIcon 
 } from "@heroicons/react/24/outline";
-import axios from "axios";
+// 1. GANTI IMPORT AXIOS DENGAN API
+import api from "../../utils/api"; 
 import { toast } from 'react-toastify';
 import { useDebounce } from "use-debounce";
 
@@ -31,7 +32,6 @@ const AreaIndex = () => {
   const [dataArea, setDataArea] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  // State Query (Pagination, Search, Sort)
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search, 500); 
   const [page, setPage] = useState(1);
@@ -41,7 +41,6 @@ const AreaIndex = () => {
   const [sortBy, setSortBy] = useState("createdAt");
   const [sortOrder, setSortOrder] = useState("desc");
 
-  // State Modal
   const [openAdd, setOpenAdd] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
@@ -53,9 +52,8 @@ const AreaIndex = () => {
   const fetchAreas = useCallback(async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem("token");
-      const response = await axios.get("http://localhost:3000/api/v1/areas", {
-        headers: { Authorization: `Bearer ${token}` },
+      // 2. CUKUP PAKAI API.GET (Token & BaseURL Otomatis)
+      const response = await api.get("/areas", {
         params: {
           page,
           limit,
@@ -65,7 +63,6 @@ const AreaIndex = () => {
         }
       });
 
-      // Sesuaikan mapping data berdasarkan struktur response API Anda
       const result = response.data;
       setDataArea(result.data || []);
       setTotalPages(result.pagination?.totalPages || 1);
@@ -78,12 +75,10 @@ const AreaIndex = () => {
     }
   }, [page, limit, debouncedSearch, sortBy, sortOrder]);
 
-  // Effect untuk fetch data
   useEffect(() => {
     fetchAreas();
   }, [fetchAreas]);
 
-  // Reset ke halaman 1 jika user mencari sesuatu
   useEffect(() => {
     setPage(1);
   }, [debouncedSearch]);
@@ -107,10 +102,8 @@ const AreaIndex = () => {
 
   const executeDelete = async (id) => {
     try {
-      const token = localStorage.getItem("token");
-      await axios.delete(`http://localhost:3000/api/areas/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      // 3. CUKUP PAKAI API.DELETE
+      await api.delete(`/areas/${id}`);
       
       toast.success("Wilayah berhasil dihapus!");
       fetchAreas(); 
@@ -125,15 +118,15 @@ const AreaIndex = () => {
       <div className="p-4 md:p-0 space-y-6">
         {/* Header Section */}
         <div className="flex flex-col gap-1">
-          <Typography variant="h4" className="text-[#2b6cb0] font-bold">Manajemen Wilayah</Typography>
-          <Typography className="text-gray-500 text-sm">Data pusat kontrol area operasional EcoCash</Typography>
+          <Typography variant="h4" className="text-[#2b6cb0] font-black uppercase italic">Manajemen Wilayah</Typography>
+          <Typography className="text-gray-500 text-sm font-medium">Data pusat kontrol area operasional EcoCash</Typography>
         </div>
 
         {/* Action Section: Add & Search */}
         <div className="flex flex-col md:flex-row justify-between gap-4">
           <Button 
             onClick={() => setOpenAdd(true)}
-            className="flex items-center justify-center gap-2 bg-[#66bb6a] normal-case rounded-xl shadow-none px-6"
+            className="flex items-center justify-center gap-2 bg-[#66bb6a] normal-case rounded-xl shadow-none px-6 font-bold"
           >
             <PlusIcon className="h-5 w-5 stroke-[3]" /> Add Area
           </Button>
@@ -143,21 +136,22 @@ const AreaIndex = () => {
               icon={<MagnifyingGlassIcon className="h-5 w-5" />} 
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              className="rounded-xl"
             />
           </div>
         </div>
 
         {/* Table Section */}
-        <Card className="w-full overflow-hidden border border-blue-50 shadow-sm rounded-2xl">
+        <Card className="w-full overflow-hidden border border-blue-50 shadow-sm rounded-2xl bg-white">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[900px] table-auto text-left">
               <thead>
-                <tr className="bg-[#e3f2fd]/50">
+                <tr className="bg-[#e3f2fd]/30">
                   {TABLE_HEAD.map((head) => (
                     <th 
                       key={head.label} 
                       onClick={() => handleSort(head.value)}
-                      className={`p-5 border-b border-blue-gray-50 font-bold text-[#2b6cb0] uppercase text-[11px] ${head.value ? "cursor-pointer hover:bg-blue-100/50 transition-colors" : ""}`}
+                      className={`p-5 border-b border-blue-gray-50 font-black text-[#2b6cb0] uppercase text-[11px] tracking-widest ${head.value ? "cursor-pointer hover:bg-blue-100/50 transition-colors" : ""}`}
                     >
                       <div className="flex items-center justify-between gap-2">
                         {head.label}
@@ -172,17 +166,17 @@ const AreaIndex = () => {
               <tbody>
                 {!loading && dataArea.length > 0 ? (
                   dataArea.map((area) => (
-                    <tr key={area.id} className="hover:bg-blue-50/20 border-b border-blue-gray-50/50">
-                      <td className="p-5 font-bold text-blue-900">
+                    <tr key={area.id} className="hover:bg-blue-50/20 border-b border-blue-gray-50/50 transition-colors">
+                      <td className="p-5 font-black text-blue-900 text-sm">
                         <div className="flex items-center gap-2">
                           <GlobeAsiaAustraliaIcon className="h-4 w-4 text-blue-600" />
                           {area.code}
                         </div>
                       </td>
-                      <td className="p-5 font-bold text-gray-800">{area.name}</td>
+                      <td className="p-5 font-bold text-gray-800 text-sm">{area.name}</td>
                       <td className="p-5">
-                        <Typography className="text-xs font-bold text-blue-gray-800">{area.regencyName}</Typography>
-                        <Typography className="text-[10px] text-gray-500 uppercase">{area.province}</Typography>
+                        <Typography className="text-xs font-black text-blue-gray-800">{area.regencyName}</Typography>
+                        <Typography className="text-[10px] font-bold text-gray-400 uppercase italic">{area.province}</Typography>
                       </td>
                       <td className="p-5">
                         <Chip 
@@ -190,23 +184,24 @@ const AreaIndex = () => {
                           size="sm" 
                           value={area.regencyType || "Wilayah"} 
                           color={area.regencyType === "Kota" ? "purple" : "orange"}
+                          className="font-black rounded-lg"
                         />
                       </td>
                       <td className="p-5">
                         <div className="flex items-center gap-2">
-                          <Button size="sm" onClick={() => handleEditTrigger(area)} className="bg-[#66bb6a] shadow-none hover:shadow-none">Edit</Button>
-                          <Button size="sm" onClick={() => handleDeleteTrigger(area)} className="bg-[#ef5350] shadow-none hover:shadow-none">Hapus</Button>
+                          <Button size="sm" onClick={() => handleEditTrigger(area)} className="bg-blue-600 shadow-none hover:shadow-md normal-case font-bold">Edit</Button>
+                          <Button size="sm" onClick={() => handleDeleteTrigger(area)} className="bg-red-500 shadow-none hover:shadow-md normal-case font-bold">Hapus</Button>
                         </div>
                       </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={5} className="p-10 text-center text-gray-400 font-medium">
+                    <td colSpan={5} className="p-10 text-center text-gray-400 font-black italic uppercase tracking-widest">
                       {loading ? (
-                        <div className="flex flex-col items-center gap-2">
-                          <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600" />
-                          Memuat data...
+                        <div className="flex flex-col items-center gap-3">
+                          <div className="h-10 w-10 animate-spin rounded-full border-4 border-blue-100 border-t-blue-600" />
+                          Synchronizing...
                         </div>
                       ) : "Data wilayah tidak ditemukan."}
                     </td>
@@ -218,8 +213,8 @@ const AreaIndex = () => {
 
           {/* Pagination Footer */}
           <div className="flex items-center justify-between p-5 border-t border-blue-gray-50 bg-white">
-            <Typography variant="small" className="font-medium text-gray-600">
-              Menampilkan <span className="text-blue-700">{dataArea.length}</span> dari <span className="text-blue-700">{totalData}</span> data
+            <Typography variant="small" className="font-bold text-gray-500 italic uppercase text-[10px]">
+              Showing <span className="text-blue-700">{dataArea.length}</span> of <span className="text-blue-700">{totalData}</span> entries
             </Typography>
             <div className="flex items-center gap-2">
               <Button
@@ -227,15 +222,15 @@ const AreaIndex = () => {
                 size="sm"
                 onClick={() => setPage((p) => Math.max(p - 1, 1))}
                 disabled={page === 1 || loading}
-                className="flex items-center gap-1 border-blue-gray-100"
+                className="flex items-center gap-1 border-blue-gray-100 font-bold"
               >
                 <ChevronLeftIcon className="h-3 w-3 stroke-[3]" /> Prev
               </Button>
-              <div className="flex items-center gap-1 px-2">
-                <Typography variant="small" className="font-bold text-blue-700">
+              <div className="flex items-center gap-1 px-3">
+                <Typography variant="small" className="font-black text-blue-700">
                   {page}
                 </Typography>
-                <Typography variant="small" className="font-normal text-gray-500">
+                <Typography variant="small" className="font-bold text-gray-400">
                   / {totalPages}
                 </Typography>
               </div>
@@ -244,7 +239,7 @@ const AreaIndex = () => {
                 size="sm"
                 onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
                 disabled={page === totalPages || loading}
-                className="flex items-center gap-1 border-blue-gray-100"
+                className="flex items-center gap-1 border-blue-gray-100 font-bold"
               >
                 Next <ChevronRightIcon className="h-3 w-3 stroke-[3]" />
               </Button>

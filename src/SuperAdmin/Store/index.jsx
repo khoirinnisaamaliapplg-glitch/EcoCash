@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import axios from "axios";
+import api from "../../utils/api"; // Pastikan path ../../ sesuai
 import MainLayout from "../MainLayout";
 import {
   Card,
@@ -25,7 +25,9 @@ import CreateStoreModal from "./CreateStoreModal";
 import EditStoreModal from "./EditStoreModal";
 import DeleteStoreModal from "./DeleteStoreModal";
 
-const API_URL = "http://localhost:3000/api/v1/stores";
+// Sesuai praktik sebelumnya, biarkan api.js yang menangani base URL jika memungkinkan, 
+// tapi di sini kita definisikan endpoint spesifiknya.
+const API_ENDPOINT = "/stores"; 
 
 const TABLE_HEAD = [
   { label: "ID", value: "id", align: "center" },
@@ -36,11 +38,9 @@ const TABLE_HEAD = [
 ];
 
 const MarketPlaceIndex = () => {
-  // --- States ---
   const [stores, setStores] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // State Query (Pagination, Search, Sort)
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search, 500);
   const [page, setPage] = useState(1);
@@ -50,37 +50,34 @@ const MarketPlaceIndex = () => {
   const [sortBy, setSortBy] = useState("createdAt");
   const [sortOrder, setSortOrder] = useState("desc");
 
-  // State Modal
   const [openCreate, setOpenCreate] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
   const [selectedStore, setSelectedStore] = useState(null);
 
-  // --- Functions ---
-
   const fetchStores = useCallback(async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem("token");
-      const response = await axios.get(API_URL, {
-        headers: { Authorization: `Bearer ${token}` },
+      // PERBAIKAN: Tidak perlu headers manual karena sudah ada di api.js
+      const response = await api.get(API_ENDPOINT, {
         params: {
-          isActive: true, // Filter default toko aktif
-          page,
-          limit,
-          search: debouncedSearch,
-          sortBy,
+          isActive: true, 
+          page: Number(page), // Pastikan angka
+          limit: Number(limit),
+          search: debouncedSearch || undefined, // Kirim undefined jika kosong agar tidak mengganggu query
+          sortBy: ["createdAt", "name", "id"].includes(sortBy) ? sortBy : "createdAt",
           sortOrder,
         },
       });
 
       const result = response.data;
+      // PERBAIKAN: Sesuaikan dengan struktur response (biasanya result.data atau result.data.data)
       setStores(result.data || []);
       setTotalPages(result.pagination?.totalPages || 1);
       setTotalData(result.pagination?.totalItems || 0);
     } catch (error) {
-      console.error("Fetch error:", error);
-      toast.error("Gagal memuat data toko.");
+      console.error("Fetch error:", error.response?.data || error.message);
+      toast.error(error.response?.data?.message || "Gagal memuat data toko.");
     } finally {
       setLoading(false);
     }
@@ -90,7 +87,6 @@ const MarketPlaceIndex = () => {
     fetchStores();
   }, [fetchStores]);
 
-  // Reset ke halaman 1 jika mencari sesuatu
   useEffect(() => {
     setPage(1);
   }, [debouncedSearch]);
@@ -104,23 +100,21 @@ const MarketPlaceIndex = () => {
 
   return (
     <MainLayout>
-      <ToastContainer position="top-right" autoClose={3000} />
+      <ToastContainer position="top-right" autoClose={3000} hideProgressBar />
       <div className="space-y-6 px-4 pb-10">
-        {/* Header */}
         <div className="flex flex-col gap-1">
-          <Typography variant="h4" className="text-[#2b6cb0] font-bold">
+          <Typography variant="h4" className="text-[#2b6cb0] font-black uppercase italic">
             Store Management
           </Typography>
-          <Typography className="text-gray-500 text-sm italic">
+          <Typography className="text-gray-500 text-sm italic font-medium">
             Kelola unit toko EcoCash (Hanya menampilkan toko aktif)
           </Typography>
         </div>
 
-        {/* Action: Add & Search */}
         <div className="flex flex-col md:flex-row justify-between gap-4">
           <Button
             onClick={() => setOpenCreate(true)}
-            className="flex items-center gap-2 bg-[#66bb6a] normal-case rounded-xl py-3 shadow-none hover:shadow-lg transition-all"
+            className="flex items-center gap-2 bg-[#66bb6a] normal-case rounded-xl py-3 shadow-none hover:shadow-lg transition-all font-black uppercase italic text-[11px]"
           >
             <PlusIcon className="h-5 w-5 stroke-[3]" /> Tambah Toko
           </Button>
@@ -131,11 +125,11 @@ const MarketPlaceIndex = () => {
               onChange={(e) => setSearch(e.target.value)}
               icon={<MagnifyingGlassIcon className="h-5 w-5" />}
               color="blue"
+              className="rounded-xl"
             />
           </div>
         </div>
 
-        {/* Table Card */}
         <Card className="rounded-[24px] overflow-hidden border border-blue-50 shadow-sm bg-white">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[800px] table-auto text-left">
@@ -149,20 +143,12 @@ const MarketPlaceIndex = () => {
                         head.value ? "cursor-pointer hover:bg-blue-100/50" : ""
                       }`}
                     >
-                      <div
-                        className={`flex items-center gap-2 ${
-                          head.align === "center" ? "justify-center" : "justify-between"
-                        }`}
-                      >
+                      <div className={`flex items-center gap-2 ${head.align === "center" ? "justify-center" : "justify-between"}`}>
                         <Typography className="font-black text-[#2b6cb0] uppercase text-[10px] tracking-widest leading-none">
                           {head.label}
                         </Typography>
                         {head.value && (
-                          <ChevronUpDownIcon
-                            className={`h-4 w-4 ${
-                              sortBy === head.value ? "text-blue-700" : "text-gray-400"
-                            }`}
-                          />
+                          <ChevronUpDownIcon className={`h-4 w-4 ${sortBy === head.value ? "text-blue-700" : "text-gray-400"}`} />
                         )}
                       </div>
                     </th>
@@ -175,42 +161,37 @@ const MarketPlaceIndex = () => {
                     <td colSpan={5} className="p-10 text-center">
                       <div className="flex flex-col items-center gap-2">
                         <Spinner className="h-8 w-8 text-blue-500" />
-                        <Typography className="text-gray-400 italic text-sm">Memuat data...</Typography>
+                        <Typography className="text-gray-400 italic font-black uppercase text-[10px] animate-pulse">Syncing Stores...</Typography>
                       </div>
                     </td>
                   </tr>
                 ) : stores.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="p-10 text-center italic text-gray-400">
+                    <td colSpan={5} className="p-10 text-center italic text-gray-400 font-medium">
                       Tidak ada toko aktif ditemukan
                     </td>
                   </tr>
                 ) : (
                   stores.map((row) => (
-                    <tr
-                      key={row.id}
-                      className="hover:bg-blue-50/20 border-b border-blue-gray-50 transition-colors"
-                    >
+                    <tr key={row.id} className="hover:bg-blue-50/20 border-b border-blue-gray-50 transition-colors">
                       <td className="p-4 text-center">
-                        <Typography className="text-sm font-bold text-blue-800">
-                          #{row.id}
-                        </Typography>
+                        <Typography className="text-xs font-bold text-blue-800">#{row.id}</Typography>
                       </td>
                       <td className="p-4">
-                        <Typography className="text-[12px] text-blue-900 font-black uppercase leading-none">
+                        <Typography className="text-[11px] text-blue-900 font-black uppercase leading-none italic">
                           {row.name}
                         </Typography>
-                        <Typography className="text-[10px] text-gray-500 mt-1">
+                        <Typography className="text-[9px] text-gray-500 mt-1 font-bold uppercase">
                           Area: {row.area?.name || "N/A"}
                         </Typography>
                       </td>
                       <td className="p-4">
-                        <Typography className="text-[11px] text-gray-600 max-w-[250px] leading-relaxed">
+                        <Typography className="text-[11px] text-gray-600 max-w-[250px] leading-relaxed font-medium">
                           {row.address}
                         </Typography>
                       </td>
                       <td className="p-4">
-                        <Typography className="text-[11px] font-bold text-blue-700">
+                        <Typography className="text-[11px] font-black text-blue-700 uppercase italic">
                           {row.admin?.name || "No Admin"}
                         </Typography>
                       </td>
@@ -245,11 +226,9 @@ const MarketPlaceIndex = () => {
             </table>
           </div>
 
-          {/* Pagination Footer */}
           <div className="flex items-center justify-between p-5 border-t border-blue-gray-50 bg-white">
-            <Typography variant="small" className="font-medium text-gray-600">
-              Menampilkan <span className="text-blue-700">{stores.length}</span> dari{" "}
-              <span className="text-blue-700">{totalData}</span> data
+            <Typography variant="small" className="font-black text-[10px] uppercase text-gray-500">
+              Showing <span className="text-blue-700">{stores.length}</span> of <span className="text-blue-700">{totalData}</span> entries
             </Typography>
             <div className="flex items-center gap-2">
               <Button
@@ -257,24 +236,19 @@ const MarketPlaceIndex = () => {
                 size="sm"
                 onClick={() => setPage((p) => Math.max(p - 1, 1))}
                 disabled={page === 1 || loading}
-                className="flex items-center gap-1 border-blue-gray-100"
+                className="flex items-center gap-1 border-blue-gray-100 font-black text-[10px] uppercase italic"
               >
                 <ChevronLeftIcon className="h-3 w-3 stroke-[3]" /> Prev
               </Button>
-              <div className="flex items-center gap-1 px-2">
-                <Typography variant="small" className="font-bold text-blue-700">
-                  {page}
-                </Typography>
-                <Typography variant="small" className="font-normal text-gray-500">
-                  / {totalPages}
-                </Typography>
-              </div>
+              <Typography variant="small" className="font-black text-blue-700 text-[11px]">
+                {page} <span className="text-gray-400 font-medium">/ {totalPages}</span>
+              </Typography>
               <Button
                 variant="outlined"
                 size="sm"
                 onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
                 disabled={page === totalPages || loading}
-                className="flex items-center gap-1 border-blue-gray-100"
+                className="flex items-center gap-1 border-blue-gray-100 font-black text-[10px] uppercase italic"
               >
                 Next <ChevronRightIcon className="h-3 w-3 stroke-[3]" />
               </Button>
@@ -284,26 +258,11 @@ const MarketPlaceIndex = () => {
       </div>
 
       {/* Modals */}
-      <CreateStoreModal
-        open={openCreate}
-        handleOpen={() => setOpenCreate(false)}
-        onSuccess={fetchStores}
-      />
-
+      <CreateStoreModal open={openCreate} handleOpen={() => setOpenCreate(false)} onSuccess={fetchStores} />
       {selectedStore && (
         <>
-          <EditStoreModal
-            open={openEdit}
-            handleOpen={() => setOpenEdit(false)}
-            data={selectedStore}
-            onSuccess={fetchStores}
-          />
-          <DeleteStoreModal
-            open={openDelete}
-            handleOpen={() => setOpenDelete(false)}
-            data={selectedStore}
-            onSuccess={fetchStores}
-          />
+          <EditStoreModal open={openEdit} handleOpen={() => setOpenEdit(false)} data={selectedStore} onSuccess={fetchStores} />
+          <DeleteStoreModal open={openDelete} handleOpen={() => setOpenDelete(false)} data={selectedStore} onSuccess={fetchStores} />
         </>
       )}
     </MainLayout>

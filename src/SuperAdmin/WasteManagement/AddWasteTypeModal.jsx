@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Dialog, DialogHeader, DialogBody, DialogFooter, Button, Input, Spinner } from "@material-tailwind/react";
-import axios from "axios";
+import api from "../../utils/api"; 
 import { toast } from "react-toastify"; // Import Toast
 
 const AddWasteTypeModal = ({ open, handleOpen, refreshData, apiUrl }) => {
@@ -16,7 +16,7 @@ const AddWasteTypeModal = ({ open, handleOpen, refreshData, apiUrl }) => {
     try {
       const token = localStorage.getItem("token");
 
-      await axios.post(
+      await api.post(
         apiUrl, 
         { name: name.trim() }, 
         {

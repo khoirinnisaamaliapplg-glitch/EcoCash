@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import api from "../../utils/api"; 
 import { 
   Dialog, DialogHeader, DialogBody, DialogFooter, 
   Input, Button, Typography, Spinner 
@@ -32,7 +32,7 @@ const EditPriceModal = ({ open, handleOpen, data, refreshData }) => {
     try {
       const token = localStorage.getItem("token");
       
-      await axios.patch(`http://localhost:3000/api/v1/waste-prices/${data.id}`, 
+      await api.patch(`/waste-prices/${data.id}`, 
         {
           pricePerKg: parseFloat(price)
         },

@@ -4,7 +4,8 @@ import CreateModal from "./CreateModal";
 import EditModal from "./EditModal";
 import DeleteModal from "./DeleteModal";
 import DetailModal from "./DetailModal";
-import axios from "axios";
+import api from "../../utils/api";
+
 import { 
   Card, 
   Typography, 
@@ -56,33 +57,33 @@ const SmartContainerIndex = () => {
   const fetchMachines = useCallback(async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem("token");
-      
-      // Sinkronisasi Parameter untuk menghindari Error 400
-      const response = await axios.get("http://localhost:3000/api/v1/machines", {
-        headers: { Authorization: `Bearer ${token}` },
+      // Tidak perlu lagi ambil token manual (sudah diurus interceptor)
+      const response = await api.get("/machines", {
         params: {
-          page: Number(page), // Pastikan Number
+          page: Number(page),
           limit: Number(limit),
           search: debouncedSearch || undefined, 
-          // Pastikan sortBy sesuai whitelist backend: createdAt, name, machineCode
+          // Validasi Whitelist agar tidak Error 400
           sortBy: ["createdAt", "name", "machineCode"].includes(sortBy) ? sortBy : "createdAt",
           sortOrder: sortOrder,
-          // isActive tidak dikirim secara eksplisit agar menggunakan default backend (true)
         }
       });
       
       const result = response.data;
       
-      // Menggunakan result.data dan result.meta sesuai struktur backend Anda
+      // Mapping sesuai struktur response: result.data dan result.meta
       setMachines(result.data || []);
       setTotalPages(result.meta?.totalPages || 1);
       setTotalData(result.meta?.total || 0); 
       
     } catch (error) {
-      console.error("Gagal mengambil data mesin:", error.response?.data);
-      const msg = error.response?.data?.message || "Validation Invalid / Error 400";
+      console.error("Gagal mengambil data mesin:", error.response?.data || error.message);
+      const msg = error.response?.data?.message || "Koneksi ke unit AIoT bermasalah.";
       toast.error(msg);
+      
+      if (error.response?.status === 401) {
+        toast.error("Sesi habis, silakan login kembali.");
+      }
     } finally {
       setLoading(false);
     }

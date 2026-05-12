@@ -10,10 +10,10 @@ import {
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import { motion, AnimatePresence } from 'framer-motion';
-import axios from 'axios';
+// 1. GANTI IMPORT AXIOS DENGAN API BUATAN KITA
+import api from '../utils/api'; 
 import ForgotPasswordModal from './ForgotPasswordModal';
 
-// 1. IMPORT TOASTIFY
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -46,7 +46,9 @@ const Login = () => {
     onSubmit: async (values) => {
       setIsLoading(true);
       try {
-        const response = await axios.post('http://localhost:3000/api/v1/auth/login', {
+        // 2. PAKAI API.POST DAN CUKUP TULIS UJUNG URL-NYA SAJA
+        // Alamat lengkap http://localhost:3000/api/v1 sudah dihandle di api.js
+        const response = await api.post('/auth/login', {
           identifier: values.username,
           password: values.password
         });
@@ -64,13 +66,11 @@ const Login = () => {
 
           const userRole = role ? role.toUpperCase().trim() : "";
 
-          // 2. TAMPILKAN TOAST BERHASIL
           toast.success(`Selamat Datang, ${values.username}!`, {
             position: "top-right",
             autoClose: 2000,
           });
 
-          // Kasih delay sedikit biar user sempat lihat toast-nya sebelum pindah halaman
           setTimeout(() => {
             switch (userRole) {
               case "SUPER_ADMIN": navigate("/dashboard"); break;
@@ -85,8 +85,6 @@ const Login = () => {
         }
       } catch (error) {
         console.error("Login Error:", error.response?.data);
-        
-        // 3. TAMPILKAN TOAST GAGAL
         const errorMsg = error.response?.data?.message || "Terjadi kesalahan pada server";
         toast.error(`Gagal Login: ${errorMsg}`, {
           position: "top-right",
@@ -99,8 +97,6 @@ const Login = () => {
 
   return (
     <div className="h-screen w-full bg-white flex flex-col md:flex-row overflow-y-auto md:overflow-hidden font-sans">
-      
-      {/* 4. TARUH CONTAINER DI SINI (Bisa di mana saja dalam return) */}
       <ToastContainer />
 
       {/* SISI KIRI: HERO */}

@@ -19,7 +19,7 @@ import {
   ChevronUpDownIcon,
   CreditCardIcon 
 } from "@heroicons/react/24/outline";
-import axios from "axios";
+import api from "../../utils/api"; 
 import { toast } from 'react-toastify';
 import { useDebounce } from "use-debounce";
 
@@ -65,7 +65,7 @@ const UserIndex = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.get("http://localhost:3000/api/v1/admin/users", {
+      const response = await api.get("/admin/users", {
         headers: { Authorization: `Bearer ${token}` },
         params: {
           page,

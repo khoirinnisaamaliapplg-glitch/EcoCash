@@ -20,8 +20,8 @@ import {
 } from "@heroicons/react/24/outline";
 import { useNavigate } from "react-router-dom";
 
-// Library Toast
-import { ToastContainer } from "react-toastify";
+// 1. IMPORT TOAST (Ini yang tadi kurang)
+import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 const MainLayout = ({ children }) => {
@@ -52,30 +52,44 @@ const MainLayout = ({ children }) => {
     return { name: "Guest", role: "USER" };
   });
 
+  // 2. FUNGSI LOGOUT YANG SUDAH DIBENARKAN
   const handleLogout = () => {
-    localStorage.clear();
-    navigate("/");
+    // Tampilkan toast segera setelah tombol diklik
+    toast.warn("Mengeluarkan akun...", {
+      position: "top-right",
+      autoClose: 1000,
+      hideProgressBar: false,
+      closeOnClick: true,
+      pauseOnHover: false,
+      draggable: true,
+      theme: "colored",
+    });
+
+    // Kasih jeda dikit biar user lihat toast-nya
+    setTimeout(() => {
+      // Hapus SEMUA data di storage
+      localStorage.clear(); 
+      
+      // Redirect ke login dan hapus history (biar gak bisa di-Back)
+      navigate("/", { replace: true });
+
+      // Opsional: Reload untuk reset state React secara total
+      window.location.reload();
+    }, 1200);
   };
 
   return (
     <div className="flex h-screen w-full bg-[#f8fafc] overflow-hidden font-sans">
-      {/* 
-          TOAST CONTAINER 
-          zIndex 99999 memastikan toast berada di atas modal Material Tailwind 
-      */}
       <ToastContainer
         position="top-right"
         autoClose={3000}
         theme="colored"
-        pauseOnHover
-        closeOnClick
         style={{ zIndex: 99999 }}
       />
 
       <Sidebar open={openSidebar} setOpen={setOpenSidebar} />
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* HEADER */}
         <header className="h-16 bg-white border-b border-gray-100 flex items-center justify-between px-4 md:px-8 shadow-sm z-10">
           <div className="flex items-center gap-3">
             <IconButton
@@ -130,10 +144,7 @@ const MainLayout = ({ children }) => {
                     className="flex items-center gap-3 rounded-md"
                   >
                     <UserCircleIcon className="h-5 w-5 text-blue-gray-500" />
-                    <Typography
-                      variant="small"
-                      className="font-bold text-blue-gray-800"
-                    >
+                    <Typography variant="small" className="font-bold text-blue-gray-800">
                       Profil Saya
                     </Typography>
                   </MenuItem>
@@ -143,10 +154,7 @@ const MainLayout = ({ children }) => {
                     className="flex items-center gap-3 rounded-md hover:bg-red-50 group"
                   >
                     <PowerIcon className="h-5 w-5 text-red-500" />
-                    <Typography
-                      variant="small"
-                      className="font-bold text-red-500"
-                    >
+                    <Typography variant="small" className="font-bold text-red-500">
                       Keluar
                     </Typography>
                   </MenuItem>
@@ -156,7 +164,6 @@ const MainLayout = ({ children }) => {
           </div>
         </header>
 
-        {/* CONTENT AREA */}
         <main className="flex-1 overflow-y-auto bg-gray-50/50">
           <div className="min-h-[calc(100vh-64px)] flex flex-col">
             <div className="flex-1 p-4 md:p-8">

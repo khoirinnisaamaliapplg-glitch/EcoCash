@@ -12,7 +12,7 @@ import {
 import { KeyIcon } from "@heroicons/react/24/outline";
 // 1. Import toast
 import { toast } from "react-hot-toast";
-import axios from "axios";
+import api from "../../utils/api"; 
 
 const ResetPasswordModal = ({ open, setOpen, data }) => {
   const [newPass, setNewPass] = useState("");
@@ -33,8 +33,8 @@ const ResetPasswordModal = ({ open, setOpen, data }) => {
       
       // Simulasi/Eksekusi API Patch untuk Reset Password
       // Sesuaikan endpoint dengan backend Anda, contoh: /api/users/:id/reset-password
-      await axios.patch(
-        `http://localhost:3000/api/users/${data.id}`, 
+      await api.patch(
+        `/users/${data.id}`, 
         { password: newPass },
         { headers: { Authorization: `Bearer ${token}` } }
       );

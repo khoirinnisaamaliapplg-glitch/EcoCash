@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Dialog, DialogHeader, DialogBody, DialogFooter, Button, Typography, Spinner } from "@material-tailwind/react";
-import axios from "axios";
+import api from "../../utils/api"; 
 import { toast } from "react-toastify"; // Import Toast
 
 const DeleteWasteTypeModal = ({ open, handleOpen, data, refreshData, apiUrl }) => {
@@ -17,7 +17,7 @@ const DeleteWasteTypeModal = ({ open, handleOpen, data, refreshData, apiUrl }) =
       const cleanUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
 
       // Kirim request DELETE dengan header token
-      await axios.delete(`${cleanUrl}/${data.id}`, {
+      await api.delete(`${cleanUrl}/${data.id}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },

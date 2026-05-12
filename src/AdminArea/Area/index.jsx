@@ -8,7 +8,7 @@ import {
   PlusIcon, MagnifyingGlassIcon, GlobeAsiaAustraliaIcon,
   ChevronLeftIcon, ChevronRightIcon 
 } from "@heroicons/react/24/outline";
-import axios from "axios";
+import api from "../../utils/api"; 
 import { toast } from "react-hot-toast";
 
 // Import Modal
@@ -44,7 +44,7 @@ const AreaIndex = () => {
         return;
       }
 
-      const response = await axios.get(`http://localhost:3000/api/v1/areas/${userAreaId}`, {
+      const response = await api.get(`/areas/${userAreaId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -99,7 +99,7 @@ const AreaIndex = () => {
   const executeDelete = async (id) => {
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(`http://localhost:3000/api/v1/areas/${id}`, {
+      await api.delete(`/areas/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       toast.success("Area berhasil dihapus");

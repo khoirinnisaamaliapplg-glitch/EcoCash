@@ -6,7 +6,7 @@ import {
 import { 
   PencilSquareIcon, XMarkIcon 
 } from "@heroicons/react/24/outline";
-import axios from "axios";
+import api from "../../utils/api";
 import { toast } from "react-toastify"; // Import Toast
 
 const EditUserModal = ({ open, handleOpen, data, refreshData }) => {
@@ -37,8 +37,8 @@ const EditUserModal = ({ open, handleOpen, data, refreshData }) => {
       const token = localStorage.getItem("token");
       const cleanId = String(data.id).replace(':', '');
 
-      await axios.patch(
-        `http://localhost:3000/api/v1/admin/users/${cleanId}/role`, 
+      await api.patch(
+        `/admin/users/${cleanId}/role`, 
         { role: role }, 
         { 
           headers: { 

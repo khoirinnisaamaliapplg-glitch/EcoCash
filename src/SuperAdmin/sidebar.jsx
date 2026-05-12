@@ -1,5 +1,5 @@
 import React from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, Link } from "react-router-dom"; // Link sudah di-import di sini
 import { 
   List, 
   ListItem, 
@@ -17,7 +17,7 @@ import {
   Cog6ToothIcon,
   XMarkIcon,
   MapIcon,
-  TrashIcon // <-- IMPORT ICON BARU UNTUK WASTE MANAGEMENT
+  TrashIcon 
 } from "@heroicons/react/24/outline";
 import logo2 from "../assets/logo2.png";
 
@@ -27,7 +27,7 @@ const Sidebar = ({ open, setOpen }) => {
     { name: "Smart Container", icon: <CubeIcon className="h-5 w-5" />, path: "/smart-container" },
     { name: "Smart Truck", icon: <TruckIcon className="h-5 w-5" />, path: "/smart-truck" },
     { name: "Data Wilayah", icon: <MapIcon className="h-5 w-5" />, path: "/areas" },
-    { name: "Waste Management", icon: <TrashIcon className="h-5 w-5" />, path: "/waste-management" }, // <-- MENU BARU
+    { name: "Waste Management", icon: <TrashIcon className="h-5 w-5" />, path: "/waste-management" },
     { name: "Users", icon: <UserGroupIcon className="h-5 w-5" />, path: "/users" },
     { name: "Waste Prices", icon: <TagIcon className="h-5 w-5" />, path: "/waste-prices" },
     { name: "Store", icon: <ShoppingBagIcon className="h-5 w-5" />, path: "/marketplace" },
@@ -57,7 +57,7 @@ const Sidebar = ({ open, setOpen }) => {
         
         {/* Logo Section */}
         <div className="mb-6 p-4 flex items-center justify-between border-b border-gray-50 pb-6">
-          <div className="flex items-center gap-4">
+          <Link to="/dashboard" className="flex items-center gap-4 hover:opacity-80 transition-opacity">
             <img src={logo2} alt="EcoCash" className="h-14 w-14 object-contain" />
             <div>
               <Typography variant="h5" className="text-[#2b6cb0] font-black leading-tight">
@@ -67,7 +67,7 @@ const Sidebar = ({ open, setOpen }) => {
                 Super Admin
               </Typography>
             </div>
-          </div>
+          </Link>
           
           <button onClick={() => setOpen(false)} className="md:hidden">
             <XMarkIcon className="h-6 w-6 text-gray-500" />

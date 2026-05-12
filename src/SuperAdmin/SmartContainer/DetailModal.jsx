@@ -14,6 +14,7 @@ import {
   ChevronRightIcon 
 } from "@heroicons/react/24/outline";
 import Chart from "react-apexcharts";
+import api from "../../utils/api";
 
 const DetailModal = ({ open, handleOpen, data }) => {
   const [showCalendar, setShowCalendar] = useState(false);
@@ -46,11 +47,10 @@ const DetailModal = ({ open, handleOpen, data }) => {
         setLoading(true);
         try {
           const token = localStorage.getItem("token");
-          const response = await fetch(`http://localhost:3000/api/v1/machines/${data.id}`, {
+          const response = await api.get(`/machines/${data.id}`, {
             headers: { Authorization: `Bearer ${token}` }
           });
-          const result = await response.json();
-          setMachineDetail(result.data || result);
+          setMachineDetail(response.data);
         } catch (error) {
           console.error("Gagal load detail:", error);
         } finally {

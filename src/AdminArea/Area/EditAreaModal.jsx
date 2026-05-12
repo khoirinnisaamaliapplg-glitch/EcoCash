@@ -11,7 +11,7 @@ import {
   Typography,
 } from "@material-tailwind/react";
 import { CheckCircleIcon, XCircleIcon } from "@heroicons/react/24/solid";
-import axios from "axios";
+import api from "../../utils/api"; 
 // 1. IMPORT TOAST
 import { toast } from "react-hot-toast";
 
@@ -56,7 +56,7 @@ const EditAreaModal = ({ open, setOpen, selectedArea, refreshData }) => {
     try {
       const token = localStorage.getItem("token");
       
-      await axios.patch(`http://localhost:3000/api/v1/areas/${selectedArea.id}`, formData, {
+      await api.patch(`/areas/${selectedArea.id}`, formData, {
         headers: { 
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json"

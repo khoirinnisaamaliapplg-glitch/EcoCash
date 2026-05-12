@@ -4,7 +4,7 @@ import CreateModal from "./CreateModal";
 import EditModal from "./EditModal";
 import DeleteModal from "./DeleteModal";
 import AssignOperatorModal from "./AssignOperatorModal"; 
-import axios from "axios";
+import api from "../../utils/api"; 
 import { 
   Card, 
   Typography, 
@@ -51,7 +51,7 @@ const MachineManagement = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.get("http://localhost:3000/api/v1/machines", {
+      const response = await api.get("/machines", {
         headers: { Authorization: `Bearer ${token}` }
       });
       

@@ -1,6 +1,7 @@
 import React from "react";
 // 1. Pastikan logo2.png ada di folder assets kamu
 import logo2 from "../assets/logo2.png"; 
+import { NavLink, Link } from "react-router-dom"; // Pastikan Link sudah di-import
 
 import { 
   Card, 
@@ -57,18 +58,17 @@ const SidebarOperator = ({ open, setOpen }) => {
         
         {/* HEADER: Logo & Nama Aplikasi */}
         <div className="mb-8 p-4 flex items-center justify-between border-b border-gray-50 pb-6">
-          <div className="flex items-center gap-4">
-            <img src={logo2} alt="EcoCash Logo" className="h-12 w-12 object-contain" />
-            <div>
-              <Typography variant="h5" className="text-blue-700 font-black leading-tight tracking-tighter">
-                EcoCash
-              </Typography>
-              <Typography className="text-blue-400 font-black text-[10px] uppercase tracking-[0.2em] leading-none">
-                Operator
-              </Typography>
-            </div>
-          </div>
-          
+          <Link to="/dashboard" className="flex items-center gap-4 hover:opacity-80 transition-opacity">
+            <img src={logo2} alt="EcoCash" className="h-14 w-14 object-contain" />
+              <div>
+                <Typography variant="h5" className="text-[#2b6cb0] font-black leading-tight">
+                  EcoCash
+                </Typography>
+                <Typography variant="small" className="text-green-500 font-bold text-[10px] uppercase tracking-widest">
+                  Operator
+                </Typography>
+              </div>
+            </Link>
           {/* Tombol Close (Mobile Only) */}
           <button onClick={() => setOpen(false)} className="md:hidden p-2 hover:bg-gray-100 rounded-lg transition-colors">
             <XMarkIcon className="h-6 w-6 text-gray-500" />

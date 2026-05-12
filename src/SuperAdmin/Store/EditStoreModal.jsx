@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import api from "../../utils/api";
 import { 
   Dialog, DialogHeader, DialogBody, DialogFooter, 
   Input, Button, Typography, Textarea 
@@ -79,9 +79,7 @@ const EditStoreModal = ({ open, handleOpen, data, onSuccess }) => {
       };
 
       // MENGGUNAKAN PATCH
-      await axios.patch(`http://localhost:3000/api/v1/stores/${data.id}`, payload, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
-      });
+      await api.patch(`/stores/${data.id}`, payload);
 
       toast.success("Berhasil update data toko (PATCH)!");
       onSuccess(); 

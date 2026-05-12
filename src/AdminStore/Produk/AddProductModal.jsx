@@ -17,7 +17,7 @@ import {
   CurrencyDollarIcon,
   BuildingStorefrontIcon
 } from "@heroicons/react/24/outline";
-import axios from "axios";
+import api from "../../utils/api"; 
 // 1. Import toast
 import toast from "react-hot-toast";
 
@@ -69,7 +69,7 @@ const AddProductModal = ({ open, handleOpen, refreshData, storeId }) => {
       storeId: Number(form.storeId), 
     };
 
-    const postAction = axios.post("http://localhost:3000/api/v1/products", payload, {
+    const postAction = api.post("/products", payload, {
       headers: { Authorization: `Bearer ${token}` },
     });
 

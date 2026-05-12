@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import axios from "axios";
+import api from "../../utils/api"; 
 import { 
   Dialog, DialogHeader, DialogBody, DialogFooter, 
   Button, Typography, Spinner 
@@ -21,7 +21,7 @@ const DeleteWasteModal = ({ open, handleOpen, data, refreshData }) => {
     try {
       const token = localStorage.getItem("token");
       
-      await axios.delete(`http://localhost:3000/api/v1/waste-prices/${data.id}`, {
+      await api.delete(`/waste-prices/${data.id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import api from "../../utils/api"; 
 import { 
   Dialog, DialogHeader, DialogBody, DialogFooter, 
   Input, Button, Typography, Select, Option, Spinner 
@@ -24,8 +24,8 @@ const AddWastePriceModal = ({ open, handleOpen, refreshData }) => {
           const config = { headers: { Authorization: `Bearer ${token}` } };
 
           const [areaRes, wasteRes] = await Promise.all([
-            axios.get("http://localhost:3000/api/v1/areas", config),
-            axios.get("http://localhost:3000/api/v1/waste-types", config)
+            api.get("/areas", config),
+            api.get("/waste-types", config)
           ]);
 
           const aData = Array.isArray(areaRes.data) ? areaRes.data : (areaRes.data.data || []);
@@ -53,7 +53,7 @@ const AddWastePriceModal = ({ open, handleOpen, refreshData }) => {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      await axios.post("http://localhost:3000/api/v1/waste-prices", 
+      await api.post("/waste-prices", 
         {
           areaId: Number(formData.areaId),
           wasteTypeId: Number(formData.wasteTypeId),

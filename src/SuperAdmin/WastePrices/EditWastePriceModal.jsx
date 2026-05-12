@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import api from "../../utils/api"; 
 import { 
   Dialog, DialogHeader, DialogBody, DialogFooter, 
   Input, Button, Typography, Spinner, Select, Option 
@@ -30,8 +30,8 @@ const EditWastePriceModal = ({ open, handleOpen, data, refreshData }) => {
           const token = localStorage.getItem("token");
           const config = { headers: { Authorization: `Bearer ${token}` } };
           const [areaRes, wasteRes] = await Promise.all([
-            axios.get("http://localhost:3000/api/v1/areas", config),
-            axios.get("http://localhost:3000/api/v1/waste-types", config)
+            api.get("/areas", config),
+            api.get("/waste-types", config)
           ]);
           
           const aData = areaRes.data.data || areaRes.data;
@@ -69,8 +69,8 @@ const EditWastePriceModal = ({ open, handleOpen, data, refreshData }) => {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      await axios.patch(
-        `http://localhost:3000/api/v1/waste-prices/${data.id}`, 
+      await api.patch(
+        `/waste-prices/${data.id}`, 
         {
           areaId: Number(formData.areaId),
           wasteTypeId: Number(formData.wasteTypeId),

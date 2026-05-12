@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
-import axios from "axios";
+// 1. Pastikan import api dari kantor pusat
+import api from "../../utils/api"; 
 import MainLayout from "../MainLayout";
 import { 
   Card, 
@@ -21,12 +22,12 @@ import {
 import { toast, ToastContainer } from "react-toastify";
 import { useDebounce } from "use-debounce";
 
-// Import Modal
 import AddWasteTypeModal from "./AddWasteTypeModal";
 import EditWasteTypeModal from "./EditWasteTypeModal";
 import DeleteWasteTypeModal from "./DeleteWasteTypeModal";
 
-const API_URL = "http://localhost:3000/api/v1/waste-types"; 
+// 2. Gunakan endpoint relatif (api.js sudah menangani base URL localhost:3000)
+const ENDPOINT = "/waste-types"; 
 
 const TABLE_HEAD = [
   { label: "Nama Jenis Sampah", value: "name" },
@@ -34,11 +35,9 @@ const TABLE_HEAD = [
 ];
 
 const WasteManagementIndex = () => {
-  // --- States ---
   const [wasteTypes, setWasteTypes] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  // State Query (Pagination, Search, Sort)
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search, 500);
   const [page, setPage] = useState(1);
@@ -48,24 +47,20 @@ const WasteManagementIndex = () => {
   const [sortBy, setSortBy] = useState("name");
   const [sortOrder, setSortOrder] = useState("asc");
 
-  // State Modal
   const [openAdd, setOpenAdd] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
 
-  // --- Functions ---
-
   const fetchWasteTypes = useCallback(async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem("token");
-      const response = await axios.get(API_URL, {
-        headers: { Authorization: `Bearer ${token}` },
+      // 3. Gunakan api.get, tidak perlu lagi ambil token manual
+      const response = await api.get(ENDPOINT, {
         params: {
-          page,
-          limit,
-          search: debouncedSearch,
+          page: Number(page),
+          limit: Number(limit),
+          search: debouncedSearch || undefined,
           sortBy,
           sortOrder,
         }
@@ -77,11 +72,8 @@ const WasteManagementIndex = () => {
       setTotalData(result.pagination?.totalItems || 0);
     } catch (error) {
       console.error("Error fetching data:", error);
-      if (error.response?.status === 401) {
-        toast.error("Sesi login berakhir. Silakan login kembali.");
-      } else {
-        toast.error("Gagal mengambil data jenis sampah.");
-      }
+      const errorMsg = error.response?.data?.message || "Gagal mengambil data jenis sampah.";
+      toast.error(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -91,7 +83,6 @@ const WasteManagementIndex = () => {
     fetchWasteTypes();
   }, [fetchWasteTypes]);
 
-  // Reset ke halaman 1 jika user mencari sesuatu
   useEffect(() => {
     setPage(1);
   }, [debouncedSearch]);
@@ -105,28 +96,28 @@ const WasteManagementIndex = () => {
 
   return (
     <MainLayout>
-      <ToastContainer position="top-right" autoClose={3000} />
+      <ToastContainer position="top-right" autoClose={3000} hideProgressBar />
       <div className="space-y-6 px-4 pb-10">
         
         {/* Header Section */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <Typography variant="h4" className="text-[#2b6cb0] font-bold">
+            <Typography variant="h4" className="text-[#2b6cb0] font-black uppercase italic">
               Waste Types
             </Typography>
-            <Typography variant="small" className="text-gray-500 italic">
-              Master data management for EcoCash
+            <Typography variant="small" className="text-gray-500 italic font-medium">
+              Master data management for EcoCash AIoT Systems
             </Typography>
           </div>
           <Button 
             onClick={() => setOpenAdd(true)} 
-            className="bg-[#66bb6a] flex items-center gap-2 normal-case rounded-xl shadow-none hover:shadow-lg transition-all py-3"
+            className="bg-[#66bb6a] flex items-center gap-2 normal-case rounded-xl shadow-none hover:shadow-lg transition-all py-3 font-black uppercase italic text-[11px]"
           >
             <PlusIcon className="h-5 w-5 stroke-[3]" /> Add New Type
           </Button>
         </div>
 
-        {/* Filter & Search Section */}
+        {/* Filter & Search */}
         <div className="flex flex-col md:flex-row justify-end gap-4">
           <div className="w-full md:w-80">
             <Input 
@@ -135,6 +126,7 @@ const WasteManagementIndex = () => {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               color="blue"
+              className="rounded-xl"
             />
           </div>
         </div>
@@ -152,7 +144,7 @@ const WasteManagementIndex = () => {
                       className={`p-4 border-b border-blue-gray-50 transition-colors ${head.value ? "cursor-pointer hover:bg-blue-100/50" : ""}`}
                     >
                       <div className={`flex items-center gap-2 ${head.label === "Aksi" ? "justify-center" : "justify-start"}`}>
-                        <Typography className="font-black text-[#2b6cb0] uppercase text-[11px] tracking-widest leading-none">
+                        <Typography className="font-black text-[#2b6cb0] uppercase text-[10px] tracking-widest leading-none">
                           {head.label}
                         </Typography>
                         {head.value && (
@@ -169,14 +161,14 @@ const WasteManagementIndex = () => {
                     <td colSpan={2} className="p-10 text-center">
                       <div className="flex flex-col items-center gap-2">
                         <Spinner className="h-8 w-8 text-blue-500" />
-                        <Typography className="text-gray-400 italic text-sm">Fetching secure data...</Typography>
+                        <Typography className="text-gray-400 italic font-black uppercase text-[10px] animate-pulse">Syncing Waste Data...</Typography>
                       </div>
                     </td>
                   </tr>
                 ) : wasteTypes.length > 0 ? (
                   wasteTypes.map((item) => (
                     <tr key={item.id} className="hover:bg-blue-50/20 transition-colors border-b border-blue-gray-50">
-                      <td className="p-4 capitalize font-bold text-blue-900">
+                      <td className="p-4 capitalize font-bold text-blue-900 text-sm">
                         {item.name}
                       </td>
                       <td className="p-4 text-center">
@@ -207,7 +199,7 @@ const WasteManagementIndex = () => {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={2} className="text-center py-20 text-gray-400 italic">
+                    <td colSpan={2} className="text-center py-20 text-gray-400 italic text-sm">
                       No data available. Add a new waste type to get started.
                     </td>
                   </tr>
@@ -216,10 +208,10 @@ const WasteManagementIndex = () => {
             </table>
           </div>
 
-          {/* Pagination Footer */}
+          {/* Pagination */}
           <div className="flex items-center justify-between p-5 border-t border-blue-gray-50 bg-white">
-            <Typography variant="small" className="font-medium text-gray-600">
-              Menampilkan <span className="text-blue-700">{wasteTypes.length}</span> dari <span className="text-blue-700">{totalData}</span> data
+            <Typography variant="small" className="font-black text-[10px] uppercase text-gray-500">
+              Showing <span className="text-blue-700">{wasteTypes.length}</span> of <span className="text-blue-700">{totalData}</span> entries
             </Typography>
             <div className="flex items-center gap-2">
               <Button
@@ -227,20 +219,19 @@ const WasteManagementIndex = () => {
                 size="sm"
                 onClick={() => setPage((p) => Math.max(p - 1, 1))}
                 disabled={page === 1 || loading}
-                className="flex items-center gap-1 border-blue-gray-100"
+                className="flex items-center gap-1 border-blue-gray-100 font-black text-[10px] uppercase italic"
               >
                 <ChevronLeftIcon className="h-3 w-3 stroke-[3]" /> Prev
               </Button>
-              <div className="flex items-center gap-1 px-2">
-                <Typography variant="small" className="font-bold text-blue-700">{page}</Typography>
-                <Typography variant="small" className="font-normal text-gray-500">/ {totalPages}</Typography>
-              </div>
+              <Typography variant="small" className="font-black text-blue-700 text-[11px]">
+                {page} <span className="text-gray-400 font-medium">/ {totalPages}</span>
+              </Typography>
               <Button
                 variant="outlined"
                 size="sm"
                 onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
                 disabled={page === totalPages || loading}
-                className="flex items-center gap-1 border-blue-gray-100"
+                className="flex items-center gap-1 border-blue-gray-100 font-black text-[10px] uppercase italic"
               >
                 Next <ChevronRightIcon className="h-3 w-3 stroke-[3]" />
               </Button>
@@ -248,12 +239,11 @@ const WasteManagementIndex = () => {
           </div>
         </Card>
 
-        {/* Modal Components */}
+        {/* Modals */}
         <AddWasteTypeModal 
           open={openAdd} 
           handleOpen={() => setOpenAdd(false)} 
           refreshData={fetchWasteTypes} 
-          apiUrl={API_URL} 
         />
 
         {selectedItem && (
@@ -266,9 +256,7 @@ const WasteManagementIndex = () => {
               }} 
               data={selectedItem} 
               refreshData={fetchWasteTypes} 
-              apiUrl={API_URL} 
             />
-
             <DeleteWasteTypeModal 
               open={openDelete} 
               handleOpen={() => {
@@ -277,7 +265,6 @@ const WasteManagementIndex = () => {
               }} 
               data={selectedItem} 
               refreshData={fetchWasteTypes} 
-              apiUrl={API_URL} 
             />
           </>
         )}

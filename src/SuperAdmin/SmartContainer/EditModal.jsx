@@ -4,7 +4,7 @@ import {
   Input, Button, Typography, IconButton, Textarea, Spinner, Select, Option,
 } from "@material-tailwind/react";
 import { XMarkIcon, CpuChipIcon } from "@heroicons/react/24/outline";
-import axios from "axios";
+import api from "../../utils/api";
 import { toast } from 'react-toastify';
 
 const EditModal = ({ open, handleOpen, data, refreshData }) => {
@@ -39,7 +39,7 @@ const EditModal = ({ open, handleOpen, data, refreshData }) => {
       const fetchAreas = async () => {
         try {
           const token = localStorage.getItem("token");
-          const response = await axios.get("http://localhost:3000/api/v1/areas", {
+          const response = await api.get("/areas", {
             headers: { Authorization: `Bearer ${token}` },
           });
           setAreas(response.data.data || response.data);

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import api from "../../utils/api"; 
 import { 
   Dialog, DialogHeader, DialogBody, DialogFooter, 
   Input, Button, Typography, Select, Option, Spinner 
@@ -29,7 +29,7 @@ const CreateWasteModal = ({ open, handleOpen, refreshData }) => {
           const token = localStorage.getItem("token");
           const config = { headers: { Authorization: `Bearer ${token}` } };
 
-          const wasteRes = await axios.get("http://localhost:3000/api/v1/waste-types", config);
+          const wasteRes = await api.get("/waste-types", config);
           const wData = Array.isArray(wasteRes.data) ? wasteRes.data : (wasteRes.data.data || []);
 
           setCategories(wData.filter(c => c.isActive));

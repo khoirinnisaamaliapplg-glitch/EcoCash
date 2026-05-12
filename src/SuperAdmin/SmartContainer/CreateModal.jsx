@@ -1,100 +1,130 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Dialog, DialogHeader, DialogBody, DialogFooter,
   Input, Button, Typography, IconButton, Textarea, Spinner, Select, Option,
 } from "@material-tailwind/react";
 import { XMarkIcon, CpuChipIcon } from "@heroicons/react/24/outline";
-import axios from "axios";
+import api from "../../utils/api";
 import { toast } from 'react-toastify';
+import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
+
+// 1. PINDAHKAN API KEY KE LUAR KOMPONEN AGAR TIDAK RE-RENDER/KONFLIK
+const GOOGLE_MAPS_API_KEY = "MASUKKAN_API_KEY_ASLI_KAMU_DISINI"; 
+const LIBRARIES = ['places'];
+const defaultCenter = { lat: -7.3333, lng: 108.2225 }; // Tasikmalaya
 
 const CreateModal = ({ open, handleOpen, refreshData }) => {
   const initialState = {
-    machineCode: "",
-    name: "",
-    areaId: "",
-    machineType: "BOX",
-    locationType: "OTHER",
-    latitude: "",
-    longitude: "",
-    district: "",
-    subdistrict: "",
-    address: "",
-    placeName: "",
-    description: "",
+    machineCode: "", name: "", areaId: "", machineType: "BOX",
+    locationType: "OTHER", latitude: "", longitude: "",
+    district: "", subdistrict: "", address: "", placeName: "", description: "",
   };
 
   const [form, setForm] = useState(initialState);
   const [areas, setAreas] = useState([]);
   const [loading, setLoading] = useState(false);
   const [loadingAreas, setLoadingAreas] = useState(false);
+  const [markerPos, setMarkerPos] = useState(defaultCenter);
 
-  // Ambil data area untuk dropdown
+  // 2. LOAD GOOGLE MAPS SCRIPT
+  const { isLoaded, loadError } = useJsApiLoader({
+    id: 'google-map-script',
+    googleMapsApiKey: GOOGLE_MAPS_API_KEY,
+    libraries: LIBRARIES,
+  });
+
+  // 3. FUNGSI AMBIL ALAMAT OTOMATIS (REVERSE GEOCODING)
+  const fetchAddressInfo = useCallback((lat, lng) => {
+    if (!window.google) return;
+    
+    const geocoder = new window.google.maps.Geocoder();
+    geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+      if (status === "OK" && results[0]) {
+        const addrComponents = results[0].address_components;
+        let subdistrict = "";
+        let district = "";
+
+        // Looping komponen alamat dari Google
+        addrComponents.forEach(comp => {
+          if (comp.types.includes("administrative_area_level_3")) district = comp.long_name; // Kecamatan
+          if (comp.types.includes("administrative_area_level_4")) subdistrict = comp.long_name; // Kelurahan/Desa
+        });
+
+        setForm(prev => ({
+          ...prev,
+          latitude: lat.toFixed(6),
+          longitude: lng.toFixed(6),
+          address: results[0].formatted_address,
+          district: district || prev.district,
+          subdistrict: subdistrict || prev.subdistrict
+        }));
+      }
+    });
+  }, []);
+
+  const onMapClick = useCallback((e) => {
+    const newLat = e.latLng.lat();
+    const newLng = e.latLng.lng();
+    setMarkerPos({ lat: newLat, lng: newLng });
+    fetchAddressInfo(newLat, newLng);
+  }, [fetchAddressInfo]);
+
+  // 4. LOAD DATA AREA & GEOLOCATION SAAT MODAL BUKA
   useEffect(() => {
     if (open) {
+      // Ambil data Area dari Backend
       const fetchAreas = async () => {
         try {
           setLoadingAreas(true);
-          const token = localStorage.getItem("token");
-          const response = await axios.get("http://localhost:3000/api/v1/areas", {
-            headers: { Authorization: `Bearer ${token}` },
-          });
+          const response = await api.get("/areas");
           const areaData = response.data.data || response.data;
           setAreas(Array.isArray(areaData) ? areaData.filter(a => a.isActive) : []);
         } catch (err) {
           console.error("Gagal load area:", err);
-          toast.error("Gagal memuat daftar area.");
         } finally {
           setLoadingAreas(false);
         }
       };
       fetchAreas();
+
+      // Cek Lokasi GPS User
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition((pos) => {
+          const userPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          setMarkerPos(userPos);
+          fetchAddressInfo(userPos.lat, userPos.lng);
+        });
+      }
     }
-  }, [open]);
+  }, [open, fetchAddressInfo]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setForm({ ...form, [name]: value });
-  };
-
-  const handleSelectChange = (name, value) => {
-    setForm({ ...form, [name]: value });
+    setForm(prev => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async () => {
-    // Validasi Dasar
     if (!form.machineCode.trim() || !form.name.trim() || !form.areaId) {
-      toast.warning("Harap isi kolom wajib (Kode, Nama, Area)");
+      toast.warning("Harap isi Kode, Nama, dan Area!");
       return;
     }
 
     setLoading(true);
     try {
-      const token = localStorage.getItem("token");
-      
       const payload = {
         ...form,
         machineCode: form.machineCode.trim().toUpperCase(),
-        name: form.name.trim(),
         areaId: Number(form.areaId),
-        latitude: form.latitude ? parseFloat(form.latitude) : 0,
-        longitude: form.longitude ? parseFloat(form.longitude) : 0,
+        latitude: parseFloat(form.latitude) || 0,
+        longitude: parseFloat(form.longitude) || 0,
       };
-
-      const response = await axios.post("http://localhost:3000/api/v1/machines/", payload, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (response.status === 200 || response.status === 201) {
-        toast.success("Mesin baru berhasil ditambahkan!");
-        handleClose(); // Langsung tutup modal
-        if (refreshData) refreshData(); 
-      }
+      await api.post("/machines", payload);
+      toast.success("Mesin berhasil ditambahkan!");
+      handleClose();
+      if (refreshData) refreshData();
     } catch (error) {
-      const msg = error.response?.data?.message || "Gagal menyimpan data ke server.";
-      toast.error(msg);
-    } finally { 
-      setLoading(false); 
-    }
+      toast.error(error.response?.data?.message || "Terjadi kesalahan server.");
+    } finally { setLoading(false); }
   };
 
   const handleClose = () => {
@@ -104,103 +134,91 @@ const CreateModal = ({ open, handleOpen, refreshData }) => {
 
   const locationOptions = ["OFFICE", "HOTEL", "MALL", "MARKET", "SCHOOL_CAMPUS", "RT_RW", "PARK", "HOSPITAL", "OTHER"];
 
+  // Jika script Maps gagal load
+  if (loadError) return <div>Error loading Google Maps API</div>;
+
   return (
-    <Dialog 
-      open={open} 
-      handler={handleClose} 
-      size="xl" 
-      className="rounded-xl shadow-2xl max-h-[95vh] overflow-hidden flex flex-col"
-    >
-      <DialogHeader className="flex justify-between items-center border-b border-gray-100 px-6 py-4">
+    <Dialog open={open} handler={handleClose} size="xl" className="rounded-xl max-h-[95vh] flex flex-col overflow-hidden">
+      <DialogHeader className="flex justify-between items-center border-b px-6 py-4">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-blue-50 rounded-lg">
             <CpuChipIcon className="h-6 w-6 text-blue-600" />
           </div>
-          <Typography variant="h5" color="blue-gray" className="font-bold">
-            Tambah Mesin Baru
-          </Typography>
+          <Typography variant="h5" className="font-bold text-blue-gray-900">Tambah Mesin Baru</Typography>
         </div>
         <IconButton variant="text" color="blue-gray" onClick={handleClose}>
-          <XMarkIcon className="h-5 w-5" strokeWidth={2} />
+          <XMarkIcon className="h-5 w-5" />
         </IconButton>
       </DialogHeader>
 
-      <DialogBody className="overflow-y-auto px-6 py-4 flex-grow custom-scrollbar">
+      <DialogBody className="overflow-y-auto px-6 py-4 flex-grow custom-scrollbar bg-gray-50/20">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* COLUMN 1: UNIT INFO */}
-          <div className="space-y-6">
+          
+          {/* KOLOM KIRI: PETA */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 border-l-4 border-green-500 pl-3">
+              <Typography className="font-bold text-gray-800 uppercase text-xs">Lokasi Penempatan</Typography>
+            </div>
+            <div className="h-[350px] w-full rounded-2xl overflow-hidden border-2 border-white shadow-lg bg-gray-100">
+              {isLoaded ? (
+                <GoogleMap
+                  mapContainerStyle={{ width: '100%', height: '100%' }}
+                  center={markerPos}
+                  zoom={15}
+                  onClick={onMapClick}
+                >
+                  <Marker position={markerPos} draggable onDragEnd={onMapClick} />
+                </GoogleMap>
+              ) : (
+                <div className="h-full w-full flex items-center justify-center">
+                   <Spinner color="blue" />
+                </div>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+               <Input label="Latitude" name="latitude" value={form.latitude} readOnly className="bg-white" />
+               <Input label="Longitude" name="longitude" value={form.longitude} readOnly className="bg-white" />
+            </div>
+          </div>
+
+          {/* KOLOM KANAN: FORM DATA */}
+          <div className="space-y-4">
             <div className="flex items-center gap-2 border-l-4 border-blue-500 pl-3">
-              <Typography className="font-bold text-gray-800 uppercase text-xs tracking-wider">Informasi Unit</Typography>
+              <Typography className="font-bold text-gray-800 uppercase text-xs tracking-wider">Informasi & Alamat</Typography>
             </div>
             <div className="grid grid-cols-1 gap-4">
               <Select 
-                label="Pilih Area" 
+                label="Pilih Area Wilayah" 
                 value={form.areaId.toString()} 
-                onChange={(v) => handleSelectChange("areaId", v)}
+                onChange={(v) => setForm({...form, areaId: v})}
                 disabled={loadingAreas}
               >
-                {areas.length > 0 ? areas.map((area) => (
-                  <Option key={area.id} value={area.id.toString()}>{area.name}</Option>
-                )) : (
-                  <Option disabled>Tidak Ada Area Aktif</Option>
-                )}
+                {areas.map((area) => <Option key={area.id} value={area.id.toString()}>{area.name}</Option>)}
               </Select>
-              <Input label="Kode Mesin (contoh: MC-01)" name="machineCode" value={form.machineCode} onChange={handleChange} />
+              <Input label="Kode Mesin" name="machineCode" value={form.machineCode} onChange={handleChange} />
               <Input label="Nama Mesin" name="name" value={form.name} onChange={handleChange} />
-              <Select label="Tipe Mesin" value={form.machineType} onChange={(v) => handleSelectChange("machineType", v)}>
-                <Option value="BOX">BOX</Option>
-                <Option value="CONTAINER">KONTAINER</Option>
-              </Select>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <Input label="Kecamatan (Otomatis)" name="district" value={form.district} onChange={handleChange} />
+                <Input label="Kelurahan (Otomatis)" name="subdistrict" value={form.subdistrict} onChange={handleChange} />
+              </div>
+              <Textarea label="Alamat Lengkap" name="address" rows={3} value={form.address} onChange={handleChange} />
             </div>
           </div>
 
-          {/* COLUMN 2: LOCATION */}
-          <div className="space-y-6">
-            <div className="flex items-center gap-2 border-l-4 border-green-500 pl-3">
-              <Typography className="font-bold text-gray-800 uppercase text-xs tracking-wider">Detail Penempatan</Typography>
-            </div>
-            <div className="grid grid-cols-1 gap-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Input label="Nama Tempat (Gedung/Titik)" name="placeName" value={form.placeName} onChange={handleChange} />
-                <Select label="Kategori Lokasi" value={form.locationType} onChange={(v) => handleSelectChange("locationType", v)}>
-                  {locationOptions.map((opt) => (
-                    <Option key={opt} value={opt}>{opt.replace("_", " ")}</Option>
-                  ))}
-                </Select>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <Input label="Latitudo" name="latitude" type="number" value={form.latitude} onChange={handleChange} />
-                <Input label="Longitudo" name="longitude" type="number" value={form.longitude} onChange={handleChange} />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <Input label="Kecamatan" name="district" value={form.district} onChange={handleChange} />
-                <Input label="Kelurahan" name="subdistrict" value={form.subdistrict} onChange={handleChange} />
-              </div>
-              <Textarea label="Alamat Lengkap" name="address" rows={2} value={form.address} onChange={handleChange} />
-            </div>
-          </div>
-
-          {/* FULL WIDTH SECTION */}
-          <div className="lg:col-span-2 pt-2">
-            <div className="flex items-center gap-2 border-l-4 border-orange-400 pl-3 mb-4">
-              <Typography className="font-bold text-gray-800 uppercase text-xs tracking-wider">Catatan Internal</Typography>
-            </div>
-            <Textarea label="Deskripsi Mesin" name="description" rows={2} value={form.description} onChange={handleChange} />
+          {/* SECTION BAWAH */}
+          <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+             <Input label="Nama Tempat (Gedung/Toko)" name="placeName" value={form.placeName} onChange={handleChange} />
+             <Select label="Kategori Lokasi" value={form.locationType} onChange={(v) => setForm({...form, locationType: v})}>
+                {locationOptions.map((opt) => <Option key={opt} value={opt}>{opt.replace("_", " ")}</Option>)}
+             </Select>
           </div>
         </div>
       </DialogBody>
 
-      <DialogFooter className="border-t border-gray-100 p-4 gap-2 flex-col sm:flex-row">
-        <Button variant="text" color="gray" onClick={handleClose} className="w-full sm:w-auto">
-          Batal
-        </Button>
-        <Button 
-          variant="gradient" 
-          color="blue" 
-          onClick={handleSubmit} 
-          disabled={loading} 
-          className="w-full sm:w-auto flex items-center justify-center gap-2"
-        >
+      <DialogFooter className="border-t p-4 gap-2 bg-white">
+        <Button variant="text" color="red" onClick={handleClose}>Batal</Button>
+        <Button variant="gradient" color="blue" onClick={handleSubmit} disabled={loading} className="px-10">
           {loading ? <Spinner className="h-4 w-4" /> : "Simpan Mesin"}
         </Button>
       </DialogFooter>

@@ -8,7 +8,7 @@ import {
   Spinner,
 } from "@material-tailwind/react";
 import { ExclamationTriangleIcon } from "@heroicons/react/24/outline";
-import axios from "axios";
+import api from "../../utils/api";
 import { toast } from 'react-toastify';
 
 const DeleteStoreModal = ({ open, handleOpen, data, onSuccess }) => {
@@ -27,7 +27,7 @@ const DeleteStoreModal = ({ open, handleOpen, data, onSuccess }) => {
       const token = localStorage.getItem("token");
       
       // Memanggil API DELETE sesuai dokumentasi image_1e0d75.png
-      await axios.delete(`http://localhost:3000/api/v1/stores/${storeId}`, {
+      await api.delete(`/stores/${storeId}`, {
         headers: { 
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json"

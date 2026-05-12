@@ -17,7 +17,7 @@ import {
   CheckCircleIcon,
   XCircleIcon
 } from "@heroicons/react/24/outline";
-import axios from "axios";
+import api from "../../utils/api";
 
 const EditProfileModal = ({ open, handleOpen, data, refreshData }) => {
   const [form, setForm] = useState(data);
@@ -36,7 +36,7 @@ const EditProfileModal = ({ open, handleOpen, data, refreshData }) => {
       const token = localStorage.getItem("token");
       
       // Kirim data ke API (Ganti URL sesuai backend kamu)
-      await axios.put("http://localhost:3000/api/v1/auth/update-profile", form, {
+      await api.put("/auth/update-profile", form, {
         headers: { Authorization: `Bearer ${token}` }
       });
 

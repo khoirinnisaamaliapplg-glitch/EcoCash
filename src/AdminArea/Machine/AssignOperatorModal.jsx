@@ -12,7 +12,7 @@ import {
   Spinner,
 } from "@material-tailwind/react";
 import { XMarkIcon, UserGroupIcon } from "@heroicons/react/24/outline";
-import axios from "axios";
+import api from "../../utils/api"; 
 // 1. Import toast
 import { toast } from "react-hot-toast";
 
@@ -34,7 +34,7 @@ const AssignOperatorModal = ({ open, handleOpen, machineData, refreshData }) => 
         setErrorInfo("");
         try {
           const token = localStorage.getItem("token");
-          const response = await axios.get(`http://localhost:3000/api/v1/admin/users`, {
+          const response = await api.get("/admin/users", {
             headers: { Authorization: `Bearer ${token}` },
           });
 

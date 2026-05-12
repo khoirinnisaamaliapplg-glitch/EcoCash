@@ -17,7 +17,7 @@ import {
   UserCircleIcon,
 } from "@heroicons/react/24/outline";
 import { useFormik } from "formik";
-import axios from "axios";
+import api from "../../utils/api";
 import { toast } from "react-toastify"; // Import Toast
 
 const CreateUserModal = ({ open, handleOpen, refreshData }) => {
@@ -29,7 +29,7 @@ const CreateUserModal = ({ open, handleOpen, refreshData }) => {
     const fetchAreas = async () => {
       try {
         const token = localStorage.getItem("token");
-        const response = await axios.get("http://localhost:3000/api/v1/areas", {
+        const response = await api.get("/areas", {
           headers: { Authorization: `Bearer ${token}` },
         });
         setAreas(response.data.data || []);
@@ -73,7 +73,7 @@ const CreateUserModal = ({ open, handleOpen, refreshData }) => {
           areaId: Number(values.areaId),
         };
 
-        const response = await axios.post("http://localhost:3000/api/v1/admin/users", payload, {
+        const response = await api.post("/admin/users", payload, {
           headers: { Authorization: `Bearer ${token}` },
         });
 

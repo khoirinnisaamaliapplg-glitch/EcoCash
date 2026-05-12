@@ -19,7 +19,7 @@ import {
   XMarkIcon
 } from "@heroicons/react/24/outline";
 import { useFormik } from "formik";
-import axios from "axios";
+import api from "../../utils/api"; 
 import { toast } from "react-hot-toast";
 
 const CreateModal = ({ open, setOpen, refreshData }) => {
@@ -61,7 +61,7 @@ const CreateModal = ({ open, setOpen, refreshData }) => {
           areaId: Number(userData.areaId),
         };
 
-        const response = await axios.post("http://localhost:3000/api/v1/admin/users", payload, {
+        const response = await api.post("/admin/users", payload, {
           headers: { Authorization: `Bearer ${token}` },
         });
 

@@ -9,7 +9,7 @@ import {
   Spinner 
 } from "@material-tailwind/react";
 import { ExclamationTriangleIcon } from "@heroicons/react/24/outline";
-import axios from "axios";
+import api from "../../utils/api"; 
 // 1. Import toast
 import { toast } from "react-hot-toast";
 
@@ -27,7 +27,7 @@ const DeleteModal = ({ open, handleOpen, data, refreshData }) => {
       const token = localStorage.getItem("token");
       
       // Jika Anda menggunakan API asli, aktifkan baris di bawah:
-      await axios.delete(`http://localhost:3000/api/v1/machines/${data.id}`, {
+      await api.delete(`/machines/${data.id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 

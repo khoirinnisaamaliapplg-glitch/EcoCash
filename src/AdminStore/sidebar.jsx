@@ -1,5 +1,6 @@
 import React from "react";
 import logo2 from "../assets/logo2.png"; 
+import { NavLink, Link } from "react-router-dom"; // Pastikan Link sudah di-import
 
 import { 
   Card, 
@@ -64,17 +65,17 @@ const SidebarAdminStore = ({ open, setOpen }) => {
         
         {/* HEADER: Logo & Nama Aplikasi sesuai branding EcoCash */}
         <div className="mb-8 p-4 flex items-center justify-between border-b border-gray-50 pb-6">
-          <div className="flex items-center gap-4">
-            <img src={logo2} alt="EcoCash Logo" className="h-12 w-12 object-contain" />
+          <Link to="/dashboard" className="flex items-center gap-4 hover:opacity-80 transition-opacity">
+            <img src={logo2} alt="EcoCash" className="h-14 w-14 object-contain" />
             <div>
-              <Typography variant="h5" className="text-blue-700 font-black leading-tight tracking-tighter">
+              <Typography variant="h5" className="text-[#2b6cb0] font-black leading-tight">
                 EcoCash
               </Typography>
-              <Typography className="text-blue-500 font-black text-[10px] uppercase tracking-[0.2em] leading-none">
+              <Typography variant="small" className="text-green-500 font-bold text-[10px] uppercase tracking-widest">
                 Admin Store
               </Typography>
             </div>
-          </div>
+          </Link>
           
           <button onClick={() => setOpen(false)} className="md:hidden p-2 hover:bg-gray-100 rounded-lg transition-colors">
             <XMarkIcon className="h-6 w-6 text-gray-500" />

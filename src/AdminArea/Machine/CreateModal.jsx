@@ -7,7 +7,7 @@ import {
   XMarkIcon, 
   CpuChipIcon, 
 } from "@heroicons/react/24/outline";
-import axios from "axios";
+import api from "../../utils/api";  
 // 1. Import toast
 import { toast } from "react-hot-toast";
 
@@ -76,7 +76,7 @@ const CreateModal = ({ open, handleOpen, refreshData }) => {
         longitude: form.longitude ? parseFloat(form.longitude) : 0,
       };
 
-      const response = await axios.post("http://localhost:3000/api/v1/machines/", payload, {
+      const response = await api.post("/machines", payload, {
         headers: { Authorization: `Bearer ${token}` },
       });
 

@@ -17,36 +17,51 @@ import {
   CheckCircleIcon,
   XCircleIcon
 } from "@heroicons/react/24/outline";
-import axios from "axios";
+import api from "../../utils/api"; 
 
 const EditProfileModal = ({ open, handleOpen, data, refreshData }) => {
-  const [form, setForm] = useState(data);
+  // Inisialisasi form dengan data yang aman
+  const [form, setForm] = useState({
+    name: "",
+    username: "",
+    location: "",
+    bio: "",
+    password: "" // Tambahkan field password kosong
+  });
+  
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [status, setStatus] = useState(null); // 'success' | 'error' | null
+  const [status, setStatus] = useState(null); 
   const [errorMessage, setErrorMessage] = useState("");
 
+  // Sync form state ketika modal dibuka atau data dari props berubah
   useEffect(() => {
-    setForm(data);
-  }, [data]);
+    if (open && data) {
+      setForm({
+        name: data.name || "",
+        username: data.username || "",
+        location: data.location || "",
+        bio: data.bio || "",
+        password: "" 
+      });
+    }
+  }, [open, data]);
 
   const handleSubmit = async () => {
     setLoading(true);
+    setStatus(null);
     try {
-      const token = localStorage.getItem("token");
-      
-      // Kirim data ke API (Ganti URL sesuai backend kamu)
-      await axios.put("http://localhost:3000/api/v1/auth/update-profile", form, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      // 1. Gunakan instance api.js (token sudah otomatis ditangani interceptor)
+      // Gunakan endpoint yang sesuai dengan backend EcoCash
+      await api.put("/auth/update-profile", form);
 
       setStatus("success");
 
-      // Tunggu 2 detik lalu tutup dan refresh data di halaman utama
+      // Tunggu sebentar agar user bisa melihat status sukses
       setTimeout(() => {
         handleClose();
         if (refreshData) refreshData();
-      }, 2000);
+      }, 1500);
 
     } catch (error) {
       console.error("Gagal update profil:", error);
@@ -59,114 +74,126 @@ const EditProfileModal = ({ open, handleOpen, data, refreshData }) => {
 
   const handleClose = () => {
     handleOpen();
-    // Reset status modal setelah tertutup
+    // Reset status modal setelah animasi penutupan selesai
     setTimeout(() => {
       setStatus(null);
       setErrorMessage("");
+      setShowPassword(false);
     }, 300);
   };
 
   return (
-    <Dialog open={open} handler={handleClose} size="sm" className="rounded-[35px] shadow-2xl bg-white overflow-hidden">
+    <Dialog 
+      open={open} 
+      handler={handleClose} 
+      size="sm" 
+      className="rounded-[35px] shadow-2xl bg-white overflow-hidden"
+    >
       {status === "success" ? (
-        /* 1. TAMPILAN SUKSES */
         <div className="flex flex-col items-center py-16 px-10 text-center">
-          <CheckCircleIcon className="h-20 w-20 text-green-500 mb-4 animate-bounce" />
-          <Typography variant="h4" className="text-blue-900 font-black">Profil Diperbarui!</Typography>
-          <Typography className="text-gray-600 font-medium">Informasi akun EcoCash Anda berhasil disimpan.</Typography>
+          <div className="bg-green-50 p-5 rounded-full mb-4">
+            <CheckCircleIcon className="h-20 w-20 text-green-500 animate-bounce" />
+          </div>
+          <Typography variant="h4" className="text-blue-900 font-black uppercase italic">Berhasil!</Typography>
+          <Typography className="text-gray-500 font-medium italic mt-2">Data profil EcoCash Anda telah diperbarui.</Typography>
         </div>
       ) : status === "error" ? (
-        /* 2. TAMPILAN ERROR */
         <div className="flex flex-col items-center py-16 px-10 text-center">
-          <XCircleIcon className="h-20 w-20 text-red-500 mb-4" />
-          <Typography variant="h4" className="text-blue-900 font-black">Gagal Update</Typography>
-          <Typography className="text-red-500 font-medium">{errorMessage}</Typography>
-          <Button className="mt-6 bg-red-500 rounded-2xl" onClick={() => setStatus(null)}>Coba Lagi</Button>
+          <div className="bg-red-50 p-5 rounded-full mb-4">
+            <XCircleIcon className="h-20 w-20 text-red-500" />
+          </div>
+          <Typography variant="h4" className="text-blue-900 font-black uppercase italic">Gagal Simpan</Typography>
+          <Typography className="text-red-400 font-bold text-sm mt-2">{errorMessage}</Typography>
+          <Button 
+            className="mt-8 bg-red-500 rounded-2xl normal-case font-black px-10" 
+            onClick={() => setStatus(null)}
+          >
+            Coba Lagi
+          </Button>
         </div>
       ) : (
-        /* 3. TAMPILAN FORM (NORMAL) */
         <>
           <DialogHeader className="flex justify-between px-10 pt-10 pb-4">
             <div className="flex flex-col">
-              <Typography variant="h5" className="text-blue-900 font-black">Pembaruan Profil</Typography>
-              <Typography className="text-xs text-gray-400 font-medium">Ubah informasi akun EcoCash Anda di sini</Typography>
+              <Typography variant="h5" className="text-blue-900 font-black uppercase italic leading-none">Update Profile</Typography>
+              <Typography className="text-[10px] text-gray-400 font-bold uppercase mt-1 tracking-widest">Sinkronisasi Identitas EcoCash</Typography>
             </div>
-            <div className="p-2 hover:bg-gray-100 rounded-2xl cursor-pointer transition-colors" onClick={handleClose}>
+            <div className="p-2 hover:bg-gray-100 rounded-2xl cursor-pointer transition-all" onClick={handleClose}>
               <XMarkIcon className="h-6 w-6 text-gray-400" />
             </div>
           </DialogHeader>
 
-          <DialogBody className="px-10 py-2 space-y-5 overflow-y-auto max-h-[60vh]">
-            {/* Preview Foto Berdasarkan Username */}
+          <DialogBody className="px-10 py-2 space-y-5 overflow-y-auto max-h-[65vh]">
+            {/* Avatar Preview */}
             <div className="flex flex-col items-center gap-4 mb-6">
               <div className="relative group">
-                <div className="h-28 w-28 rounded-[30px] bg-blue-50/50 flex items-center justify-center border-2 border-dashed border-blue-100 overflow-hidden shadow-inner">
+                <div className="h-24 w-24 rounded-[30px] bg-blue-50/50 flex items-center justify-center border-2 border-dashed border-blue-200 overflow-hidden shadow-inner p-1">
                    <img 
                     src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${form.username}`} 
                     alt="Preview" 
-                    className="w-full h-full object-cover" 
+                    className="w-full h-full object-cover rounded-[25px]" 
                   />
-                   <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer backdrop-blur-[2px]">
-                      <PhotoIcon className="h-7 w-7 text-white mb-1" />
-                      <Typography className="text-[9px] text-white font-black uppercase tracking-tighter">Avatar Otomatis</Typography>
-                   </div>
+                </div>
+                <div className="absolute -bottom-2 -right-2 bg-blue-600 p-2 rounded-xl shadow-lg border-2 border-white">
+                  <PhotoIcon className="h-4 w-4 text-white" />
                 </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-5">
+            <div className="grid grid-cols-1 gap-4">
               <div className="space-y-1">
-                <Typography className="text-[11px] font-black text-blue-900 ml-1 uppercase tracking-wider opacity-60">Nama Lengkap</Typography>
+                <Typography className="text-[10px] font-black text-blue-900/50 ml-1 uppercase tracking-widest italic">Full Name</Typography>
                 <Input 
                   value={form.name} 
                   onChange={(e) => setForm({...form, name: e.target.value})}
-                  className="!border-t-blue-gray-100 focus:!border-[#2b6cb0] rounded-2xl bg-gray-50/30"
+                  className="!border-t-blue-gray-100 focus:!border-[#2b6cb0] rounded-2xl bg-gray-50/50 font-bold text-blue-900"
                   labelProps={{ className: "hidden" }}
                 />
               </div>
 
               <div className="space-y-1">
-                <Typography className="text-[11px] font-black text-blue-900 ml-1 uppercase tracking-wider opacity-60">Username</Typography>
+                <Typography className="text-[10px] font-black text-blue-900/50 ml-1 uppercase tracking-widest italic">Username</Typography>
                 <Input 
                   value={form.username} 
                   onChange={(e) => setForm({...form, username: e.target.value})}
-                  className="!border-t-blue-gray-100 focus:!border-[#2b6cb0] rounded-2xl bg-gray-50/30"
+                  className="!border-t-blue-gray-100 focus:!border-[#2b6cb0] rounded-2xl bg-gray-50/50 font-bold text-blue-900"
                   labelProps={{ className: "hidden" }}
                 />
               </div>
 
               <div className="space-y-1">
-                <Typography className="text-[11px] font-black text-blue-900 ml-1 uppercase tracking-wider opacity-60">Password Baru (Opsional)</Typography>
+                <Typography className="text-[10px] font-black text-blue-900/50 ml-1 uppercase tracking-widest italic">New Password (Optional)</Typography>
                 <Input 
                   type={showPassword ? "text" : "password"}
-                  placeholder="Isi jika ingin ganti password"
+                  placeholder="Kosongkan jika tidak ingin ganti"
+                  value={form.password}
                   onChange={(e) => setForm({...form, password: e.target.value})}
                   icon={
                     <div className="cursor-pointer" onClick={() => setShowPassword(!showPassword)}>
                       {showPassword ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
                     </div>
                   }
-                  className="!border-t-blue-gray-100 focus:!border-[#2b6cb0] rounded-2xl bg-gray-50/30"
+                  className="!border-t-blue-gray-100 focus:!border-[#2b6cb0] rounded-2xl bg-gray-50/50"
                   labelProps={{ className: "hidden" }}
                 />
               </div>
 
               <div className="space-y-1">
-                <Typography className="text-[11px] font-black text-blue-900 ml-1 uppercase tracking-wider opacity-60">Lokasi</Typography>
+                <Typography className="text-[10px] font-black text-blue-900/50 ml-1 uppercase tracking-widest italic">Location</Typography>
                 <Input 
                   value={form.location} 
                   onChange={(e) => setForm({...form, location: e.target.value})}
-                  className="!border-t-blue-gray-100 focus:!border-[#2b6cb0] rounded-2xl bg-gray-50/30"
+                  className="!border-t-blue-gray-100 focus:!border-[#2b6cb0] rounded-2xl bg-gray-50/50 font-bold text-blue-900"
                   labelProps={{ className: "hidden" }}
                 />
               </div>
 
               <div className="space-y-1">
-                <Typography className="text-[11px] font-black text-blue-900 ml-1 uppercase tracking-wider opacity-60">Bio</Typography>
+                <Typography className="text-[10px] font-black text-blue-900/50 ml-1 uppercase tracking-widest italic">Account Bio</Typography>
                 <Textarea 
                   value={form.bio} 
                   onChange={(e) => setForm({...form, bio: e.target.value})}
-                  className="!border-t-blue-gray-100 focus:!border-[#2b6cb0] rounded-2xl bg-gray-50/30"
+                  className="!border-t-blue-gray-100 focus:!border-[#2b6cb0] rounded-2xl bg-gray-50/50 font-medium italic"
                   labelProps={{ className: "hidden" }}
                 />
               </div>
@@ -174,15 +201,21 @@ const EditProfileModal = ({ open, handleOpen, data, refreshData }) => {
           </DialogBody>
 
           <DialogFooter className="px-10 pb-10 pt-4 gap-3">
-            <Button variant="text" color="red" onClick={handleClose} disabled={loading} className="normal-case font-bold px-6 rounded-2xl">
-              Batal
+            <Button 
+              variant="text" 
+              color="gray" 
+              onClick={handleClose} 
+              disabled={loading} 
+              className="normal-case font-black text-[11px] px-6 rounded-2xl uppercase"
+            >
+              Cancel
             </Button>
             <Button 
-              className="bg-[#2b6cb0] rounded-2xl normal-case px-10 font-black shadow-none" 
+              className="bg-[#2b6cb0] rounded-2xl normal-case px-10 font-black shadow-none text-[11px] uppercase italic" 
               onClick={handleSubmit}
               disabled={loading}
             >
-              {loading ? "Menyimpan..." : "Simpan Profil"}
+              {loading ? "Syncing..." : "Update Details"}
             </Button>
           </DialogFooter>
         </>

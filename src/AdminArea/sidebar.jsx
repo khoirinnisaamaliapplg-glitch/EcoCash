@@ -1,6 +1,7 @@
 import React from "react";
 // 1. Import gambar dari folder assets
 import logo2 from "../assets/logo2.png"; 
+import { NavLink, Link } from "react-router-dom";
 
 import { 
   Card, 
@@ -50,17 +51,17 @@ const SidebarArea = ({ open, setOpen }) => {
         
         {/* HEADER AREA */}
         <div className="mb-6 p-4 flex items-center justify-between border-b border-gray-50 pb-6">
-          <div className="flex items-center gap-4">
+          <Link to="/dashboard" className="flex items-center gap-4 hover:opacity-80 transition-opacity">
             <img src={logo2} alt="EcoCash" className="h-14 w-14 object-contain" />
             <div>
               <Typography variant="h5" className="text-[#2b6cb0] font-black leading-tight">
                 EcoCash
               </Typography>
-              <Typography variant="small" className="text-[#2b6cb0] font-bold text-[10px] uppercase tracking-widest">
-                Area Admin
+              <Typography variant="small" className="text-green-500 font-bold text-[10px] uppercase tracking-widest">
+                Admin Area
               </Typography>
             </div>
-          </div>
+          </Link>
           
           <button onClick={() => setOpen(false)} className="md:hidden">
             <XMarkIcon className="h-6 w-6 text-gray-500" />
