@@ -54,7 +54,7 @@ const AreaIndex = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.get("http://localhost:3000/api/areas", {
+      const response = await axios.get("http://localhost:3000/api/v1/areas", {
         headers: { Authorization: `Bearer ${token}` },
         params: {
           page,

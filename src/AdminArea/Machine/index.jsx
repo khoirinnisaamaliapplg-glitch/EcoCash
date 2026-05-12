@@ -51,7 +51,7 @@ const MachineManagement = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.get("http://localhost:3000/api/machines", {
+      const response = await axios.get("http://localhost:3000/api/v1/machines", {
         headers: { Authorization: `Bearer ${token}` }
       });
       

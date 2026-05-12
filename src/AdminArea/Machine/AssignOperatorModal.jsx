@@ -34,7 +34,7 @@ const AssignOperatorModal = ({ open, handleOpen, machineData, refreshData }) => 
         setErrorInfo("");
         try {
           const token = localStorage.getItem("token");
-          const response = await axios.get(`http://localhost:3000/api/users`, {
+          const response = await axios.get(`http://localhost:3000/api/v1/admin/users`, {
             headers: { Authorization: `Bearer ${token}` },
           });
 
@@ -83,7 +83,7 @@ const AssignOperatorModal = ({ open, handleOpen, machineData, refreshData }) => 
       const token = localStorage.getItem("token");
       
       await axios.patch(
-        `http://localhost:3000/api/machines/${machineData.id}/assign-operator`,
+        `http://localhost:3000/api/v1/machines/${machineData.id}/assign-operator`,
         { operatorId: parseInt(selectedOperatorId) },
         { headers: { Authorization: `Bearer ${token}` } }
       );

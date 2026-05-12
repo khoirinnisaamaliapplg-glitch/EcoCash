@@ -1,4 +1,4 @@
-import React, { useState } from "react"; 
+import React, { useState, useMemo } from "react"; 
 import Sidebar from "./sidebar"; 
 import Footer from "./Footer";
 import { 
@@ -9,14 +9,15 @@ import {
 } from "@heroicons/react/24/outline";
 import { useNavigate } from "react-router-dom";
 
-// 1. IMPORT TOASTER
+// 1. PERBAIKAN IMPORT: react-hot-toast menggunakan Toaster, bukan ToastContainer
 import { Toaster } from "react-hot-toast";
 
 const MainLayout = ({ children }) => {
   const navigate = useNavigate();
   const [openSidebar, setOpenSidebar] = useState(false);
   
-  const [userProfile] = useState(() => {
+  // Menggunakan useMemo agar logic parsing tidak jalan di setiap render
+  const userProfile = useMemo(() => {
     const storedUser = localStorage.getItem("userData");
     const storedRole = localStorage.getItem("userRole");
     
@@ -26,6 +27,7 @@ const MainLayout = ({ children }) => {
         const fixName = parsedUser.name || parsedUser.username || parsedUser.user?.name || "User";
         
         let currentRole = storedRole || parsedUser.role || "AREA_ADMIN";
+        // Logic filter role
         if (currentRole.includes("SUPER")) {
           currentRole = "AREA_ADMIN";
         }
@@ -39,7 +41,7 @@ const MainLayout = ({ children }) => {
       }
     }
     return { name: "Guest", role: "AREA_ADMIN" };
-  });
+  }, []);
 
   const handleLogout = () => {
     localStorage.clear();
@@ -50,23 +52,17 @@ const MainLayout = ({ children }) => {
     <div className="flex h-screen w-full bg-[#f8fafc] overflow-hidden font-sans">
       
       {/* 
-          FIX: Tambahkan containerStyle dengan zIndex tinggi 
-          Agar muncul di atas Modal Material Tailwind
+          FIX: Ganti ToastContainer menjadi Toaster (react-hot-toast)
+          Toaster secara default sudah punya z-index tinggi, 
+          tapi kita bisa bungkus div jika perlu kustomisasi ekstrem.
       */}
       <Toaster 
-        position="top-right"
-        reverseOrder={false}
-        containerStyle={{
-          zIndex: 99999, // Memastikan di atas modal
-        }}
+        position="top-right" 
         toastOptions={{
-          duration: 3000,
           style: {
-            borderRadius: '12px',
-            background: '#333',
-            color: '#fff',
+            zIndex: 99999,
           },
-        }}
+        }} 
       />
 
       <Sidebar open={openSidebar} setOpen={setOpenSidebar} />
@@ -79,7 +75,13 @@ const MainLayout = ({ children }) => {
               <Bars3Icon className="h-6 w-6" />
             </IconButton>
             <div className="hidden sm:block w-48 md:w-72">
-              <Input label="Search" icon={<MagnifyingGlassIcon className="h-5 w-5" />} className="bg-gray-50" />
+              {/* Tambah container agar Input Material Tailwind tidak berantakan */}
+              <Input 
+                variant="outlined" 
+                label="Search" 
+                icon={<MagnifyingGlassIcon className="h-5 w-5" />} 
+                containerProps={{ className: "min-w-[100px]" }}
+              />
             </div>
           </div>
 
@@ -89,7 +91,7 @@ const MainLayout = ({ children }) => {
             </IconButton>
             
             <div className="flex items-center gap-3 border-l pl-4 md:pl-6 border-gray-100">
-              <Menu>
+              <Menu placement="bottom-end">
                 <MenuHandler>
                   <div className="flex items-center gap-2 md:gap-3 cursor-pointer hover:bg-gray-50 p-1 rounded-lg transition-all">
                     <div className="text-right hidden lg:block">
@@ -108,8 +110,8 @@ const MainLayout = ({ children }) => {
                   </div>
                 </MenuHandler>
                 
-                {/* z-index untuk Dropdown Menu */}
-                <MenuList className="p-1 border-none shadow-lg z-[10001]">
+                {/* Perbaikan z-index dropdown agar tidak tertutup content */}
+                <MenuList className="p-1 border-none shadow-lg z-[9999]">
                   <MenuItem 
                     onClick={() => navigate("/AdminArea/profile")} 
                     className="flex items-center gap-3 rounded-md"

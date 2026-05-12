@@ -55,9 +55,9 @@ const DashboardArea = () => {
     try {
       // Hit 3 API sesuai yang kamu berikan
       const [resUsers, resPrices, resMachines] = await Promise.all([
-        axios.get("http://localhost:3000/api/users", config),
-        axios.get("http://localhost:3000/api/waste-prices", config),
-        axios.get("http://localhost:3000/api/machines", config)
+        axios.get("http://localhost:3000/api/v1/admin/users", config),
+        axios.get("http://localhost:3000/api/v1/waste-prices", config),
+        axios.get("http://localhost:3000/api/v1/machines", config)
       ]);
 
       // Helper untuk ekstrak data array

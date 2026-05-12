@@ -36,7 +36,7 @@ const EditProfileModal = ({ open, handleOpen, data, refreshData }) => {
       const token = localStorage.getItem("token");
       
       // Kirim data ke API (Ganti URL sesuai backend kamu)
-      await axios.put("http://localhost:3000/api/auth/update-profile", form, {
+      await axios.put("http://localhost:3000/api/v1/auth/update-profile", form, {
         headers: { Authorization: `Bearer ${token}` }
       });
 

@@ -29,7 +29,7 @@ const CreateUserModal = ({ open, handleOpen, refreshData }) => {
     const fetchAreas = async () => {
       try {
         const token = localStorage.getItem("token");
-        const response = await axios.get("http://localhost:3000/api/areas", {
+        const response = await axios.get("http://localhost:3000/api/v1/areas", {
           headers: { Authorization: `Bearer ${token}` },
         });
         setAreas(response.data.data || []);
@@ -73,7 +73,7 @@ const CreateUserModal = ({ open, handleOpen, refreshData }) => {
           areaId: Number(values.areaId),
         };
 
-        const response = await axios.post("http://localhost:3000/api/users", payload, {
+        const response = await axios.post("http://localhost:3000/api/v1/admin/users", payload, {
           headers: { Authorization: `Bearer ${token}` },
         });
 

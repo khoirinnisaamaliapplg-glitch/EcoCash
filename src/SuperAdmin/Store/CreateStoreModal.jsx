@@ -63,7 +63,7 @@ const CreateStoreModal = ({ open, handleOpen, onSuccess }) => {
 
     setLoading(true);
     try {
-      await axios.post("http://localhost:3000/api/stores", payload, {
+      await axios.post("http://localhost:3000/api/v1/stores", payload, {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
       });
       

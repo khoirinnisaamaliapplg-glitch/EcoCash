@@ -24,7 +24,7 @@ import AddWastePriceModal from "./AddWastePriceModal";
 import EditWastePriceModal from "./EditWastePriceModal";
 import DeleteWastePriceModal from "./DeleteWastePriceModal";
 
-const API_URL = "http://localhost:3000/api/waste-prices";
+const API_URL = "http://localhost:3000/api/v1/waste-prices";
 
 const TABLE_HEAD = [
   { label: "Wilayah", value: "areaId" },

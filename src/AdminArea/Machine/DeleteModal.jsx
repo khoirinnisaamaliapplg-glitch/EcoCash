@@ -27,7 +27,7 @@ const DeleteModal = ({ open, handleOpen, data, refreshData }) => {
       const token = localStorage.getItem("token");
       
       // Jika Anda menggunakan API asli, aktifkan baris di bawah:
-      await axios.delete(`http://localhost:3000/api/machines/${data.id}`, {
+      await axios.delete(`http://localhost:3000/api/v1/machines/${data.id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 

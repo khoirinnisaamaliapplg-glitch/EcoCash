@@ -59,10 +59,10 @@ const Dashboard = () => {
         const config = { headers: { Authorization: `Bearer ${token}` } };
 
         const [resWaste, resAreas, resMachines, resUsers] = await Promise.all([
-          axios.get("http://localhost:3000/api/waste-types/", config),
-          axios.get("http://localhost:3000/api/areas/", config),
-          axios.get("http://localhost:3000/api/machines/", config),
-          axios.get("http://localhost:3000/api/users/", config),
+          axios.get("http://localhost:3000/api/v1/waste-types/", config),
+          axios.get("http://localhost:3000/api/v1/areas/", config),
+          axios.get("http://localhost:3000/api/v1/machines/", config),
+          axios.get("http://localhost:3000/api/v1/admin/users/", config),
         ]);
 
         const extract = (res) => Array.isArray(res.data) ? res.data : (res.data.data || []);

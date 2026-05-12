@@ -32,7 +32,7 @@ const ProfileIndex = () => {
     try {
       const token = localStorage.getItem("token");
       // Ganti URL ini sesuai endpoint profile/me di backend kamu
-      const response = await axios.get("http://localhost:3000/api/auth/me", {
+      const response = await axios.get("http://localhost:3000/api/v1/auth/me", {
         headers: { Authorization: `Bearer ${token}` }
       });
       

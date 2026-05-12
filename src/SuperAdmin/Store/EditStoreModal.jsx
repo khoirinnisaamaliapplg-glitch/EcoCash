@@ -79,7 +79,7 @@ const EditStoreModal = ({ open, handleOpen, data, onSuccess }) => {
       };
 
       // MENGGUNAKAN PATCH
-      await axios.patch(`http://localhost:3000/api/stores/${data.id}`, payload, {
+      await axios.patch(`http://localhost:3000/api/v1/stores/${data.id}`, payload, {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
       });
 

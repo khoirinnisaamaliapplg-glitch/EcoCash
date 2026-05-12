@@ -33,7 +33,7 @@ const AddAreaModal = ({ open, setOpen, refreshData }) => {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      await axios.post("http://localhost:3000/api/areas/", newArea, {
+      await axios.post("http://localhost:3000/api/v1/areas/", newArea, {
         headers: { 
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json"

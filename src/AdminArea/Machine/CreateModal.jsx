@@ -76,7 +76,7 @@ const CreateModal = ({ open, handleOpen, refreshData }) => {
         longitude: form.longitude ? parseFloat(form.longitude) : 0,
       };
 
-      const response = await axios.post("http://localhost:3000/api/machines/", payload, {
+      const response = await axios.post("http://localhost:3000/api/v1/machines/", payload, {
         headers: { Authorization: `Bearer ${token}` },
       });
 

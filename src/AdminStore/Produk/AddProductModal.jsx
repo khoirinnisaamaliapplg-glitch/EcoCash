@@ -69,7 +69,7 @@ const AddProductModal = ({ open, handleOpen, refreshData, storeId }) => {
       storeId: Number(form.storeId), 
     };
 
-    const postAction = axios.post("http://localhost:3000/api/products", payload, {
+    const postAction = axios.post("http://localhost:3000/api/v1/products", payload, {
       headers: { Authorization: `Bearer ${token}` },
     });
 

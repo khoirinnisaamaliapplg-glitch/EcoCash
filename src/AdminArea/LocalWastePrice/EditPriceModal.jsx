@@ -32,7 +32,7 @@ const EditPriceModal = ({ open, handleOpen, data, refreshData }) => {
     try {
       const token = localStorage.getItem("token");
       
-      await axios.patch(`http://localhost:3000/api/waste-prices/${data.id}`, 
+      await axios.patch(`http://localhost:3000/api/v1/waste-prices/${data.id}`, 
         {
           pricePerKg: parseFloat(price)
         },

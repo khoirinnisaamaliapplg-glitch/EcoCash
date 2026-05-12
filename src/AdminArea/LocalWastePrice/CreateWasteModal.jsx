@@ -29,7 +29,7 @@ const CreateWasteModal = ({ open, handleOpen, refreshData }) => {
           const token = localStorage.getItem("token");
           const config = { headers: { Authorization: `Bearer ${token}` } };
 
-          const wasteRes = await axios.get("http://localhost:3000/api/waste-types", config);
+          const wasteRes = await axios.get("http://localhost:3000/api/v1/waste-types", config);
           const wData = Array.isArray(wasteRes.data) ? wasteRes.data : (wasteRes.data.data || []);
 
           setCategories(wData.filter(c => c.isActive));
@@ -59,7 +59,7 @@ const CreateWasteModal = ({ open, handleOpen, refreshData }) => {
 
     try {
       const token = localStorage.getItem("token");
-      await axios.post("http://localhost:3000/api/waste-prices", 
+      await axios.post("http://localhost:3000/api/v1/waste-prices", 
         {
           areaId: Number(userData.areaId),
           wasteTypeId: Number(formData.wasteTypeId),

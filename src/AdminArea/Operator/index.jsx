@@ -43,7 +43,7 @@ const OperatorManagement = () => {
     
     if (isRefresh) setLoading(true);
     try {
-      const response = await axios.get(`http://localhost:3000/api/users`, {
+      const response = await axios.get(`http://localhost:3000/api/v1/admin/users`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 

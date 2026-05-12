@@ -25,7 +25,7 @@ import CreateStoreModal from "./CreateStoreModal";
 import EditStoreModal from "./EditStoreModal";
 import DeleteStoreModal from "./DeleteStoreModal";
 
-const API_URL = "http://localhost:3000/api/stores";
+const API_URL = "http://localhost:3000/api/v1/stores";
 
 const TABLE_HEAD = [
   { label: "ID", value: "id", align: "center" },

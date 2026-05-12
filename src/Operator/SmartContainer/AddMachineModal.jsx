@@ -36,7 +36,7 @@ const AddMachineModal = ({ open, handleOpen, refreshData }) => {
     setLoading(true);
 
     // 3. Gunakan toast.promise untuk UX yang superior
-    const postAction = axios.post("http://localhost:3000/api/machines", formData, {
+    const postAction = axios.post("http://localhost:3000/api/v1/machines", formData, {
       headers: { Authorization: `Bearer ${token}` }
     });
 

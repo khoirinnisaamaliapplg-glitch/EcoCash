@@ -30,7 +30,7 @@ const EditMachineModal = ({ open, handleOpen, data, refreshData }) => {
 
     // 2. Bungkus request dalam toast.promise
     const updatePromise = axios.patch(
-      `http://localhost:3000/api/machines/${data.id}/status`, 
+      `http://localhost:3000/api/v1/machines/${data.id}/status`, 
       { status: status },
       { 
         headers: { 

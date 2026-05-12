@@ -39,7 +39,7 @@ const EditModal = ({ open, handleOpen, data, refreshData }) => {
       const fetchAreas = async () => {
         try {
           const token = localStorage.getItem("token");
-          const response = await axios.get("http://localhost:3000/api/areas", {
+          const response = await axios.get("http://localhost:3000/api/v1/areas", {
             headers: { Authorization: `Bearer ${token}` },
           });
           setAreas(response.data.data || response.data);
@@ -78,7 +78,7 @@ const EditModal = ({ open, handleOpen, data, refreshData }) => {
         description: formData.description
       };
 
-      await axios.patch(`http://localhost:3000/api/machines/${formData.id}`, payload, {
+      await axios.patch(`http://localhost:3000/api/v1/machines/${formData.id}`, payload, {
         headers: { Authorization: `Bearer ${token}` },
       });
 

@@ -20,7 +20,7 @@ const DeleteUserModal = ({ open, handleOpen, data, refreshData }) => {
       const cleanId = String(data.id).replace(':', '');
 
       // Menjalankan request DELETE ke API
-      await axios.delete(`http://localhost:3000/api/users/${cleanId}`, {
+      await axios.delete(`http://localhost:3000/api/v1/admin/users/${cleanId}`, {
         headers: { 
           Authorization: `Bearer ${token}` 
         }

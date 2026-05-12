@@ -46,7 +46,7 @@ const Login = () => {
     onSubmit: async (values) => {
       setIsLoading(true);
       try {
-        const response = await axios.post('http://localhost:3000/api/auth/login', {
+        const response = await axios.post('http://localhost:3000/api/v1/auth/login', {
           identifier: values.username,
           password: values.password
         });

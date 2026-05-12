@@ -27,7 +27,7 @@ const SmartContainerIndex = () => {
     const loadToast = isManual ? toast.loading("Sinkronisasi data...") : null;
 
     try {
-      const response = await axios.get("http://localhost:3000/api/machines/my", {
+      const response = await axios.get("http://localhost:3000/api/v1/machines/my", {
         headers: { Authorization: `Bearer ${token}` },
       });
       const result = response.data.data || [];

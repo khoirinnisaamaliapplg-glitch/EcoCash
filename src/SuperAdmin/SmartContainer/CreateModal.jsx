@@ -35,7 +35,7 @@ const CreateModal = ({ open, handleOpen, refreshData }) => {
         try {
           setLoadingAreas(true);
           const token = localStorage.getItem("token");
-          const response = await axios.get("http://localhost:3000/api/areas", {
+          const response = await axios.get("http://localhost:3000/api/v1/areas", {
             headers: { Authorization: `Bearer ${token}` },
           });
           const areaData = response.data.data || response.data;
@@ -80,7 +80,7 @@ const CreateModal = ({ open, handleOpen, refreshData }) => {
         longitude: form.longitude ? parseFloat(form.longitude) : 0,
       };
 
-      const response = await axios.post("http://localhost:3000/api/machines/", payload, {
+      const response = await axios.post("http://localhost:3000/api/v1/machines/", payload, {
         headers: { Authorization: `Bearer ${token}` },
       });
 

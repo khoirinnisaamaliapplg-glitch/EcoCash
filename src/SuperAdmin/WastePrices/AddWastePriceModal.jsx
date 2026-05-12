@@ -24,8 +24,8 @@ const AddWastePriceModal = ({ open, handleOpen, refreshData }) => {
           const config = { headers: { Authorization: `Bearer ${token}` } };
 
           const [areaRes, wasteRes] = await Promise.all([
-            axios.get("http://localhost:3000/api/areas", config),
-            axios.get("http://localhost:3000/api/waste-types", config)
+            axios.get("http://localhost:3000/api/v1/areas", config),
+            axios.get("http://localhost:3000/api/v1/waste-types", config)
           ]);
 
           const aData = Array.isArray(areaRes.data) ? areaRes.data : (areaRes.data.data || []);
@@ -53,7 +53,7 @@ const AddWastePriceModal = ({ open, handleOpen, refreshData }) => {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      await axios.post("http://localhost:3000/api/waste-prices", 
+      await axios.post("http://localhost:3000/api/v1/waste-prices", 
         {
           areaId: Number(formData.areaId),
           wasteTypeId: Number(formData.wasteTypeId),

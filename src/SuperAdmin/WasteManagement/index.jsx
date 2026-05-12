@@ -26,7 +26,7 @@ import AddWasteTypeModal from "./AddWasteTypeModal";
 import EditWasteTypeModal from "./EditWasteTypeModal";
 import DeleteWasteTypeModal from "./DeleteWasteTypeModal";
 
-const API_URL = "http://localhost:3000/api/waste-types"; 
+const API_URL = "http://localhost:3000/api/v1/waste-types"; 
 
 const TABLE_HEAD = [
   { label: "Nama Jenis Sampah", value: "name" },

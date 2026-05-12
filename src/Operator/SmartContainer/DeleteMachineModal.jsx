@@ -15,7 +15,7 @@ const DeleteMachineModal = ({ open, handleOpen, data, refreshData }) => {
     setLoading(true);
 
     // 2. Gunakan toast.promise untuk menangani feedback
-    const deleteAction = axios.delete(`http://localhost:3000/api/machines/${data.id}`, {
+    const deleteAction = axios.delete(`http://localhost:3000/api/v1/machines/${data.id}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
 

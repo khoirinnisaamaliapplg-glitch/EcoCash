@@ -46,7 +46,7 @@ const DetailModal = ({ open, handleOpen, data }) => {
         setLoading(true);
         try {
           const token = localStorage.getItem("token");
-          const response = await fetch(`http://localhost:3000/api/machines/${data.id}`, {
+          const response = await fetch(`http://localhost:3000/api/v1/machines/${data.id}`, {
             headers: { Authorization: `Bearer ${token}` }
           });
           const result = await response.json();

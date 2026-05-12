@@ -28,7 +28,7 @@ const DeleteModal = ({ open, handleOpen, data, refreshData }) => {
     try {
       const token = localStorage.getItem("token");
       
-      const response = await axios.delete(`http://localhost:3000/api/machines/${targetId}`, {
+      const response = await axios.delete(`http://localhost:3000/api/v1/machines/${targetId}`, {
         headers: { 
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json"

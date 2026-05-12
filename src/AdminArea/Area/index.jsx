@@ -44,7 +44,7 @@ const AreaIndex = () => {
         return;
       }
 
-      const response = await axios.get(`http://localhost:3000/api/areas/${userAreaId}`, {
+      const response = await axios.get(`http://localhost:3000/api/v1/areas/${userAreaId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -99,7 +99,7 @@ const AreaIndex = () => {
   const executeDelete = async (id) => {
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(`http://localhost:3000/api/areas/${id}`, {
+      await axios.delete(`http://localhost:3000/api/v1/areas/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       toast.success("Area berhasil dihapus");

@@ -38,7 +38,7 @@ const EditUserModal = ({ open, handleOpen, data, refreshData }) => {
       const cleanId = String(data.id).replace(':', '');
 
       await axios.patch(
-        `http://localhost:3000/api/users/${cleanId}/role`, 
+        `http://localhost:3000/api/v1/admin/users/${cleanId}/role`, 
         { role: role }, 
         { 
           headers: { 

@@ -27,7 +27,7 @@ const DeleteStoreModal = ({ open, handleOpen, data, onSuccess }) => {
       const token = localStorage.getItem("token");
       
       // Memanggil API DELETE sesuai dokumentasi image_1e0d75.png
-      await axios.delete(`http://localhost:3000/api/stores/${storeId}`, {
+      await axios.delete(`http://localhost:3000/api/v1/stores/${storeId}`, {
         headers: { 
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json"

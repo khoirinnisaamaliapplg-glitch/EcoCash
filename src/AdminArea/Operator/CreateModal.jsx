@@ -61,7 +61,7 @@ const CreateModal = ({ open, setOpen, refreshData }) => {
           areaId: Number(userData.areaId),
         };
 
-        const response = await axios.post("http://localhost:3000/api/users", payload, {
+        const response = await axios.post("http://localhost:3000/api/v1/admin/users", payload, {
           headers: { Authorization: `Bearer ${token}` },
         });
 

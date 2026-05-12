@@ -1,13 +1,23 @@
 import React, { useState, useEffect, useCallback } from "react";
 import MainLayout from "../MainLayout";
-import { Card, Typography, Button, Input, Chip, Avatar, IconButton } from "@material-tailwind/react";
+import { 
+  Card, 
+  Typography, 
+  Button, 
+  Input, 
+  Chip, 
+  Avatar, 
+  Select, 
+  Option 
+} from "@material-tailwind/react";
 import { 
   PlusIcon, 
   MagnifyingGlassIcon, 
   QrCodeIcon, 
   ChevronRightIcon, 
   ChevronLeftIcon,
-  ChevronUpDownIcon 
+  ChevronUpDownIcon,
+  CreditCardIcon 
 } from "@heroicons/react/24/outline";
 import axios from "axios";
 import { toast } from 'react-toastify';
@@ -22,6 +32,7 @@ const TABLE_HEAD = [
   { label: "User", value: "name" },
   { label: "Email", value: "email" },
   { label: "QR-Code", value: null },
+  { label: "RFID", value: "rfid" },
   { label: "Role", value: "role" },
   { label: "Location", value: "areaId" },
   { label: "Action", value: null },
@@ -32,9 +43,10 @@ const UserIndex = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  // State Query (Pagination, Search, Sort)
+  // State Query (Pagination, Search, Sort, Filter)
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search, 500);
+  const [filterRole, setFilterRole] = useState(""); // State Filter Role
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
@@ -49,12 +61,11 @@ const UserIndex = () => {
   const [selectedUser, setSelectedUser] = useState(null);
 
   // --- Functions ---
-
   const fetchUsers = useCallback(async () => {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.get("http://localhost:3000/api/users", {
+      const response = await axios.get("http://localhost:3000/api/v1/admin/users", {
         headers: { Authorization: `Bearer ${token}` },
         params: {
           page,
@@ -62,6 +73,7 @@ const UserIndex = () => {
           search: debouncedSearch,
           sortBy,
           sortOrder,
+          role: filterRole, // Kirim filter role ke API
         }
       });
 
@@ -75,16 +87,16 @@ const UserIndex = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, limit, debouncedSearch, sortBy, sortOrder]);
+  }, [page, limit, debouncedSearch, sortBy, sortOrder, filterRole]);
 
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
 
-  // Reset ke halaman 1 jika mencari sesuatu
+  // Reset ke halaman 1 jika mencari sesuatu atau ganti filter
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch]);
+  }, [debouncedSearch, filterRole]);
 
   const handleSort = (value) => {
     if (!value) return;
@@ -113,15 +125,35 @@ const UserIndex = () => {
           <Typography className="text-gray-500 text-sm">Kelola hak akses dan profil pengguna sistem</Typography>
         </div>
 
-        {/* Action: Add & Search */}
-        <div className="flex flex-col md:flex-row justify-between gap-4">
-          <Button 
-            onClick={() => setOpenCreate(true)} 
-            className="flex items-center justify-center gap-2 bg-[#66bb6a] normal-case rounded-xl shadow-none px-6"
-          >
-            <PlusIcon className="h-5 w-5 stroke-[3]" /> Add User
-          </Button>
-          <div className="w-full md:w-80">
+        {/* Action: Add, Filter & Search */}
+        <div className="flex flex-col lg:flex-row justify-between gap-4">
+          <div className="flex flex-col md:flex-row gap-3 w-full">
+            <Button 
+              onClick={() => setOpenCreate(true)} 
+              className="flex items-center justify-center gap-2 bg-[#66bb6a] normal-case rounded-xl shadow-none px-6 shrink-0"
+            >
+              <PlusIcon className="h-5 w-5 stroke-[3]" /> Add User
+            </Button>
+            
+            {/* Filter Role Dropdown */}
+            <div className="w-full md:w-64">
+              <Select 
+                label="Filter berdasarkan Role"
+                value={filterRole}
+                onChange={(val) => setFilterRole(val)}
+                className="bg-white"
+              >
+                <Option value="">Semua Role</Option>
+                <Option value="SUPER_ADMIN">Super Admin</Option>
+                <Option value="AREA_ADMIN">Area Admin</Option>
+                <Option value="MACHINE_OPERATOR">Machine Operator</Option>
+                <Option value="STORE_ADMIN">Store Admin</Option>
+                <Option value="REGULAR_USER">Regular User</Option>
+              </Select>
+            </div>
+          </div>
+
+          <div className="w-full lg:w-80">
             <Input 
               label="Cari user atau email..." 
               icon={<MagnifyingGlassIcon className="h-5 w-5" />} 
@@ -134,7 +166,7 @@ const UserIndex = () => {
         {/* Table */}
         <Card className="w-full overflow-hidden border border-blue-50 shadow-sm rounded-2xl">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[900px] table-auto text-left">
+            <table className="w-full min-w-[1100px] table-auto text-left">
               <thead>
                 <tr className="bg-[#e3f2fd]/50">
                   {TABLE_HEAD.map((head) => (
@@ -180,6 +212,15 @@ const UserIndex = () => {
                           <QrCodeIcon className="h-6 w-6 text-gray-800" />
                         </div>
                       </td>
+                      {/* Kolom RFID */}
+                      <td className="p-5">
+                        <div className="flex items-center gap-2 p-2 bg-gray-50 w-fit rounded-lg border border-gray-100">
+                          <CreditCardIcon className="h-4 w-4 text-gray-500" />
+                          <Typography className="text-xs font-mono font-bold text-gray-700">
+                            {row.rfid || "-"}
+                          </Typography>
+                        </div>
+                      </td>
                       <td className="p-5">
                         <Chip 
                           variant="ghost" 
@@ -212,7 +253,7 @@ const UserIndex = () => {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={6} className="p-10 text-center text-gray-400">
+                    <td colSpan={7} className="p-10 text-center text-gray-400">
                       {loading ? (
                         <div className="flex flex-col items-center gap-2">
                           <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600" />
