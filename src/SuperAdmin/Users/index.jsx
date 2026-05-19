@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import MainLayout from "../MainLayout";
 import { 
   Card, 
@@ -46,7 +46,7 @@ const UserIndex = () => {
   // State Query (Pagination, Search, Sort, Filter)
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search, 500);
-  const [filterRole, setFilterRole] = useState(""); // State Filter Role
+  const [filterRole, setFilterRole] = useState(""); 
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
@@ -59,6 +59,9 @@ const UserIndex = () => {
   const [openEdit, setOpenEdit] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
+
+  // Menggunakan useRef untuk menandai mount pertama kali
+  const isFirstRender = useRef(true);
 
   // --- Functions ---
   const fetchUsers = useCallback(async () => {
@@ -73,7 +76,7 @@ const UserIndex = () => {
           search: debouncedSearch,
           sortBy,
           sortOrder,
-          role: filterRole, // Kirim filter role ke API
+          role: filterRole, 
         }
       });
 
@@ -93,8 +96,12 @@ const UserIndex = () => {
     fetchUsers();
   }, [fetchUsers]);
 
-  // Reset ke halaman 1 jika mencari sesuatu atau ganti filter
+  // PERBAIKAN: Reset ke halaman 1 hanya jika ada perubahan nyata (bukan initial load)
   useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
     setPage(1);
   }, [debouncedSearch, filterRole]);
 
@@ -140,7 +147,7 @@ const UserIndex = () => {
               <Select 
                 label="Filter berdasarkan Role"
                 value={filterRole}
-                onChange={(val) => setFilterRole(val)}
+                onChange={(val) => setFilterRole(val || "")}
                 className="bg-white"
               >
                 <Option value="">Semua Role</Option>
@@ -212,7 +219,6 @@ const UserIndex = () => {
                           <QrCodeIcon className="h-6 w-6 text-gray-800" />
                         </div>
                       </td>
-                      {/* Kolom RFID */}
                       <td className="p-5">
                         <div className="flex items-center gap-2 p-2 bg-gray-50 w-fit rounded-lg border border-gray-100">
                           <CreditCardIcon className="h-4 w-4 text-gray-500" />

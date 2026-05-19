@@ -10,46 +10,35 @@ import {
   Typography,
   IconButton 
 } from "@material-tailwind/react";
-import { XMarkIcon, TruckIcon, MapPinIcon, ChartPieIcon } from "@heroicons/react/24/outline";
+import { XMarkIcon, TruckIcon, ChartPieIcon, MapPinIcon } from "@heroicons/react/24/outline";
 
 const CreateModal = ({ open, handleOpen, onRefresh }) => {
+  // 1. AMBIL DATA USER DARI LOCALSTORAGE
+  const rawUser = localStorage.getItem("userData") || localStorage.getItem("user");
+  const userData = rawUser ? JSON.parse(rawUser) : null;
+  
+  const userAreaId = userData?.areaId || ""; 
+  const userAreaName = userData?.areaName || userData?.area?.name || "Area Anda";
+
   const [formData, setFormData] = useState({
     truckCode: "",
     plateNumber: "",
     name: "",
     capacityKg: "",
-    areaId: "" 
+    areaId: userAreaId
   });
   
-  // State baru untuk menyimpan daftar area dari backend dan status loading
-  const [areas, setAreas] = useState([]);
-  const [loadingAreas, setLoadingAreas] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  // Mengambil opsi wilayah/area aktif dari backend saat modal terbuka
+  // 2. PASTIKAN AREA ID SELALU TERISI JIKA MODAL DIBUKA
   useEffect(() => {
-    const fetchAreas = async () => {
-      if (!open) return; // Hanya fetch jika modal dalam keadaan terbuka
-      setLoadingAreas(true);
-      try {
-        // Sesuaikan endpoint ini dengan rute penarikan data Area di backend Anda (misal: "/areas")
-        const response = await api.get("/areas");
-        
-        // Menyesuaikan jika response dibungkus objek .data atau langsung berupa array
-        const fetchedData = response?.data?.data || response?.data || [];
-        
-        // Filter area yang hanya aktif jika backend belum memfilternya
-        const activeAreas = fetchedData.filter(area => area.isActive !== false);
-        setAreas(activeAreas);
-      } catch (error) {
-        console.error("Gagal memuat daftar area operasional:", error);
-      } finally {
-        setLoadingAreas(false);
-      }
-    };
-
-    fetchAreas();
-  }, [open]);
+    if (open) {
+      setFormData((prev) => ({
+        ...prev,
+        areaId: userAreaId
+      }));
+    }
+  }, [open, userAreaId]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -61,7 +50,7 @@ const CreateModal = ({ open, handleOpen, onRefresh }) => {
 
   const handleSubmit = async () => {
     if (!formData.truckCode.trim() || !formData.plateNumber.trim() || !formData.capacityKg || !formData.areaId) {
-      alert("Semua field termasuk Wilayah Operasional wajib ditentukan!");
+      alert("Semua field wajib diisi!");
       return;
     }
 
@@ -77,8 +66,7 @@ const CreateModal = ({ open, handleOpen, onRefresh }) => {
 
       await api.post("/trucks", payload);
       
-      // Reset State kembali bersih
-      setFormData({ truckCode: "", plateNumber: "", name: "", capacityKg: "", areaId: "" });
+      setFormData({ truckCode: "", plateNumber: "", name: "", capacityKg: "", areaId: userAreaId });
       
       onRefresh();  
       handleOpen(); 
@@ -117,8 +105,7 @@ const CreateModal = ({ open, handleOpen, onRefresh }) => {
               value={formData.truckCode}
               onChange={handleInputChange}
               placeholder="Misal: TRK-001" 
-              icon={<TruckIcon className="h-4 w-4 text-gray-300" />}
-              className="!border-blue-gray-100 focus:!border-[#2b6cb0] !rounded-xl !bg-gray-50/30"
+              className="!border-blue-gray-100 focus:!border-[#2b6cb0] !rounded-xl"
               labelProps={{ className: "hidden" }}
             />
           </div>
@@ -131,8 +118,7 @@ const CreateModal = ({ open, handleOpen, onRefresh }) => {
               value={formData.plateNumber}
               onChange={handleInputChange}
               placeholder="Misal: B 1234 CKN" 
-              icon={<TruckIcon className="h-4 w-4 text-gray-300" />}
-              className="!border-blue-gray-100 focus:!border-[#2b6cb0] !rounded-xl !bg-gray-50/30"
+              className="!border-blue-gray-100 focus:!border-[#2b6cb0] !rounded-xl"
               labelProps={{ className: "hidden" }}
             />
           </div>
@@ -145,14 +131,13 @@ const CreateModal = ({ open, handleOpen, onRefresh }) => {
               value={formData.name}
               onChange={handleInputChange}
               placeholder="Misal: Isuzu Elf Bak Terbuka" 
-              icon={<TruckIcon className="h-4 w-4 text-gray-300" />}
-              className="!border-blue-gray-100 focus:!border-[#2b6cb0] !rounded-xl !bg-gray-50/30"
+              className="!border-blue-gray-100 focus:!border-[#2b6cb0] !rounded-xl"
               labelProps={{ className: "hidden" }}
             />
           </div>
 
-          {/* Grid Kapasitas & ID Wilayah Terotomatisasi Dropdown */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Kapasitas */}
             <div>
               <Typography className="text-[11px] font-black text-[#2b6cb0] uppercase ml-1 mb-2 tracking-widest opacity-70">Kapasitas (Kg)</Typography>
               <Input 
@@ -161,32 +146,25 @@ const CreateModal = ({ open, handleOpen, onRefresh }) => {
                 value={formData.capacityKg}
                 onChange={handleInputChange}
                 placeholder="Misal: 1500" 
-                icon={<ChartPieIcon className="h-4 w-4 text-gray-300" />}
                 className="!border-blue-gray-100 focus:!border-[#2b6cb0] !rounded-xl"
                 labelProps={{ className: "hidden" }}
               />
             </div>
 
-            {/* KOMPONEN AUTOMATIC AREA DROPDOWN SELECT */}
+            {/* AREA TERKUNCI */}
             <div>
               <Typography className="text-[11px] font-black text-[#2b6cb0] uppercase ml-1 mb-2 tracking-widest opacity-70">Wilayah Operasional</Typography>
               <div className="relative">
                 <select
                   name="areaId"
                   value={formData.areaId}
-                  onChange={handleInputChange}
-                  className="w-full h-[40px] px-3 text-sm text-gray-700 bg-transparent border border-blue-gray-100 rounded-xl outline-none focus:border-[#2b6cb0] transition-all appearance-none pr-8 font-medium"
+                  disabled
+                  className="w-full h-[40px] px-3 text-sm text-gray-500 bg-gray-100 border border-blue-gray-100 rounded-xl outline-none appearance-none pr-8 font-medium cursor-not-allowed"
                 >
-                  <option value="" disabled hidden>
-                    {loadingAreas ? "Memuat wilayah..." : "Pilih Area"}
+                  <option value={userAreaId}>
+                    {userAreaName} (ID: {userAreaId})
                   </option>
-                  {areas.map((area) => (
-                    <option key={area.id} value={area.id}>
-                      {area.name} (ID: {area.id})
-                    </option>
-                  ))}
                 </select>
-                {/* Custom Icon Arrow Indikator Dropdown */}
                 <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
                   <MapPinIcon className="h-4 w-4 text-gray-400" />
                 </div>

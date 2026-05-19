@@ -6,7 +6,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Login from './Login/login'; 
 import Dashboard from './SuperAdmin/dashboard';
 import SmartContainerIndex from './SuperAdmin/SmartContainer/index';
-import SmartTruckIndex from './SuperAdmin/SmartTruck/index';
+import SuperAdminTruckIndex from './SuperAdmin/SmartTruck/index'; // Diubah namanya agar unik
 import UserIndex from './SuperAdmin/Users/index';
 import WastePricesIndex from './SuperAdmin/WastePrices/index';
 import MarketPlaceIndex from './SuperAdmin/Store/index';
@@ -24,6 +24,7 @@ import AreaSettingIndex from './AdminArea/SystemSettingIndex';
 import AreaProfileIndex from './AdminArea/Profile/index';
 import AdminAreaIndex from './AdminArea/Area/index';
 import StoreIndex from './AdminArea/Store';
+import AdminAreaTruckIndex from './AdminArea/SmartTruck/index'; // Diubah namanya agar unik
 
 import OperatorDashboard from './Operator/dashboard'; 
 import OperatorSmartContainer from './Operator/SmartContainer/index'; 
@@ -48,7 +49,7 @@ function App() {
         <Route element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']} />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/smart-container" element={<SmartContainerIndex />} />
-          <Route path="/smart-truck" element={<SmartTruckIndex />} />
+          <Route path="/smart-truck" element={<SuperAdminTruckIndex />} /> {/* Menggunakan nama baru */}
           <Route path="/areas" element={<AreaIndex />} />
           <Route path="/users" element={<UserIndex />} />
           <Route path="/waste-prices" element={<WastePricesIndex />} />
@@ -69,6 +70,7 @@ function App() {
           <Route path="/AdminArea/settings" element={<AreaSettingIndex />} />
           <Route path="/AdminArea/profile" element={<AreaProfileIndex />} />
           <Route path="/AdminArea/store" element={<StoreIndex />} />
+          <Route path="/AdminArea/smart-truck" element={<AdminAreaTruckIndex />} /> {/* Menggunakan nama baru */}
         </Route>
 
         {/* GROUP 3: KHUSUS OPERATOR */}

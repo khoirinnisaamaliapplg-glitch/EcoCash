@@ -13,13 +13,12 @@ import {
   Input, 
   Chip, 
   Spinner,
+  Progress, 
 } from "@material-tailwind/react";
 import { 
   PlusIcon, 
   MagnifyingGlassIcon, 
   ArrowPathIcon,
-  ChevronRightIcon, 
-  ChevronLeftIcon,
   ChevronUpDownIcon 
 } from "@heroicons/react/24/outline";
 
@@ -30,8 +29,8 @@ import { useDebounce } from "use-debounce";
 const TABLE_HEAD = [
   { label: "Machine Code", value: "machineCode" },
   { label: "Name & Place", value: "name" },
+  { label: "Capacity", value: "fillPercentage" }, 
   { label: "Area", value: "areaId" },
-  { label: "Location", value: "district" },
   { label: "Status", value: "isActive" },
   { label: "Action", value: null },
 ];
@@ -57,33 +56,25 @@ const SmartContainerIndex = () => {
   const fetchMachines = useCallback(async () => {
     setLoading(true);
     try {
-      // Tidak perlu lagi ambil token manual (sudah diurus interceptor)
       const response = await api.get("/machines", {
         params: {
           page: Number(page),
           limit: Number(limit),
           search: debouncedSearch || undefined, 
-          // Validasi Whitelist agar tidak Error 400
-          sortBy: ["createdAt", "name", "machineCode"].includes(sortBy) ? sortBy : "createdAt",
+          sortBy: ["createdAt", "name", "machineCode", "fillPercentage"].includes(sortBy) ? sortBy : "createdAt",
           sortOrder: sortOrder,
         }
       });
       
       const result = response.data;
-      
-      // Mapping sesuai struktur response: result.data dan result.meta
       setMachines(result.data || []);
       setTotalPages(result.meta?.totalPages || 1);
       setTotalData(result.meta?.total || 0); 
       
     } catch (error) {
       console.error("Gagal mengambil data mesin:", error.response?.data || error.message);
-      const msg = error.response?.data?.message || "Koneksi ke unit AIoT bermasalah.";
+      const msg = error.response?.data?.message || "Koneksi database terganggu.";
       toast.error(msg);
-      
-      if (error.response?.status === 401) {
-        toast.error("Sesi habis, silakan login kembali.");
-      }
     } finally {
       setLoading(false);
     }
@@ -104,6 +95,12 @@ const SmartContainerIndex = () => {
     setSortBy(value);
   };
 
+  const getProgressColor = (percent) => {
+    if (percent >= 80) return "red";
+    if (percent >= 50) return "amber";
+    return "green";
+  };
+
   return (
     <MainLayout>
       <ToastContainer position="top-right" autoClose={3000} />
@@ -115,16 +112,16 @@ const SmartContainerIndex = () => {
               Smart Container
             </Typography>
             <Typography className="text-gray-500 text-sm italic">
-              Monitoring Database
+              Monitoring Database System (Limiter Off)
             </Typography>
           </div>
           <Button 
             variant="text" 
             size="sm" 
-            className="flex items-center gap-2 text-blue-600 font-bold"
+            className="flex items-center gap-2 text-blue-600 font-bold navigation-case"
             onClick={fetchMachines}
           >
-            <ArrowPathIcon className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Refresh
+            <ArrowPathIcon className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Refresh Data
           </Button>
         </div>
 
@@ -148,7 +145,7 @@ const SmartContainerIndex = () => {
 
         <Card className="w-full border border-blue-50 shadow-sm rounded-2xl overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[900px] table-auto text-left">
+            <table className="w-full min-w-[1000px] table-auto text-left">
               <thead>
                 <tr className="bg-[#f8fbff]">
                   {TABLE_HEAD.map((head) => (
@@ -178,7 +175,7 @@ const SmartContainerIndex = () => {
                   </tr>
                 ) : (
                   machines.map((row, index) => (
-                    <tr key={row.id || index} className="hover:bg-blue-50/10">
+                    <tr key={row.id || index} className="hover:bg-blue-50/10 transition-colors">
                       <td className="p-5 border-b border-blue-50/50">
                         <Typography variant="small" className="font-bold text-blue-900">
                           {row.machineCode}
@@ -186,21 +183,63 @@ const SmartContainerIndex = () => {
                       </td>
                       <td className="p-5 border-b border-blue-50/50">
                         <Typography variant="small" className="font-semibold">{row.name}</Typography>
-                        <Typography className="text-[10px] text-gray-500">{row.placeName}</Typography>
+                        <Typography className="text-[10px] text-gray-500">{row.placeName || row.district}</Typography>
+                      </td>
+                      <td className="p-5 border-b border-blue-50/50 w-64">
+                        <div className="flex flex-col gap-1">
+                          <div className="flex justify-between mb-1">
+                            <Typography variant="small" className="text-[10px] font-bold">
+                              Level: {row.fillLevel} cm
+                            </Typography>
+                            <Typography variant="small" className="text-[10px] font-bold">
+                              {row.fillPercentage}%
+                            </Typography>
+                          </div>
+                          <Progress 
+                            value={row.fillPercentage} 
+                            size="sm" 
+                            color={getProgressColor(row.fillPercentage)}
+                          />
+                        </div>
                       </td>
                       <td className="p-5 border-b border-blue-50/50">
-                        <Chip value={row.area?.name || row.areaId} size="sm" variant="ghost" />
+                        <Chip value={row.area?.name || "No Area"} size="sm" variant="ghost" className="capitalize" />
                       </td>
                       <td className="p-5 border-b border-blue-50/50">
-                        <Typography variant="small">{row.district}</Typography>
-                      </td>
-                      <td className="p-5 border-b border-blue-50/50">
-                        <Chip value={row.isActive ? "Active" : "Inactive"} color={row.isActive ? "green" : "red"} size="sm" />
+                        <Chip 
+                          value={row.isActive ? "Active" : "Inactive"} 
+                          color={row.isActive ? "green" : "red"} 
+                          size="sm" 
+                        />
                       </td>
                       <td className="p-5 border-b border-blue-50/50">
                         <div className="flex gap-2">
-                          <Button onClick={() => { setSelectedData(row); setOpenDetail(true); }} size="sm" variant="text">Detail</Button>
-                          <Button onClick={() => { setSelectedData(row); setOpenEdit(true); }} size="sm" color="green">Edit</Button>
+                          <Button 
+                            onClick={() => { setSelectedData(row); setOpenDetail(true); }} 
+                            size="sm" 
+                            variant="text" 
+                            className="text-blue-600 normal-case"
+                          >
+                            Detail
+                          </Button>
+                          <Button 
+                            onClick={() => { setSelectedData(row); setOpenEdit(true); }} 
+                            size="sm" 
+                            color="green" 
+                            variant="gradient"
+                            className="normal-case"
+                          >
+                            Edit
+                          </Button>
+                          <Button 
+                            onClick={() => { setSelectedData(row); setOpenDelete(true); }} 
+                            size="sm" 
+                            color="red" 
+                            variant="gradient"
+                            className="normal-case"
+                          >
+                            Hapus
+                          </Button>
                         </div>
                       </td>
                     </tr>
@@ -211,22 +250,26 @@ const SmartContainerIndex = () => {
           </div>
 
           <div className="flex items-center justify-between p-5 border-t border-blue-50">
-            <Typography variant="small">
-              Total: <b>{totalData}</b> data
+            <Typography variant="small" className="text-gray-600">
+              Menampilkan <b>{machines.length}</b> dari <b>{totalData}</b> mesin
             </Typography>
             <div className="flex items-center gap-2">
               <Button
                 variant="outlined" size="sm"
                 onClick={() => setPage((p) => Math.max(p - 1, 1))}
                 disabled={page === 1}
+                className="border-blue-100"
               >
                 Prev
               </Button>
-              <Typography variant="small" className="font-bold">{page} / {totalPages}</Typography>
+              <Typography variant="small" className="font-bold text-blue-700 mx-2">
+                {page} / {totalPages}
+              </Typography>
               <Button
                 variant="outlined" size="sm"
                 onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
                 disabled={page === totalPages}
+                className="border-blue-100"
               >
                 Next
               </Button>
@@ -234,12 +277,32 @@ const SmartContainerIndex = () => {
           </div>
         </Card>
 
-        <CreateModal open={openCreate} handleOpen={() => setOpenCreate(false)} refreshData={fetchMachines} />
+        {/* Modals */}
+        <CreateModal 
+          open={openCreate} 
+          handleOpen={() => setOpenCreate(false)} 
+          refreshData={fetchMachines} 
+        />
+
         {selectedData && (
           <>
-            <EditModal open={openEdit} handleOpen={() => setOpenEdit(false)} data={selectedData} refreshData={fetchMachines} />
-            <DetailModal open={openDetail} handleOpen={() => setOpenDetail(false)} data={selectedData} />
-            <DeleteModal open={openDelete} handleOpen={() => setOpenDelete(false)} data={selectedData} refreshData={fetchMachines} />
+            <EditModal 
+              open={openEdit} 
+              handleOpen={() => { setOpenEdit(false); setSelectedData(null); }} 
+              data={selectedData} 
+              refreshData={fetchMachines} 
+            />
+            <DetailModal 
+              open={openDetail} 
+              handleOpen={() => { setOpenDetail(false); setSelectedData(null); }} 
+              data={selectedData} 
+            />
+            <DeleteModal 
+              open={openDelete} 
+              handleOpen={() => { setOpenDelete(false); setSelectedData(null); }} 
+              data={selectedData} 
+              refreshData={fetchMachines} 
+            />
           </>
         )}
       </div>

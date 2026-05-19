@@ -1,5 +1,7 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import MainLayout from "./MainLayout";
+import api from "../utils/api";
+import bannerImg from "../assets/banner.jpeg";
 import { 
   Card, 
   Typography, 
@@ -15,14 +17,12 @@ import {
   SparklesIcon,
   MapPinIcon,
   CalendarDaysIcon,
-  UserCircleIcon
 } from "@heroicons/react/24/outline";
 import { PlusIcon } from "@heroicons/react/24/solid";
 
-// Komponen Card Statistik Kustom (Visual Premium)
+// Komponen Card Statistik Kustom
 const StatCard = ({ icon: Icon, color, title, value, unit, description }) => (
   <Card className="p-6 rounded-[2rem] border-none shadow-xl shadow-blue-900/5 bg-white group hover:scale-[1.03] hover:-translate-y-2 transition-all duration-300 cursor-default relative overflow-hidden">
-    {/* Aksen Glassmorphism di Latar Belakang */}
     <div className={`absolute -bottom-6 -right-6 w-32 h-32 rounded-full opacity-10 blur-xl ${color}`}></div>
     <div className={`absolute -top-4 -left-4 w-20 h-20 rounded-full opacity-5 blur-xl ${color}`}></div>
     
@@ -52,18 +52,79 @@ const StatCard = ({ icon: Icon, color, title, value, unit, description }) => (
 );
 
 const OperatorDashboard = () => {
-  // Data dummy - Ini nanti disambungkan ke State Management / API kamu, Mel
-  const operatorName = "Budi Santoso";
-  const joinDate = "Desember 2025";
-  const wilayahTugas = "Cikini, Jakarta Pusat";
+  const [operatorData, setOperatorData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchOperatorData = async () => {
+      const rawUser = localStorage.getItem("userData");
+      const savedUser = rawUser ? JSON.parse(rawUser) : {};
+
+      try {
+        const response = await api.get("/auth/me");
+        const data = response.data.data || response.data || {};
+
+        setOperatorData({
+          name: data.name || data.username || savedUser.name || savedUser.username || "Operator EcoCash",
+          joinDate: data.joinDate || data.createdAt || savedUser.joinDate || savedUser.createdAt || "Bergabung di EcoCash",
+          wilayahTugas: data.location || data.areaName || savedUser.location || savedUser.areaName || "Wilayah Tugas",
+          operatorId: data.operatorId || data.id || savedUser.operatorId || savedUser.id || savedUser.userId || "OP-0000",
+          username: data.username || savedUser.username || "operator",
+          stats: {
+            outputToday: data.stats?.outputToday || savedUser.stats?.outputToday || 0,
+            fullContainers: data.stats?.fullContainers || savedUser.stats?.fullContainers || 0,
+            machineStatus: data.stats?.machineStatus || savedUser.stats?.machineStatus || "A"
+          }
+        });
+      } catch (error) {
+        console.error("Gagal mengambil data dari API:", error);
+
+        setOperatorData({
+          name: savedUser.name || savedUser.username || "Operator EcoCash",
+          joinDate: savedUser.joinDate || savedUser.createdAt || "Bergabung di EcoCash",
+          wilayahTugas: savedUser.location || savedUser.areaName || "Wilayah Tugas",
+          operatorId: savedUser.operatorId || savedUser.id || savedUser.userId || "OP-0000",
+          username: savedUser.username || "operator",
+          stats: {
+            outputToday: savedUser.stats?.outputToday || 0,
+            fullContainers: savedUser.stats?.fullContainers || 0,
+            machineStatus: savedUser.stats?.machineStatus || "A"
+          }
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOperatorData();
+  }, []);
+
+  if (loading) {
+    return (
+      <MainLayout>
+        <div className="flex h-[80vh] items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-blue-600"></div>
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout>
       <div className="space-y-8 md:space-y-10 pb-12 px-2 md:px-0 mt-4">
         
-        {/* --- SECTION 1: WELCOME & PROFILE HEADER (Premium Glass Effect) --- */}
+        {/* --- SECTION: BANNER IMAGE (Ukuran Menyesuaikan Asli Image) --- */}
+        <div className="w-full rounded-[2.5rem] overflow-hidden shadow-xl shadow-blue-900/5 bg-white">
+          <img 
+            src={bannerImg} 
+            alt="Dashboard Banner" 
+            className="w-full h-auto object-cover block"
+          />
+        </div>
+
+        {/* --- SECTION 1: WELCOME & PROFILE HEADER --- */}
+        {/* Margin top disesuaikan menjadi mt-0 agar jaraknya pas setelah banner tidak memiliki tinggi statis */}
         <Card className="p-6 md:p-8 rounded-[3rem] border-none shadow-xl shadow-blue-900/5 bg-white relative overflow-hidden hover:shadow-blue-900/10 transition-shadow">
-          {/* Aksen Latar Belakang EcoCash */}
           <div className="absolute inset-0 bg-gradient-to-r from-blue-50/50 to-blue-100/30 opacity-70"></div>
           <div className="absolute top-0 right-0 h-40 w-40 bg-[url('https://www.transparenttextures.com/patterns/circuit-board.png')] opacity-10 grayscale invert"></div>
           
@@ -72,8 +133,8 @@ const OperatorDashboard = () => {
               <div className="relative group shrink-0">
                 <div className="p-2.5 bg-white/80 backdrop-blur-xl rounded-[2.5rem] shadow-2xl transition-transform duration-500 hover:scale-105">
                   <Avatar
-                    src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${operatorName}`}
-                    alt="Budi"
+                    src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${operatorData?.name}`}
+                    alt="Avatar"
                     className="h-28 w-28 rounded-[2rem] object-cover"
                   />
                 </div>
@@ -87,17 +148,17 @@ const OperatorDashboard = () => {
                   Halo Lapangan,
                 </Typography>
                 <Typography variant="h3" className="text-blue-900 font-black tracking-tight leading-tight">
-                  {operatorName}
+                  {operatorData?.name}
                 </Typography>
                 <div className="flex flex-wrap items-center justify-center md:justify-start gap-2.5 mt-2.5">
                   <div className="flex items-center gap-1.5 text-gray-600">
                     <MapPinIcon className="h-4 w-4 shrink-0" />
-                    <Typography className="text-xs md:text-sm font-bold truncate">{wilayahTugas}</Typography>
+                    <Typography className="text-xs md:text-sm font-bold truncate">{operatorData?.wilayahTugas}</Typography>
                   </div>
                   <div className="hidden sm:block h-3 w-px bg-gray-200"></div>
                   <div className="flex items-center gap-1.5 text-gray-600">
                     <CalendarDaysIcon className="h-4 w-4 shrink-0" />
-                    <Typography className="text-xs md:text-sm font-bold">Gabung {joinDate}</Typography>
+                    <Typography className="text-xs md:text-sm font-bold">Gabung {operatorData?.joinDate}</Typography>
                   </div>
                 </div>
               </div>
@@ -105,18 +166,18 @@ const OperatorDashboard = () => {
             
             <div className="flex flex-row md:flex-col items-center md:items-end gap-3 w-full md:w-auto shrink-0 mt-2 md:mt-0 pt-4 md:pt-0 border-t md:border-t-0 md:border-l border-gray-100 pl-0 md:pl-8">
                 <Chip value="Active" color="green" variant="gradient" className="rounded-full px-4 text-xs font-bold normal-case shadow-none" />
-                <Typography className="text-[10px] font-black text-blue-800/40 uppercase tracking-widest">Op-ID: #EC-OPB11</Typography>
+                <Typography className="text-[10px] font-black text-blue-800/40 uppercase tracking-widest">Op-ID: #{operatorData?.operatorId}</Typography>
             </div>
           </div>
         </Card>
 
-        {/* --- SECTION 2: STATISTIK PERFORMA (Desain Referensi) --- */}
+        {/* --- SECTION 2: STATISTIK PERFORMA --- */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
           <StatCard 
             icon={ScaleIcon} 
             color="bg-blue-600"
             title="Output Kamu Hari Ini"
-            value="500"
+            value={operatorData?.stats.outputToday || "0"}
             unit="Gram"
             description="Total daur ulang yang kamu proses"
           />
@@ -124,23 +185,22 @@ const OperatorDashboard = () => {
             icon={ArchiveBoxIcon} 
             color="bg-orange-600"
             title="Container Penuh Area"
-            value="02"
+            value={operatorData?.stats.fullContainers < 10 ? `0${operatorData?.stats.fullContainers}` : operatorData?.stats.fullContainers}
             unit="Unit"
-            description="Di wilayah tugas: Cikini"
+            description={`Di wilayah tugas: ${operatorData?.wilayahTugas.split(',')[0]}`}
           />
           <StatCard 
             icon={BoltIcon} 
             color="bg-green-600"
             title="Status Mesin Utama"
-            value="A"
+            value={operatorData?.stats.machineStatus}
             unit="Aktif"
             description="MS001 - Smart Container AIoT"
           />
         </div>
 
-        {/* --- SECTION 3: PERFORMA BULAN INI & AKTIVITAS container --- */}
+        {/* --- SECTION 3: PERFORMA BULAN INI & AKTIVITAS CONTAINER --- */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          
           {/* Performa Daur Ulang Bulanan */}
           <Card className="p-8 md:p-10 rounded-[2.5rem] border-none shadow-xl shadow-blue-900/5 bg-white space-y-8">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
@@ -155,7 +215,7 @@ const OperatorDashboard = () => {
             
             <div className="text-center flex flex-col items-center py-2">
                 <Typography variant="h1" className="text-blue-900 font-black text-6xl leading-none">1.8 <span className="text-xl text-blue-700 font-bold -ml-2 pb-2">Kg</span></Typography>
-                <Typography className="text-xs font-medium text-gray-500 max-w-sm mt-3 leading-relaxed">Dari total target 2.0 Kg daur ulang bulan ini. <span className="text-green-600 font-black">Luar biasa Budi!</span> Sebentar lagi target kamu tercapai.</Typography>
+                <Typography className="text-xs font-medium text-gray-500 max-w-sm mt-3 leading-relaxed">Dari total target 2.0 Kg daur ulang bulan ini. <span className="text-green-600 font-black">Luar biasa {operatorData?.name?.split(" ")[0] || operatorData?.username || "Kamu"}!</span> Sebentar lagi target kamu tercapai.</Typography>
             </div>
 
             <div className="pt-4 border-t border-gray-100 flex flex-col gap-3">

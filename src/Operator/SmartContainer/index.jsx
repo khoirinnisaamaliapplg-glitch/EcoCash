@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from "react";
 import api from "../../utils/api";
 import MainLayout from "../MainLayout";
 import EditMachineModal from "./EditMachineModal";
-// 1. IMPORT MODAL DETAIL OPERATOR
 import DetailModalOperator from "./DetailModalOperator"; 
 import { 
   Card, Typography, Button, Spinner, Progress, Chip 
@@ -16,11 +15,9 @@ const SmartContainerIndex = () => {
   const [machines, setMachines] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  // State untuk Edit (yang lama)
   const [selectedMachine, setSelectedMachine] = useState(null);
   const [openEdit, setOpenEdit] = useState(false);
 
-  // 2. STATE UNTUK DETAIL (baru)
   const [openDetail, setOpenDetail] = useState(false);
   const [detailData, setDetailData] = useState(null);
 
@@ -32,6 +29,7 @@ const SmartContainerIndex = () => {
     const loadToast = isManual ? toast.loading("Sinkronisasi data...") : null;
 
     try {
+      // Menggunakan endpoint /my untuk operator
       const response = await api.get("/machines/my", {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -51,7 +49,6 @@ const SmartContainerIndex = () => {
     fetchMachines();
   }, [fetchMachines]);
 
-  // Fungsi pembuka modal detail
   const handleShowDetail = (item) => {
     setDetailData(item);
     setOpenDetail(true);
@@ -66,15 +63,24 @@ const SmartContainerIndex = () => {
     }
   };
 
+  // Helper untuk warna progress bar berdasarkan fillPercentage
+  const getProgressColor = (percent) => {
+    if (percent >= 85) return "red";
+    if (percent >= 50) return "amber";
+    return "blue";
+  };
+
   return (
     <MainLayout>
       <div className="space-y-6 md:space-y-8 pb-10">
-        {/* HEADER TETAP SAMA */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 px-2 mt-4">
           <div>
             <Typography variant="h3" className="text-blue-900 font-black flex items-center gap-3 text-2xl md:text-3xl uppercase italic">
               <CpuChipIcon className="h-10 w-10 text-blue-600" />
               Monitoring AIoT
+            </Typography>
+            <Typography className="text-gray-500 text-sm font-bold italic ml-13">
+              Real-time Database Updates
             </Typography>
           </div>
           <Button 
@@ -85,7 +91,6 @@ const SmartContainerIndex = () => {
           </Button>
         </div>
 
-        {/* DAFTAR MESIN */}
         {loading && machines.length === 0 ? (
           <div className="p-20 text-center"><Spinner className="h-12 w-12 mx-auto text-blue-600" /></div>
         ) : (
@@ -102,19 +107,28 @@ const SmartContainerIndex = () => {
                 <div className="mb-6 cursor-pointer" onClick={() => handleShowDetail(item)}>
                   <Typography className="text-[11px] font-black text-blue-600 uppercase italic">Kode: {item.machineCode}</Typography>
                   <Typography variant="h5" className="text-blue-900 font-black uppercase group-hover:text-blue-600 transition-colors">{item.name}</Typography>
-                  <div className="flex items-center gap-1 text-gray-500 italic"><MapPinIcon className="h-3 w-3" /><Typography className="text-[10px] font-bold uppercase">{item.placeName || "No Location"}</Typography></div>
+                  <div className="flex items-center gap-1 text-gray-500 italic">
+                    <MapPinIcon className="h-3 w-3" />
+                    <Typography className="text-[10px] font-bold uppercase">{item.placeName || "No Location"}</Typography>
+                  </div>
                 </div>
 
-                {/* PROGRESS BAR */}
+                {/* PROGRESS BAR & FILL DATA */}
                 <div className="bg-blue-50/50 p-4 rounded-2xl mb-6">
                   <div className="flex justify-between items-end mb-2">
-                    <Typography className="text-[10px] font-black text-blue-800 uppercase">Volume Sampah</Typography>
-                    <Typography className="text-xl font-black text-blue-900">{item.totalWeight || 0}%</Typography>
+                    <div>
+                      <Typography className="text-[10px] font-black text-blue-800 uppercase leading-none">Kapasitas Terisi</Typography>
+                      <Typography className="text-[9px] font-bold text-gray-500 italic">Level: {item.fillLevel || 0} cm</Typography>
+                    </div>
+                    <Typography className="text-xl font-black text-blue-900">{item.fillPercentage || 0}%</Typography>
                   </div>
-                  <Progress value={Number(item.totalWeight) || 0} color={item.totalWeight >= 85 ? "red" : "blue"} className="h-2" />
+                  <Progress 
+                    value={Number(item.fillPercentage) || 0} 
+                    color={getProgressColor(item.fillPercentage || 0)} 
+                    className="h-2" 
+                  />
                 </div>
 
-                {/* DUA TOMBOL: DETAIL & EDIT */}
                 <div className="grid grid-cols-2 gap-3">
                     <Button 
                         variant="outlined"
@@ -136,14 +150,12 @@ const SmartContainerIndex = () => {
         )}
       </div>
 
-      {/* 3. KOMPONEN MODAL DETAIL OPERATOR */}
       <DetailModalOperator 
         open={openDetail} 
         handleOpen={() => setOpenDetail(false)} 
         data={detailData} 
       />
 
-      {/* MODAL EDIT TETAP ADA */}
       {selectedMachine && (
         <EditMachineModal 
           open={openEdit} 

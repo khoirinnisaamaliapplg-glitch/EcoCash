@@ -8,6 +8,7 @@ import {
   Button,
   Select,
   Option,
+  Textarea, // Ditambahkan untuk input notes yang lebih luas
 } from "@material-tailwind/react";
 import {
   UserIcon,
@@ -15,6 +16,8 @@ import {
   KeyIcon,
   PhoneIcon,
   UserCircleIcon,
+  IdentificationIcon, // Icon untuk KTP
+  DocumentTextIcon, // Icon untuk Notes
 } from "@heroicons/react/24/outline";
 import { useFormik } from "formik";
 import api from "../../utils/api";
@@ -50,12 +53,21 @@ const CreateUserModal = ({ open, handleOpen, refreshData }) => {
       phoneNumber: "",
       role: "",
       areaId: "", 
+      ktpNumber: "", // Inisialisasi properti ktpNumber
+      notes: "",     // Inisialisasi properti notes
     },
     enableReinitialize: true,
     onSubmit: async (values, { resetForm }) => {
       // Validasi sederhana
       if (!values.areaId || !values.role) {
         toast.warning("Harap pilih Role dan Lokasi Area!");
+        return;
+      }
+
+      // Validasi tambahan jika role adalah MACHINE_OPERATOR atau TRUCK_DRIVER
+      const isDriverOrOperator = values.role === "MACHINE_OPERATOR" || values.role === "TRUCK_DRIVER";
+      if (isDriverOrOperator && !values.ktpNumber) {
+        toast.warning("No KTP wajib diisi untuk Operator / Driver!");
         return;
       }
 
@@ -71,6 +83,11 @@ const CreateUserModal = ({ open, handleOpen, refreshData }) => {
           role: values.role,
           phoneNumber: values.phoneNumber ? values.phoneNumber.trim() : null,
           areaId: Number(values.areaId),
+          // Hanya kirim properti ktpNumber & notes jika role-nya sesuai
+          ...(isDriverOrOperator && {
+            ktpNumber: values.ktpNumber.trim(),
+            notes: values.notes ? values.notes.trim() : null,
+          }),
         };
 
         const response = await api.post("/admin/users", payload, {
@@ -95,11 +112,14 @@ const CreateUserModal = ({ open, handleOpen, refreshData }) => {
     handleOpen();
   };
 
+  // Kondisi pengecekan role untuk memunculkan input KTP & Notes
+  const showKtpInput = formik.values.role === "MACHINE_OPERATOR" || formik.values.role === "TRUCK_DRIVER";
+
   return (
     <Dialog open={open} handler={handleClose} size="md" className="rounded-[28px]">
       <DialogHeader className="px-8 pt-8 text-blue-900 font-bold">Registrasi User Baru</DialogHeader>
       <form onSubmit={formik.handleSubmit}>
-        <DialogBody className="px-8 py-4 space-y-4 overflow-visible">
+        <DialogBody className="px-8 py-4 space-y-4 overflow-visible max-h-[70vh] overflow-y-auto">
           <Input 
             label="Nama Lengkap" 
             icon={<UserIcon className="h-4 w-4" />} 
@@ -142,6 +162,7 @@ const CreateUserModal = ({ open, handleOpen, refreshData }) => {
               <Option value="AREA_ADMIN">Area Admin</Option>
               <Option value="STORE_ADMIN">Store Admin</Option>
               <Option value="MACHINE_OPERATOR">Machine Operator</Option>
+              <Option value="TRUCK_DRIVER">Truck Driver</Option> {/* Ditambahkan opsi Truck Driver */}
               <Option value="REGULAR_USER">Regular User</Option>
             </Select>
 
@@ -158,6 +179,23 @@ const CreateUserModal = ({ open, handleOpen, refreshData }) => {
               ))}
             </Select>
           </div>
+
+          {/* Kondisi render field KTP dan Notes */}
+          {showKtpInput && (
+            <div className="space-y-4 pt-2 border-t border-gray-200 animate-fadeIn">
+              <Input 
+                label="No KTP" 
+                icon={<IdentificationIcon className="h-4 w-4" />} 
+                {...formik.getFieldProps("ktpNumber")} 
+                required 
+              />
+              <Textarea 
+                label="Notes (Catatan Tambahan)" 
+                icon={<DocumentTextIcon className="h-4 w-4" />} 
+                {...formik.getFieldProps("notes")} 
+              />
+            </div>
+          )}
         </DialogBody>
 
         <DialogFooter className="px-8 pb-8 gap-3">

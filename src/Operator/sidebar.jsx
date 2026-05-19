@@ -1,6 +1,9 @@
 import React from "react";
-// 1. Pastikan logo2.png ada di folder assets kamu
+// 1. Pastikan logo2.png dan banner2.jpeg ada di folder assets kamu
 import logo2 from "../assets/logo2.png"; 
+import sidebarIllustration from "../assets/banner2.jpeg";
+// Kamu bisa import gambar atau ilustrasi baru di sini untuk bagian bawah jika ada, Mel
+
 import { NavLink, Link } from "react-router-dom"; // Pastikan Link sudah di-import
 
 import { 
@@ -24,7 +27,6 @@ const SidebarOperator = ({ open, setOpen }) => {
   const location = useLocation();
 
   // Menu Items - Disesuaikan dengan Route di App.js
- // Menu Items - Pastikan path "/operator/settings" sudah didaftarkan di App.js
   const menuItems = [
     { 
       name: "Dashboard", 
@@ -37,7 +39,6 @@ const SidebarOperator = ({ open, setOpen }) => {
       path: "/operator/smart-container" 
     },
     { 
-      // Nama menu bisa "System Setting" atau "Configuration"
       name: "System Setting", 
       icon: <Cog6ToothIcon className="h-5 w-5" />, 
       path: "/operator/settings" 
@@ -75,8 +76,9 @@ const SidebarOperator = ({ open, setOpen }) => {
           </button>
         </div>
 
-        {/* NAVIGATION LIST */}
+        {/* NAVIGATION LIST & BOTTOM IMAGE */}
         <div className="flex flex-col h-[calc(100%-140px)] justify-between">
+          {/* Bagian Atas: Menu Navigasi */}
           <List className="p-0 space-y-2">
             {menuItems.map((item) => {
               const isActive = location.pathname === item.path;
@@ -103,6 +105,17 @@ const SidebarOperator = ({ open, setOpen }) => {
               );
             })}
           </List>
+
+          {/* --- SECTION: GAMBAR DI PALING BAWAH --- */}
+          <div className="mt-auto pt-6 w-full">
+            <div className="overflow-hidden rounded-none w-full">
+              <img 
+                src={sidebarIllustration}
+                alt="Sidebar Illustration" 
+                className="w-full h-[170px] object-cover opacity-90 hover:opacity-100 transition-opacity duration-300"
+              />
+            </div>
+          </div>
         </div>
       </Card>
     </>
