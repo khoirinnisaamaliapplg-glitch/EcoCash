@@ -103,6 +103,11 @@ const SmartContainerIndex = () => {
 
   return (
     <MainLayout>
+      {/* CSS ini memastikan Toast berada di atas modal */}
+      <style>
+        {`.Toastify__toast-container { z-index: 99999 !important; }`}
+      </style>
+      
       <ToastContainer position="top-right" autoClose={3000} />
 
       <div className="p-4 md:p-0 space-y-6">

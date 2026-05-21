@@ -12,6 +12,9 @@ import {
 } from "@material-tailwind/react";
 import { XMarkIcon, TruckIcon, MapPinIcon, ChartPieIcon } from "@heroicons/react/24/outline";
 
+// Import Toastify
+import { toast } from 'react-toastify';
+
 const CreateModal = ({ open, handleOpen, onRefresh }) => {
   const [formData, setFormData] = useState({
     truckCode: "",
@@ -21,24 +24,17 @@ const CreateModal = ({ open, handleOpen, onRefresh }) => {
     areaId: "" 
   });
   
-  // State baru untuk menyimpan daftar area dari backend dan status loading
   const [areas, setAreas] = useState([]);
   const [loadingAreas, setLoadingAreas] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  // Mengambil opsi wilayah/area aktif dari backend saat modal terbuka
   useEffect(() => {
     const fetchAreas = async () => {
-      if (!open) return; // Hanya fetch jika modal dalam keadaan terbuka
+      if (!open) return;
       setLoadingAreas(true);
       try {
-        // Sesuaikan endpoint ini dengan rute penarikan data Area di backend Anda (misal: "/areas")
         const response = await api.get("/areas");
-        
-        // Menyesuaikan jika response dibungkus objek .data atau langsung berupa array
         const fetchedData = response?.data?.data || response?.data || [];
-        
-        // Filter area yang hanya aktif jika backend belum memfilternya
         const activeAreas = fetchedData.filter(area => area.isActive !== false);
         setAreas(activeAreas);
       } catch (error) {
@@ -60,8 +56,9 @@ const CreateModal = ({ open, handleOpen, onRefresh }) => {
   };
 
   const handleSubmit = async () => {
+    // Validasi menggunakan Toast
     if (!formData.truckCode.trim() || !formData.plateNumber.trim() || !formData.capacityKg || !formData.areaId) {
-      alert("Semua field termasuk Wilayah Operasional wajib ditentukan!");
+      toast.error("Semua field termasuk Wilayah Operasional wajib ditentukan!");
       return;
     }
 
@@ -77,14 +74,14 @@ const CreateModal = ({ open, handleOpen, onRefresh }) => {
 
       await api.post("/trucks", payload);
       
-      // Reset State kembali bersih
       setFormData({ truckCode: "", plateNumber: "", name: "", capacityKg: "", areaId: "" });
       
       onRefresh();  
       handleOpen(); 
     } catch (error) {
       console.error("Gagal mengirim data armada:", error);
-      alert(error.response?.data?.message || "Terjadi kegagalan saat registrasi armada baru.");
+      // Menampilkan error dari API menggunakan Toast
+      toast.error(error.response?.data?.message || "Terjadi kegagalan saat registrasi armada baru.");
     } finally {
       setSubmitting(false);
     }
@@ -108,88 +105,33 @@ const CreateModal = ({ open, handleOpen, onRefresh }) => {
       </DialogHeader>
       
       <DialogBody className="px-8 py-6 space-y-5">
+        {/* ... (Form input tetap sama seperti sebelumnya) ... */}
         <div className="space-y-4">
-          {/* Truck Code */}
           <div>
             <Typography className="text-[11px] font-black text-[#2b6cb0] uppercase ml-1 mb-2 tracking-widest opacity-70">Kode Truk</Typography>
-            <Input 
-              name="truckCode"
-              value={formData.truckCode}
-              onChange={handleInputChange}
-              placeholder="Misal: TRK-001" 
-              icon={<TruckIcon className="h-4 w-4 text-gray-300" />}
-              className="!border-blue-gray-100 focus:!border-[#2b6cb0] !rounded-xl !bg-gray-50/30"
-              labelProps={{ className: "hidden" }}
-            />
+            <Input name="truckCode" value={formData.truckCode} onChange={handleInputChange} placeholder="Misal: TRK-001" icon={<TruckIcon className="h-4 w-4 text-gray-300" />} className="!border-blue-gray-100 focus:!border-[#2b6cb0] !rounded-xl !bg-gray-50/30" labelProps={{ className: "hidden" }} />
           </div>
-
-          {/* Plate Number */}
           <div>
             <Typography className="text-[11px] font-black text-[#2b6cb0] uppercase ml-1 mb-2 tracking-widest opacity-70">Nomor Pelat</Typography>
-            <Input 
-              name="plateNumber"
-              value={formData.plateNumber}
-              onChange={handleInputChange}
-              placeholder="Misal: B 1234 CKN" 
-              icon={<TruckIcon className="h-4 w-4 text-gray-300" />}
-              className="!border-blue-gray-100 focus:!border-[#2b6cb0] !rounded-xl !bg-gray-50/30"
-              labelProps={{ className: "hidden" }}
-            />
+            <Input name="plateNumber" value={formData.plateNumber} onChange={handleInputChange} placeholder="Misal: B 1234 CKN" icon={<TruckIcon className="h-4 w-4 text-gray-300" />} className="!border-blue-gray-100 focus:!border-[#2b6cb0] !rounded-xl !bg-gray-50/30" labelProps={{ className: "hidden" }} />
           </div>
-
-          {/* Truck Name */}
           <div>
             <Typography className="text-[11px] font-black text-[#2b6cb0] uppercase ml-1 mb-2 tracking-widest opacity-70">Nama / Deskripsi Truk</Typography>
-            <Input 
-              name="name"
-              value={formData.name}
-              onChange={handleInputChange}
-              placeholder="Misal: Isuzu Elf Bak Terbuka" 
-              icon={<TruckIcon className="h-4 w-4 text-gray-300" />}
-              className="!border-blue-gray-100 focus:!border-[#2b6cb0] !rounded-xl !bg-gray-50/30"
-              labelProps={{ className: "hidden" }}
-            />
+            <Input name="name" value={formData.name} onChange={handleInputChange} placeholder="Misal: Isuzu Elf Bak Terbuka" icon={<TruckIcon className="h-4 w-4 text-gray-300" />} className="!border-blue-gray-100 focus:!border-[#2b6cb0] !rounded-xl !bg-gray-50/30" labelProps={{ className: "hidden" }} />
           </div>
-
-          {/* Grid Kapasitas & ID Wilayah Terotomatisasi Dropdown */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Typography className="text-[11px] font-black text-[#2b6cb0] uppercase ml-1 mb-2 tracking-widest opacity-70">Kapasitas (Kg)</Typography>
-              <Input 
-                name="capacityKg"
-                type="number"
-                value={formData.capacityKg}
-                onChange={handleInputChange}
-                placeholder="Misal: 1500" 
-                icon={<ChartPieIcon className="h-4 w-4 text-gray-300" />}
-                className="!border-blue-gray-100 focus:!border-[#2b6cb0] !rounded-xl"
-                labelProps={{ className: "hidden" }}
-              />
+              <Input name="capacityKg" type="number" value={formData.capacityKg} onChange={handleInputChange} placeholder="Misal: 1500" icon={<ChartPieIcon className="h-4 w-4 text-gray-300" />} className="!border-blue-gray-100 focus:!border-[#2b6cb0] !rounded-xl" labelProps={{ className: "hidden" }} />
             </div>
-
-            {/* KOMPONEN AUTOMATIC AREA DROPDOWN SELECT */}
             <div>
               <Typography className="text-[11px] font-black text-[#2b6cb0] uppercase ml-1 mb-2 tracking-widest opacity-70">Wilayah Operasional</Typography>
               <div className="relative">
-                <select
-                  name="areaId"
-                  value={formData.areaId}
-                  onChange={handleInputChange}
-                  className="w-full h-[40px] px-3 text-sm text-gray-700 bg-transparent border border-blue-gray-100 rounded-xl outline-none focus:border-[#2b6cb0] transition-all appearance-none pr-8 font-medium"
-                >
-                  <option value="" disabled hidden>
-                    {loadingAreas ? "Memuat wilayah..." : "Pilih Area"}
-                  </option>
-                  {areas.map((area) => (
-                    <option key={area.id} value={area.id}>
-                      {area.name} (ID: {area.id})
-                    </option>
-                  ))}
+                <select name="areaId" value={formData.areaId} onChange={handleInputChange} className="w-full h-[40px] px-3 text-sm text-gray-700 bg-transparent border border-blue-gray-100 rounded-xl outline-none focus:border-[#2b6cb0] transition-all appearance-none pr-8 font-medium">
+                  <option value="" disabled hidden>{loadingAreas ? "Memuat wilayah..." : "Pilih Area"}</option>
+                  {areas.map((area) => (<option key={area.id} value={area.id}>{area.name} (ID: {area.id})</option>))}
                 </select>
-                {/* Custom Icon Arrow Indikator Dropdown */}
-                <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                  <MapPinIcon className="h-4 w-4 text-gray-400" />
-                </div>
+                <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none"><MapPinIcon className="h-4 w-4 text-gray-400" /></div>
               </div>
             </div>
           </div>
@@ -198,11 +140,7 @@ const CreateModal = ({ open, handleOpen, onRefresh }) => {
 
       <DialogFooter className="flex items-center justify-end gap-3 px-8 pb-8 pt-2">
         <Button variant="text" color="blue-gray" onClick={handleOpen} disabled={submitting} className="normal-case font-bold px-6 py-3 rounded-xl hover:bg-gray-100 transition-colors">Batal</Button>
-        <Button 
-          className="bg-[#2b6cb0] px-8 py-3 rounded-xl normal-case font-bold shadow-none active:scale-95 transition-all" 
-          onClick={handleSubmit}
-          disabled={submitting}
-        >
+        <Button className="bg-[#2b6cb0] px-8 py-3 rounded-xl normal-case font-bold shadow-none active:scale-95 transition-all" onClick={handleSubmit} disabled={submitting}>
           {submitting ? "Memproses..." : "Simpan Data Armada"}
         </Button>
       </DialogFooter>

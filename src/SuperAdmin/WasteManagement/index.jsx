@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from "react";
-// 1. Pastikan import api dari kantor pusat
 import api from "../../utils/api"; 
 import MainLayout from "../MainLayout";
 import { 
@@ -20,13 +19,13 @@ import {
   ChevronUpDownIcon
 } from "@heroicons/react/24/outline";
 import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import { useDebounce } from "use-debounce";
 
 import AddWasteTypeModal from "./AddWasteTypeModal";
 import EditWasteTypeModal from "./EditWasteTypeModal";
 import DeleteWasteTypeModal from "./DeleteWasteTypeModal";
 
-// 2. Gunakan endpoint relatif (api.js sudah menangani base URL localhost:3000)
 const ENDPOINT = "/waste-types"; 
 
 const TABLE_HEAD = [
@@ -55,7 +54,6 @@ const WasteManagementIndex = () => {
   const fetchWasteTypes = useCallback(async () => {
     setLoading(true);
     try {
-      // 3. Gunakan api.get, tidak perlu lagi ambil token manual
       const response = await api.get(ENDPOINT, {
         params: {
           page: Number(page),
@@ -96,7 +94,10 @@ const WasteManagementIndex = () => {
 
   return (
     <MainLayout>
-      <ToastContainer position="top-right" autoClose={3000} hideProgressBar />
+      {/* Toast Container dengan z-index tinggi agar selalu di atas Modal */}
+      <style>{`.Toastify__toast-container { z-index: 99999 !important; }`}</style>
+      <ToastContainer position="top-right" autoClose={3000} hideProgressBar newestOnTop />
+      
       <div className="space-y-6 px-4 pb-10">
         
         {/* Header Section */}

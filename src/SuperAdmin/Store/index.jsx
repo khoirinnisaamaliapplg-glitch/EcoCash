@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import api from "../../utils/api"; // Pastikan path ../../ sesuai
+import api from "../../utils/api";
 import MainLayout from "../MainLayout";
 import {
   Card,
@@ -20,14 +20,13 @@ import {
 } from "@heroicons/react/24/outline";
 import { useDebounce } from "use-debounce";
 import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 import CreateStoreModal from "./CreateStoreModal";
 import EditStoreModal from "./EditStoreModal";
 import DeleteStoreModal from "./DeleteStoreModal";
 
-// Sesuai praktik sebelumnya, biarkan api.js yang menangani base URL jika memungkinkan, 
-// tapi di sini kita definisikan endpoint spesifiknya.
-const API_ENDPOINT = "/stores"; 
+const API_ENDPOINT = "/stores";
 
 const TABLE_HEAD = [
   { label: "ID", value: "id", align: "center" },
@@ -40,7 +39,6 @@ const TABLE_HEAD = [
 const MarketPlaceIndex = () => {
   const [stores, setStores] = useState([]);
   const [loading, setLoading] = useState(true);
-
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search, 500);
   const [page, setPage] = useState(1);
@@ -58,25 +56,22 @@ const MarketPlaceIndex = () => {
   const fetchStores = useCallback(async () => {
     setLoading(true);
     try {
-      // PERBAIKAN: Tidak perlu headers manual karena sudah ada di api.js
       const response = await api.get(API_ENDPOINT, {
         params: {
-          isActive: true, 
-          page: Number(page), // Pastikan angka
+          isActive: true,
+          page: Number(page),
           limit: Number(limit),
-          search: debouncedSearch || undefined, // Kirim undefined jika kosong agar tidak mengganggu query
+          search: debouncedSearch || undefined,
           sortBy: ["createdAt", "name", "id"].includes(sortBy) ? sortBy : "createdAt",
           sortOrder,
         },
       });
 
       const result = response.data;
-      // PERBAIKAN: Sesuaikan dengan struktur response (biasanya result.data atau result.data.data)
       setStores(result.data || []);
       setTotalPages(result.pagination?.totalPages || 1);
       setTotalData(result.pagination?.totalItems || 0);
     } catch (error) {
-      console.error("Fetch error:", error.response?.data || error.message);
       toast.error(error.response?.data?.message || "Gagal memuat data toko.");
     } finally {
       setLoading(false);
@@ -100,7 +95,15 @@ const MarketPlaceIndex = () => {
 
   return (
     <MainLayout>
-      <ToastContainer position="top-right" autoClose={3000} hideProgressBar />
+      {/* Toast Container dengan zIndex tinggi agar selalu di atas modal */}
+      <ToastContainer 
+        position="top-right" 
+        autoClose={3000} 
+        hideProgressBar={false}
+        newestOnTop={true}
+        style={{ zIndex: 9999 }} 
+      />
+
       <div className="space-y-6 px-4 pb-10">
         <div className="flex flex-col gap-1">
           <Typography variant="h4" className="text-[#2b6cb0] font-black uppercase italic">
@@ -197,24 +200,10 @@ const MarketPlaceIndex = () => {
                       </td>
                       <td className="p-4 text-center">
                         <div className="flex justify-center gap-1">
-                          <IconButton
-                            variant="text"
-                            color="green"
-                            onClick={() => {
-                              setSelectedStore(row);
-                              setOpenEdit(true);
-                            }}
-                          >
+                          <IconButton variant="text" color="green" onClick={() => { setSelectedStore(row); setOpenEdit(true); }}>
                             <PencilIcon className="h-4 w-4" />
                           </IconButton>
-                          <IconButton
-                            variant="text"
-                            color="red"
-                            onClick={() => {
-                              setSelectedStore(row);
-                              setOpenDelete(true);
-                            }}
-                          >
+                          <IconButton variant="text" color="red" onClick={() => { setSelectedStore(row); setOpenDelete(true); }}>
                             <TrashIcon className="h-4 w-4" />
                           </IconButton>
                         </div>
@@ -231,33 +220,20 @@ const MarketPlaceIndex = () => {
               Showing <span className="text-blue-700">{stores.length}</span> of <span className="text-blue-700">{totalData}</span> entries
             </Typography>
             <div className="flex items-center gap-2">
-              <Button
-                variant="outlined"
-                size="sm"
-                onClick={() => setPage((p) => Math.max(p - 1, 1))}
-                disabled={page === 1 || loading}
-                className="flex items-center gap-1 border-blue-gray-100 font-black text-[10px] uppercase italic"
-              >
-                <ChevronLeftIcon className="h-3 w-3 stroke-[3]" /> Prev
+              <Button size="sm" variant="outlined" onClick={() => setPage((p) => Math.max(p - 1, 1))} disabled={page === 1 || loading} className="flex items-center gap-1">
+                <ChevronLeftIcon className="h-3 w-3" /> Prev
               </Button>
               <Typography variant="small" className="font-black text-blue-700 text-[11px]">
-                {page} <span className="text-gray-400 font-medium">/ {totalPages}</span>
+                {page} / {totalPages}
               </Typography>
-              <Button
-                variant="outlined"
-                size="sm"
-                onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
-                disabled={page === totalPages || loading}
-                className="flex items-center gap-1 border-blue-gray-100 font-black text-[10px] uppercase italic"
-              >
-                Next <ChevronRightIcon className="h-3 w-3 stroke-[3]" />
+              <Button size="sm" variant="outlined" onClick={() => setPage((p) => Math.min(p + 1, totalPages))} disabled={page === totalPages || loading} className="flex items-center gap-1">
+                Next <ChevronRightIcon className="h-3 w-3" />
               </Button>
             </div>
           </div>
         </Card>
       </div>
 
-      {/* Modals */}
       <CreateStoreModal open={openCreate} handleOpen={() => setOpenCreate(false)} onSuccess={fetchStores} />
       {selectedStore && (
         <>

@@ -9,6 +9,9 @@ import {
 } from "@material-tailwind/react";
 import { ExclamationTriangleIcon } from "@heroicons/react/24/outline";
 
+// Import Toastify
+import { toast } from 'react-toastify';
+
 const DeleteModal = ({ open, handleOpen, data, onRefresh }) => {
   const [submitting, setSubmitting] = useState(false);
 
@@ -21,11 +24,13 @@ const DeleteModal = ({ open, handleOpen, data, onRefresh }) => {
       // Menembak endpoint DELETE /trucks/:id 
       await api.delete(`/trucks/${data.id}`);
       
-      onRefresh();  // Refresh list tabel utama agar data yang dihapus langsung hilang
+      toast.success("Armada berhasil dihapus dari sistem."); // Toast Sukses
+      onRefresh();  // Refresh list tabel utama
       handleOpen(); // Tutup modal delete
     } catch (error) {
       console.error("Gagal menghapus armada truk:", error);
-      alert(error.response?.data?.message || "Terjadi kegagalan saat menghapus data armada.");
+      // Toast Error dari API
+      toast.error(error.response?.data?.message || "Terjadi kegagalan saat menghapus data armada.");
     } finally {
       setSubmitting(false);
     }

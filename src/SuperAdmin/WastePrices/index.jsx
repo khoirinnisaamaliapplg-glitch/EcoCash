@@ -20,13 +20,13 @@ import {
   TrashIcon
 } from "@heroicons/react/24/outline";
 import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import { useDebounce } from "use-debounce";
 
 import AddWastePriceModal from "./AddWastePriceModal";
 import EditWastePriceModal from "./EditWastePriceModal";
 import DeleteWastePriceModal from "./DeleteWastePriceModal";
 
-// 1. Gunakan endpoint relatif (api.js sudah punya baseURL)
 const ENDPOINT = "/waste-prices";
 
 const TABLE_HEAD = [
@@ -58,7 +58,6 @@ const WastePricesIndex = () => {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      // 2. Hapus pengambilan token manual & headers manual (sudah dihandle api.js)
       const response = await api.get(ENDPOINT, {
         params: {
           page,
@@ -99,7 +98,10 @@ const WastePricesIndex = () => {
 
   return (
     <MainLayout>
-      <ToastContainer position="top-right" autoClose={3000} hideProgressBar />
+      {/* Toast Container dengan z-index tinggi agar selalu di atas Modal */}
+      <style>{`.Toastify__toast-container { z-index: 99999 !important; }`}</style>
+      <ToastContainer position="top-right" autoClose={3000} hideProgressBar newestOnTop />
+      
       <div className="space-y-6 px-4 pb-10">
         
         {/* Header */}
@@ -189,22 +191,22 @@ const WastePricesIndex = () => {
                       <td className="p-4 rounded-r-xl border-y border-r border-blue-50 text-center">
                         <div className="flex justify-center gap-1">
                            <IconButton 
-                              variant="text" 
-                              color="blue"
-                              onClick={() => {
-                                setSelectedItem(item);
-                                setOpenEdit(true);
-                              }}
+                             variant="text" 
+                             color="blue"
+                             onClick={() => {
+                               setSelectedItem(item);
+                               setOpenEdit(true);
+                             }}
                            >
                              <PencilSquareIcon className="h-5 w-5" />
                            </IconButton>
                            <IconButton 
-                              variant="text" 
-                              color="red" 
-                              onClick={() => {
-                                setSelectedItem(item);
-                                setOpenDelete(true);
-                              }}
+                             variant="text" 
+                             color="red" 
+                             onClick={() => {
+                               setSelectedItem(item);
+                               setOpenDelete(true);
+                             }}
                            >
                              <TrashIcon className="h-5 w-5" />
                            </IconButton>
@@ -267,8 +269,8 @@ const WastePricesIndex = () => {
           <EditWastePriceModal 
             open={openEdit} 
             handleOpen={() => {
-                setOpenEdit(false);
-                setSelectedItem(null);
+              setOpenEdit(false);
+              setSelectedItem(null);
             }}   
             data={selectedItem}
             refreshData={fetchData}
@@ -276,8 +278,8 @@ const WastePricesIndex = () => {
           <DeleteWastePriceModal 
             open={openDelete} 
             handleOpen={() => {
-                setOpenDelete(false);
-                setSelectedItem(null);
+              setOpenDelete(false);
+              setSelectedItem(null);
             }}
             data={selectedItem}
             refreshData={fetchData}

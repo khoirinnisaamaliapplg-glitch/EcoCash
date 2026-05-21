@@ -7,7 +7,10 @@ import DeleteModal from "./DeleteModal";
 import { Card, Typography, Button, Input, Chip, Progress } from "@material-tailwind/react";
 import { PlusIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 
-// Kolom disesuaikan dengan data riil dari backend
+// Import Toastify
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+
 const TABLE_HEAD = ["Truck Code", "Plate Number", "Nama / Tipe", "Status", "Kapasitas", "Action"];
 
 const getStatusColor = (status) => {
@@ -35,7 +38,6 @@ const SmartTruckIndex = () => {
   const [openDelete, setOpenDelete] = useState(false);
   const [selectedData, setSelectedData] = useState(null);
 
-  // Mengambil data dari exports.getTrucks
   const fetchTrucks = useCallback(async (search = "") => {
     setLoading(true);
     try {
@@ -43,7 +45,6 @@ const SmartTruckIndex = () => {
         params: { search: search }
       });
       
-      // Mengikuti struktur res.status(200).json({ data: trucks.map(formatTruck), ... })
       if (response?.data && Array.isArray(response.data.data)) {
         setTrucks(response.data.data);
       } else if (Array.isArray(response?.data)) {
@@ -52,7 +53,8 @@ const SmartTruckIndex = () => {
         setTrucks([]);
       }
     } catch (error) {
-      console.error("Gagal memuat data truck:", error);
+      // Peringatan menggunakan Toast
+      toast.error(error.response?.data?.message || "Gagal memuat data armada.");
       setTrucks([]);
     } finally {
       setLoading(false);
@@ -71,6 +73,10 @@ const SmartTruckIndex = () => {
 
   return (
     <MainLayout>
+      {/* Toast Container dengan Z-Index tinggi agar selalu di atas modal */}
+      <ToastContainer position="top-right" autoClose={3000} />
+      <style>{`.Toastify__toast-container { z-index: 99999 !important; }`}</style>
+
       <div className="p-4 md:p-0 space-y-6">
         {/* Header Area */}
         <div className="flex flex-col gap-1">
@@ -133,25 +139,21 @@ const SmartTruckIndex = () => {
                 ) : (
                   trucks.map((row) => (
                     <tr key={row.id} className="hover:bg-blue-50/10 transition-colors border-b border-blue-gray-50/50">
-                      {/* Truck Code */}
                       <td className="p-5">
                         <Typography variant="small" className="font-bold text-blue-900">
                           {row.truckCode}
                         </Typography>
                       </td>
-                      {/* Plate Number */}
                       <td className="p-5">
                         <Typography variant="small" className="font-semibold text-gray-700">
                           {row.plateNumber}
                         </Typography>
                       </td>
-                      {/* Name / Driver Area Info */}
                       <td className="p-5">
                         <Typography variant="small" className="text-gray-600">
                           {row.name || "-"} <span className="text-[10px] block text-gray-400">{row.area?.name || "No Area"}</span>
                         </Typography>
                       </td>
-                      {/* Status */}
                       <td className="p-5">
                         <Chip 
                           variant="ghost" 
@@ -161,17 +163,14 @@ const SmartTruckIndex = () => {
                           className="text-[10px] font-bold" 
                         />
                       </td>
-                      {/* Capacity / Load */}
                       <td className="p-5">
                         <div className="flex flex-col gap-1 w-40">
                           <Typography className="text-[10px] font-bold text-blue-800">
                             {row.capacityKg} Kg
                           </Typography>
-                          {/* Jika di formatTruck ada info beban berjalan, bisa disematkan di Progress */}
                           <Progress value={row.currentLoadKg ? (row.currentLoadKg / row.capacityKg) * 100 : 0} size="sm" color="blue" className="bg-gray-100" />
                         </div>
                       </td>
-                      {/* Actions */}
                       <td className="p-5 text-right">
                         <div className="flex items-center gap-2">
                           <Button 
@@ -198,10 +197,33 @@ const SmartTruckIndex = () => {
           </div>
         </Card>
 
-        {/* Modals */}
-        <CreateModal open={openCreate} handleOpen={() => setOpenCreate(false)} onRefresh={() => fetchTrucks(searchQuery)} />
-        <EditModal open={openEdit} handleOpen={() => setOpenEdit(false)} data={selectedData} onRefresh={() => fetchTrucks(searchQuery)} />
-        <DeleteModal open={openDelete} handleOpen={() => setOpenDelete(false)} data={selectedData} onRefresh={() => fetchTrucks(searchQuery)} />
+        {/* Modals dengan notifikasi Toast */}
+        <CreateModal 
+          open={openCreate} 
+          handleOpen={() => setOpenCreate(false)} 
+          onRefresh={() => { 
+            fetchTrucks(searchQuery); 
+            toast.success("Armada berhasil ditambahkan!"); 
+          }} 
+        />
+        <EditModal 
+          open={openEdit} 
+          handleOpen={() => setOpenEdit(false)} 
+          data={selectedData} 
+          onRefresh={() => { 
+            fetchTrucks(searchQuery); 
+            toast.success("Data armada berhasil diperbarui!"); 
+          }} 
+        />
+        <DeleteModal 
+          open={openDelete} 
+          handleOpen={() => setOpenDelete(false)} 
+          data={selectedData} 
+          onRefresh={() => { 
+            fetchTrucks(searchQuery); 
+            toast.info("Data armada berhasil dihapus."); 
+          }} 
+        />
       </div>
     </MainLayout>
   );
