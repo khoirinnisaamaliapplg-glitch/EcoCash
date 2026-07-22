@@ -89,6 +89,7 @@ function App() {
           <Route path="/store/shipping" element={<PengirimanIndex />} />
           <Route path="/store/settings" element={<StoreSystemSetting />} /> 
           <Route path="/store/profile" element={<StoreProfileIndex />} />
+          <Route path="/store/pesanan" element={<PesananIndex />} />
         </Route>
 
         {/* CATCH-ALL */}

@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { Dialog, DialogHeader, DialogBody, DialogFooter, Button, Input, Spinner } from "@material-tailwind/react";
 import api from "../../utils/api"; 
-import { toast } from "react-toastify"; // Import Toast
+import { toast } from "react-toastify";
 
-const EditWasteTypeModal = ({ open, handleOpen, data, refreshData, apiUrl }) => {
+const EditWasteTypeModal = ({ open, handleOpen, data, refreshData, apiUrl = "/waste-types" }) => {
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -17,32 +17,17 @@ const EditWasteTypeModal = ({ open, handleOpen, data, refreshData, apiUrl }) => 
     
     setLoading(true);
     try {
-      const token = localStorage.getItem("token");
-
-      // Pastikan apiUrl tidak memiliki double slash (//)
-      const cleanUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
-      
-      await api.patch(
-        `${cleanUrl}/${data.id}`, 
-        { name: name.trim() }, 
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      // Menggunakan PATCH sesuai standar REST untuk pembaruan sebagian
+      // Interceptor di api.js sudah otomatis menangani Authorization token
+      await api.patch(`${apiUrl}/${data.id}`, { name: name.trim() });
 
       toast.success("Kategori sampah berhasil diperbarui!");
       handleOpen();
       if (refreshData) refreshData();
     } catch (error) {
       console.error("Update Error:", error);
-      if (error.response?.status === 401) {
-        toast.error("Sesi login berakhir. Silakan login kembali.");
-      } else {
-        const msg = error.response?.data?.message || "Gagal update data";
-        toast.error(msg);
-      }
+      const msg = error.response?.data?.message || "Gagal update data";
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -63,7 +48,7 @@ const EditWasteTypeModal = ({ open, handleOpen, data, refreshData, apiUrl }) => 
           onChange={(e) => setName(e.target.value)} 
           color="blue"
           disabled={loading}
-          onKeyPress={(e) => e.key === 'Enter' && handleSubmit()}
+          onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
         />
       </DialogBody>
       <DialogFooter className="gap-2">
@@ -71,14 +56,13 @@ const EditWasteTypeModal = ({ open, handleOpen, data, refreshData, apiUrl }) => 
           variant="text" 
           color="red" 
           onClick={handleOpen} 
-          className="normal-case"
           disabled={loading}
         >
           Cancel
         </Button>
         <Button 
-          className="bg-[#2b6cb0] normal-case flex items-center gap-2" 
-          onClick={handleSubmit}
+          className="bg-[#2b6cb0]" 
+          onClick={handleSubmit} 
           disabled={loading}
         >
           {loading ? <Spinner className="h-4 w-4" /> : "Update Changes"}

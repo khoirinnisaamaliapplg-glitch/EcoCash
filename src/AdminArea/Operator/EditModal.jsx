@@ -9,47 +9,59 @@ import {
   Typography,
   Spinner 
 } from "@material-tailwind/react";
-import { PencilSquareIcon, MapPinIcon, IdentificationIcon, UserIcon } from "@heroicons/react/24/outline";
-// 1. Import toast
+import { PencilSquareIcon, IdentificationIcon, UserIcon, PhoneIcon } from "@heroicons/react/24/outline";
 import { toast } from "react-hot-toast";
+import api from "../../utils/api"; 
 
-const EditModal = ({ open, setOpen, data, setOperators, operators }) => {
-  const [form, setForm] = useState({ nama: "", idMesin: "", lokasi: "", ktp: "", username: "" });
+const EditModal = ({ open, setOpen, data, refreshData }) => {
   const [loading, setLoading] = useState(false);
+  const [form, setForm] = useState({ 
+    name: "", 
+    phoneNumber: "", 
+    ktpNumber: "" 
+  });
 
   useEffect(() => { 
-    if (data) setForm(data); 
+    if (data) {
+      setForm({
+        name: data.name || "",
+        phoneNumber: data.phoneNumber || "",
+        ktpNumber: data.staffProfile?.ktpNumber || "", 
+      });
+    }
   }, [data]);
 
   const handleUpdate = async () => {
-    // Validasi sederhana
-    if (!form.nama || !form.lokasi || !form.ktp) {
-      toast.error("Semua field wajib diisi!");
+    // Validasi dasar
+    if (!form.name) {
+      toast.error("Nama wajib diisi!");
       return;
     }
 
     setLoading(true);
-    
-    // Simulasi loading/API call
-    try {
-      if (data?.id) {
-        // Logika update state lokal
-        setOperators(operators.map((op) => (op.id === data.id ? form : op)));
-        
-        // 2. Berikan toast sukses
-        toast.success(`Profil ${form.nama} berhasil diperbarui!`, {
-          style: {
-            borderRadius: '15px',
-            background: '#1e3a8a',
-            color: '#fff',
-            fontWeight: 'bold'
-          },
-        });
+    const loadToast = toast.loading("Memperbarui data...");
 
-        setOpen(false);
-      }
+    try {
+      const token = localStorage.getItem("token");
+      
+      // Payload PATCH: Hanya kirim data yang ingin diubah
+      const payload = {
+        name: form.name.trim(),
+        phoneNumber: form.phoneNumber ? form.phoneNumber.trim() : null,
+        ktpNumber: form.ktpNumber ? form.ktpNumber.trim() : null,
+      };
+
+      // MENGGUNAKAN PATCH
+      await api.patch(`/admin/users/${data.id}`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      toast.success("Profil berhasil diperbarui!", { id: loadToast });
+      setOpen(false);
+      if (refreshData) refreshData();
     } catch (error) {
-      toast.error("Gagal memperbarui data.");
+      const errorMsg = error.response?.data?.message || "Gagal memperbarui data.";
+      toast.error(errorMsg, { id: loadToast });
     } finally {
       setLoading(false);
     }
@@ -70,55 +82,38 @@ const EditModal = ({ open, setOpen, data, setOperators, operators }) => {
           Edit Profil Operator
         </Typography>
         <Typography className="text-gray-500 font-medium text-sm">
-          Perbarui informasi untuk operator <span className="text-blue-600 font-bold">@{data?.username}</span>.
+          Perbarui informasi operator <span className="text-blue-600 font-bold">@{data?.username}</span>
         </Typography>
       </DialogHeader>
 
-      <DialogBody className="px-10 py-4">
-        <div className="space-y-5">
-          <div className="relative">
-            <Input 
-              size="lg"
-              label="Nama Lengkap" 
-              className="rounded-xl"
-              color="blue"
-              value={form.nama || ""} 
-              onChange={(e) => setForm({...form, nama: e.target.value})} 
-              icon={<UserIcon className="h-5 w-5 text-gray-400" />}
-              disabled={loading}
-            />
-          </div>
-
-          <div className="relative">
-            <Input 
-              size="lg"
-              label="Lokasi Wilayah" 
-              className="rounded-xl"
-              color="blue"
-              value={form.lokasi || ""} 
-              onChange={(e) => setForm({...form, lokasi: e.target.value})} 
-              icon={<MapPinIcon className="h-5 w-5 text-gray-400" />}
-              disabled={loading}
-            />
-          </div>
-
-          <div className="relative">
-            <Input 
-              size="lg"
-              label="Nomor KTP" 
-              className="rounded-xl"
-              color="blue"
-              value={form.ktp || ""} 
-              onChange={(e) => setForm({...form, ktp: e.target.value})} 
-              icon={<IdentificationIcon className="h-5 w-5 text-gray-400" />}
-              disabled={loading}
-            />
-          </div>
-          
-          <Typography className="text-[10px] text-gray-400 text-center font-medium uppercase tracking-widest mt-2">
-            ID Mesin Terkait: <span className="text-blue-600">{form.idMesin}</span>
-          </Typography>
-        </div>
+      <DialogBody className="px-10 py-4 space-y-5">
+        <Input 
+          size="lg"
+          label="Nama Lengkap" 
+          className="rounded-xl"
+          value={form.name} 
+          onChange={(e) => setForm({...form, name: e.target.value})} 
+          icon={<UserIcon className="h-5 w-5 text-gray-400" />}
+          disabled={loading}
+        />
+        <Input 
+          size="lg"
+          label="Nomor WhatsApp" 
+          className="rounded-xl"
+          value={form.phoneNumber} 
+          onChange={(e) => setForm({...form, phoneNumber: e.target.value})} 
+          icon={<PhoneIcon className="h-5 w-5 text-gray-400" />}
+          disabled={loading}
+        />
+        <Input 
+          size="lg"
+          label="Nomor KTP" 
+          className="rounded-xl"
+          value={form.ktpNumber} 
+          onChange={(e) => setForm({...form, ktpNumber: e.target.value})} 
+          icon={<IdentificationIcon className="h-5 w-5 text-gray-400" />}
+          disabled={loading}
+        />
       </DialogBody>
 
       <DialogFooter className="px-10 pb-10 pt-6 gap-3">
@@ -132,11 +127,11 @@ const EditModal = ({ open, setOpen, data, setOperators, operators }) => {
           Batal
         </Button>
         <Button 
-          className="bg-blue-600 rounded-xl normal-case font-black flex-[2] py-3.5 shadow-lg shadow-blue-100 hover:shadow-blue-300 transition-all flex justify-center items-center gap-2"
+          className="bg-blue-600 rounded-xl normal-case font-black flex-[2] py-3.5 shadow-lg flex justify-center items-center gap-2"
           onClick={handleUpdate}
           disabled={loading}
         >
-          {loading ? <Spinner className="h-4 w-4 text-white" /> : "Simpan Perubahan"}
+          {loading ? <Spinner className="h-4 w-4" /> : "Simpan Perubahan"}
         </Button>
       </DialogFooter>
     </Dialog>

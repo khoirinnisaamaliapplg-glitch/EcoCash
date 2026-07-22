@@ -16,7 +16,9 @@ import {
   PhoneIcon,
   UserCircleIcon,
   IdentificationIcon,
-  XMarkIcon
+  XMarkIcon,
+  CreditCardIcon,
+  BuildingOfficeIcon
 } from "@heroicons/react/24/outline";
 import { useFormik } from "formik";
 import api from "../../utils/api"; 
@@ -25,7 +27,7 @@ import { toast } from "react-hot-toast";
 const CreateModal = ({ open, setOpen, refreshData }) => {
   const [isLoading, setIsLoading] = useState(false);
 
-  // Ambil data admin dari localStorage
+  // Ambil data admin yang sedang login
   const rawUser = localStorage.getItem("userData") || localStorage.getItem("user");
   const userData = rawUser ? JSON.parse(rawUser) : null;
 
@@ -36,50 +38,49 @@ const CreateModal = ({ open, setOpen, refreshData }) => {
       email: "",
       password: "",
       phoneNumber: "",
+      ktp: "", // Ini adalah state lokal formik
     },
     onSubmit: async (values, { resetForm }) => {
-      // 1. Proteksi Awal
       if (!userData?.areaId) {
-        toast.error("Gagal: ID Area Admin tidak terdeteksi. Silakan login ulang.");
+        toast.error("Gagal: ID Area Admin tidak terdeteksi.");
+        return;
+      }
+
+      if (values.ktp.length !== 16) {
+        toast.error("Gagal: Nomor KTP harus 16 digit.");
         return;
       }
 
       setIsLoading(true);
-      // Menggunakan loading toast dengan ID untuk diupdate nanti
       const loadToast = toast.loading("Sedang mendaftarkan operator...");
 
       try {
         const token = localStorage.getItem("token");
         
+        // PAYLOAD DISESUAIKAN DENGAN BACKEND (menggunakan ktpNumber)
         const payload = {
           name: values.name.trim(),
           username: values.username.toLowerCase().trim(),
           email: values.email.toLowerCase().trim(),
           password: values.password,
           phoneNumber: values.phoneNumber ? values.phoneNumber.trim() : null,
+          ktpNumber: values.ktp.trim(), // Sesuai dengan req.body.ktpNumber di backend
           role: "MACHINE_OPERATOR",
           areaId: Number(userData.areaId),
         };
 
-        const response = await api.post("/admin/users", payload, {
+        await api.post("/admin/users", payload, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        // 2. Handle Berhasil
-        toast.success(response.data.message || "Operator Berhasil Didaftarkan!", { 
-            id: loadToast,
-            duration: 4000 
-        });
+        toast.success("Operator Berhasil Didaftarkan!", { id: loadToast });
         
         resetForm();
         setOpen(false); 
         if (refreshData) refreshData();
-
       } catch (error) {
-        // 3. Handle Error yang lebih spesifik
-        const errorMsg = error.response?.data?.message || "Terjadi kesalahan pada server";
+        const errorMsg = error.response?.data?.message || "Terjadi kesalahan server";
         toast.error(`Gagal: ${errorMsg}`, { id: loadToast });
-        console.error("Submission Error:", error.response?.data);
       } finally {
         setIsLoading(false);
       }
@@ -90,123 +91,47 @@ const CreateModal = ({ open, setOpen, refreshData }) => {
     if (!isLoading) {
       formik.resetForm();
       setOpen(false);
-    } else {
-      toast("Harap tunggu hingga proses selesai", { icon: "⏳" });
     }
   };
 
   return (
-    <Dialog 
-      open={open} 
-      handler={handleClose} 
-      size="sm" 
-      className="rounded-[28px] overflow-hidden"
-    >
-      <DialogHeader className="px-8 pt-8 flex justify-between items-start">
-        <div className="flex flex-col gap-1">
-          <Typography variant="h4" className="text-blue-900 font-black">
-            Registrasi Operator
-          </Typography>
-          <Typography className="text-gray-500 text-sm font-medium">
-            Penempatan di <span className="text-blue-600 font-bold uppercase">Area ID: {userData?.areaId || "N/A"}</span>
+    <Dialog open={open} handler={handleClose} size="sm" className="rounded-[28px]">
+      <DialogHeader className="px-8 pt-8 flex justify-between">
+        <div>
+          <Typography variant="h4" className="text-blue-900">Registrasi Operator</Typography>
+          <Typography className="text-gray-500 text-sm">
+            Area: {userData?.areaId ? `ID ${userData.areaId}` : "N/A"}
           </Typography>
         </div>
-        <button 
-          onClick={handleClose} 
-          className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-          type="button"
-        >
-            <XMarkIcon className="h-5 w-5 text-gray-400" />
-        </button>
+        <XMarkIcon className="h-6 w-6 cursor-pointer text-gray-400" onClick={handleClose} />
       </DialogHeader>
 
       <form onSubmit={formik.handleSubmit}>
-        <DialogBody className="px-8 py-4 space-y-5">
-          <div className="space-y-4">
-            <Input 
-              size="lg"
-              label="Nama Lengkap" 
-              className="rounded-xl"
-              icon={<UserIcon className="h-4 w-4" />} 
-              {...formik.getFieldProps("name")} 
-              required 
-              disabled={isLoading}
-            />
-            <Input 
-              size="lg"
-              label="Username" 
-              className="rounded-xl"
-              icon={<UserCircleIcon className="h-4 w-4" />} 
-              {...formik.getFieldProps("username")} 
-              required 
-              disabled={isLoading}
-            />
-            <Input 
-              size="lg"
-              label="Email" 
-              type="email" 
-              className="rounded-xl"
-              icon={<EnvelopeIcon className="h-4 w-4" />} 
-              {...formik.getFieldProps("email")} 
-              required 
-              disabled={isLoading}
-            />
-            <Input 
-              size="lg"
-              label="Nomor WhatsApp" 
-              placeholder="Contoh: 08123456789"
-              className="rounded-xl"
-              icon={<PhoneIcon className="h-4 w-4" />} 
-              {...formik.getFieldProps("phoneNumber")} 
-              disabled={isLoading}
-            />
-            <Input 
-              size="lg"
-              type="password" 
-              label="Password" 
-              className="rounded-xl"
-              icon={<KeyIcon className="h-4 w-4" />} 
-              {...formik.getFieldProps("password")} 
-              required 
-              disabled={isLoading}
-            />
-          </div>
-          
-          <div className="bg-blue-50/50 p-4 rounded-2xl border border-blue-100 flex items-start gap-3">
-            <IdentificationIcon className="h-6 w-6 text-blue-600 mt-0.5" />
-            <div>
-                <Typography className="text-[11px] font-black uppercase text-blue-800 tracking-wider">
-                    Sistem Penugasan Otomatis
-                </Typography>
-                <Typography className="text-[11px] text-blue-700/80 leading-relaxed font-medium">
-                    Operator ini akan memiliki hak akses terbatas untuk mengelola mesin di area Anda.
-                </Typography>
-            </div>
-          </div>
+        <DialogBody className="px-8 py-4 space-y-4">
+          <Input 
+            label="Area Penempatan" 
+            value={userData?.areaId ? `Area ID: ${userData.areaId}` : "Tidak Terdeteksi"}
+            disabled 
+            icon={<BuildingOfficeIcon className="h-4 w-4" />}
+          />
+          <Input label="Nama Lengkap" {...formik.getFieldProps("name")} required disabled={isLoading} />
+          <Input label="Username" {...formik.getFieldProps("username")} required disabled={isLoading} />
+          <Input label="Email" type="email" {...formik.getFieldProps("email")} required disabled={isLoading} />
+          <Input 
+            label="Nomor KTP (16 Digit)" 
+            maxLength={16}
+            {...formik.getFieldProps("ktp")} 
+            required 
+            disabled={isLoading}
+            onInput={(e) => e.target.value = e.target.value.replace(/[^0-9]/g, '')}
+          />
+          <Input label="Nomor WhatsApp" {...formik.getFieldProps("phoneNumber")} disabled={isLoading} />
+          <Input type="password" label="Password" {...formik.getFieldProps("password")} required disabled={isLoading} />
         </DialogBody>
 
-        <DialogFooter className="px-8 pb-8 gap-3">
-          <Button 
-            variant="text" 
-            color="red" 
-            onClick={handleClose} 
-            disabled={isLoading} 
-            className="normal-case rounded-xl font-bold"
-          >
-            Batal
-          </Button>
-          <Button 
-            type="submit" 
-            disabled={isLoading} 
-            className="bg-blue-600 normal-case flex-1 rounded-xl shadow-blue-100 shadow-lg flex justify-center items-center gap-2 py-3"
-          >
-            {isLoading ? (
-              <>
-                <Spinner className="h-4 w-4" /> Memproses...
-              </>
-            ) : (
-              "Daftarkan Operator"
-            )}
+        <DialogFooter className="px-8 pb-8">
+          <Button type="submit" disabled={isLoading} className="w-full bg-blue-600 rounded-xl">
+            {isLoading ? <><Spinner className="h-4 w-4 mr-2" /> Memproses...</> : "Daftarkan Operator"}
           </Button>
         </DialogFooter>
       </form>

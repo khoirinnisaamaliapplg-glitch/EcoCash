@@ -23,12 +23,10 @@ const OperatorManagement = () => {
   const [loading, setLoading] = useState(true);
   const [selectedOp, setSelectedOp] = useState(null);
   
-  // Search & Pagination States
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
 
-  // Modal States
   const [openCreate, setOpenCreate] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
   const [openReset, setOpenReset] = useState(false);
@@ -43,7 +41,7 @@ const OperatorManagement = () => {
     
     if (isRefresh) setLoading(true);
     try {
-      const response = await axios.get(`http://localhost:3000/api/v1/admin/users`, {
+      const response = await api.get(`/admin/users`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -69,12 +67,11 @@ const OperatorManagement = () => {
     fetchOperators();
   }, [fetchOperators]);
 
-  // --- LOGIC SEARCH & PAGINATION ---
   const filteredOperators = useMemo(() => {
     return operators.filter((op) => 
       op.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       op.username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      op.ktp?.includes(searchQuery)
+      op.staffProfile?.ktpNumber?.includes(searchQuery)
     );
   }, [operators, searchQuery]);
 
@@ -85,16 +82,15 @@ const OperatorManagement = () => {
   }, [filteredOperators, currentPage, itemsPerPage]);
 
   useEffect(() => {
-    setCurrentPage(1); // Reset ke hal 1 jika search berubah
+    setCurrentPage(1);
   }, [searchQuery]);
 
-  const TABLE_HEAD = ["Nama Operator", "Info Area", "Kontak/ID", "Akun", "Aksi"];
+  const TABLE_HEAD = ["Nama Operator", "Info Area", "KTP", "Akun", "Aksi"];
 
   return (
     <MainLayout>
       <div className="space-y-6 md:space-y-8 pb-10">
         
-        {/* HEADER SECTION */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 px-2 mt-4">
           <div>
             <Typography variant="h3" className="text-blue-900 font-black flex items-center gap-3 text-2xl md:text-3xl">
@@ -112,13 +108,12 @@ const OperatorManagement = () => {
              <Button 
                 onClick={() => setOpenCreate(true)} 
                 className="flex-1 md:flex-none flex items-center justify-center gap-3 bg-blue-600 rounded-2xl normal-case shadow-lg shadow-blue-100 py-3.5 px-6 font-black"
-             >
+              >
                 <UserPlusIcon className="h-5 w-5 stroke-[3]" /> Tambah Operator
              </Button>
           </div>
         </div>
 
-        {/* SEARCH & FILTER BAR */}
         <div className="flex flex-col md:flex-row gap-4 px-2">
           <div className="w-full md:w-72">
             <Input
@@ -143,7 +138,6 @@ const OperatorManagement = () => {
           </div>
         </div>
 
-        {/* TABLE SECTION */}
         <Card className="shadow-2xl shadow-blue-900/5 rounded-[2.5rem] border border-white bg-white/80 backdrop-blur-md overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[800px] table-auto text-left">
@@ -161,15 +155,14 @@ const OperatorManagement = () => {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={5} className="p-20 text-center">
+                    <td colSpan={6} className="p-20 text-center">
                       <Spinner className="h-10 w-10 mx-auto mb-4 text-blue-600" />
                       <Typography className="animate-pulse font-bold text-blue-900">Menarik data operator...</Typography>
                     </td>
                   </tr>
                 ) : paginatedData.length > 0 ? (
-                  paginatedData.map((op, index) => {
+                  paginatedData.map((op) => {
                     const classes = "p-6 border-b border-blue-gray-50";
-
                     return (
                       <tr key={op.id} className="hover:bg-blue-50/40 transition-all duration-300">
                         <td className={classes}>
@@ -183,52 +176,37 @@ const OperatorManagement = () => {
                             </div>
                           </div>
                         </td>
-
                         <td className={classes}>
                           <div className="flex items-center gap-2">
                             <MapPinIcon className="h-4 w-4 text-blue-400" />
                             <Typography className="text-xs font-bold text-gray-700">Area {op.areaId}</Typography>
                           </div>
                         </td>
-
                         <td className={classes}>
                           <div className="flex items-center gap-2 text-gray-600 bg-gray-50/50 p-2 rounded-lg w-fit">
                             <IdentificationIcon className="h-4 w-4 opacity-40" />
-                            <Typography className="text-xs font-mono font-bold">{op.ktp || "KTP Belum Set"}</Typography>
+                            <Typography className="text-xs font-mono font-bold">{op.staffProfile?.ktpNumber || "-"}</Typography>
                           </div>
                         </td>
-
                         <td className={classes}>
                           <div className="bg-white border border-blue-50 px-3 py-1.5 rounded-xl w-fit">
                             <Typography className="text-[12px] font-black text-blue-700 italic">@{op.username}</Typography>
                           </div>
                         </td>
-
                         <td className={classes}>
                           <div className="flex items-center gap-2">
                             <Tooltip content="Edit Data">
-                              <IconButton 
-                                variant="text" color="blue" className="rounded-xl bg-blue-50"
-                                onClick={() => { setSelectedOp(op); setOpenEdit(true); }}
-                              >
+                              <IconButton variant="text" color="blue" className="rounded-xl bg-blue-50" onClick={() => { setSelectedOp(op); setOpenEdit(true); }}>
                                 <PencilSquareIcon className="h-4 w-4" /> 
                               </IconButton>
                             </Tooltip>
-
                             <Tooltip content="Reset Sandi">
-                              <IconButton 
-                                className="rounded-xl bg-green-500 shadow-none hover:shadow-none"
-                                onClick={() => { setSelectedOp(op); setOpenReset(true); }}
-                              >
+                              <IconButton className="rounded-xl bg-green-500 shadow-none hover:shadow-none" onClick={() => { setSelectedOp(op); setOpenReset(true); }}>
                                 <KeyIcon className="h-4 w-4 text-white" />
                               </IconButton>
                             </Tooltip>
-
                             <Tooltip content="Hapus Operator">
-                              <IconButton 
-                                variant="text" color="red" className="rounded-xl hover:bg-red-50"
-                                onClick={() => { setSelectedOp(op); setOpenDelete(true); }}
-                              >
+                              <IconButton variant="text" color="red" className="rounded-xl hover:bg-red-50" onClick={() => { setSelectedOp(op); setOpenDelete(true); }}>
                                 <TrashIcon className="h-5 w-5" />
                               </IconButton>
                             </Tooltip>
@@ -239,7 +217,7 @@ const OperatorManagement = () => {
                   })
                 ) : (
                   <tr>
-                    <td colSpan={5} className="p-20 text-center">
+                    <td colSpan={6} className="p-20 text-center">
                       <Typography className="text-gray-400 italic">Data tidak ditemukan.</Typography>
                     </td>
                   </tr>
@@ -248,28 +226,15 @@ const OperatorManagement = () => {
             </table>
           </div>
 
-          {/* PAGINATION FOOTER */}
           <div className="flex items-center justify-between p-6 border-t border-blue-gray-50 bg-blue-50/20">
             <Typography variant="small" color="blue-gray" className="font-bold">
               Halaman {currentPage} dari {totalPages || 1}
             </Typography>
             <div className="flex gap-2">
-              <Button
-                variant="outlined"
-                size="sm"
-                className="rounded-lg flex items-center gap-2 border-blue-gray-200"
-                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                disabled={currentPage === 1}
-              >
+              <Button variant="outlined" size="sm" className="rounded-lg flex items-center gap-2 border-blue-gray-200" onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))} disabled={currentPage === 1}>
                 <ChevronLeftIcon className="h-4 w-4" /> Prev
               </Button>
-              <Button
-                variant="outlined"
-                size="sm"
-                className="rounded-lg flex items-center gap-2 border-blue-gray-200"
-                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-                disabled={currentPage === totalPages || totalPages === 0}
-              >
+              <Button variant="outlined" size="sm" className="rounded-lg flex items-center gap-2 border-blue-gray-200" onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))} disabled={currentPage === totalPages || totalPages === 0}>
                 Next <ChevronRightIcon className="h-4 w-4" />
               </Button>
             </div>
@@ -277,32 +242,12 @@ const OperatorManagement = () => {
         </Card>
       </div>
 
-      {/* MODALS CRUD */}
-      <CreateModal 
-        open={openCreate} 
-        setOpen={setOpenCreate} 
-        refreshData={fetchOperators} 
-      />
-      
+      <CreateModal open={openCreate} setOpen={setOpenCreate} refreshData={fetchOperators} />
       {selectedOp && (
         <>
-          <EditModal 
-            open={openEdit} 
-            setOpen={setOpenEdit} 
-            data={selectedOp} 
-            refreshData={fetchOperators} 
-          />
-          <ResetPasswordModal 
-            open={openReset} 
-            setOpen={setOpenReset} 
-            data={selectedOp} 
-          />
-          <DeleteModal 
-            open={openDelete} 
-            setOpen={setOpenDelete} 
-            data={selectedOp} 
-            refreshData={fetchOperators} 
-          />
+          <EditModal open={openEdit} setOpen={setOpenEdit} data={selectedOp} refreshData={fetchOperators} />
+          <ResetPasswordModal open={openReset} setOpen={setOpenReset} data={selectedOp} />
+          <DeleteModal open={openDelete} setOpen={setOpenDelete} data={selectedOp} refreshData={fetchOperators} />
         </>
       )}
     </MainLayout>

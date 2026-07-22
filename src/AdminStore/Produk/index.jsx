@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-// 1. Ganti axios menjadi api (karena api.js sudah punya base URL & interceptor)
-import api from "../../utils/api"; 
+import api from "../../utils/api";
 import MainLayout from "../MainLayout";
 import AddProductModal from "./AddProductModal";
 import EditProductModal from "./EditProductModal";
@@ -25,13 +24,8 @@ import {
   ChevronRightIcon,
 } from "@heroicons/react/24/outline";
 
-// 2. Gunakan toast yang konsisten (sebelumnya kamu pakai react-hot-toast di modal lain)
-// Jika di sini mau pakai react-toastify, pastikan ToastContainer ada di App.js atau di sini.
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-
-// Path API biasanya tidak perlu /api/v1 jika sudah diset di api.js
-const API_URL = "/products/my"; 
 
 const ProdukIndex = () => {
   const [products, setProducts] = useState([]);
@@ -60,19 +54,12 @@ const ProdukIndex = () => {
     storeId: "",
   });
 
-  // =========================
-  // FETCH PRODUCTS
-  // =========================
-  // Menggunakan useCallback agar fungsi tidak dibuat ulang setiap render
   const fetchProducts = useCallback(async () => {
     setLoading(true);
     try {
-      // Gunakan instance 'api' yang sudah kita buat sebelumnya
-      const response = await api.get(API_URL, {
+      const response = await api.get("/products/my", {
         params: params,
       });
-
-      // Sesuaikan dengan struktur respons backend EcoCash
       setProducts(response.data.data || []);
       setTotalPages(response.data.meta?.totalPages || 1);
     } catch (error) {
@@ -83,27 +70,48 @@ const ProdukIndex = () => {
     }
   }, [params]);
 
-  // =========================
-  // LOAD DATA
-  // =========================
   useEffect(() => {
     fetchProducts();
   }, [fetchProducts]);
 
-  // =========================
-  // SEARCH HANDLER
-  // =========================
-  const handleSearch = (e) => {
-    if (e.key === "Enter") {
-      setParams((prev) => ({ ...prev, page: 1 }));
-      // fetchProducts akan otomatis terpanggil karena params berubah
+  const submitAdd = async (payload) => {
+    try {
+      await api.post("/products", payload);
+      toast.success("Produk berhasil ditambahkan!");
+      setOpenAdd(false);
+      fetchProducts();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Gagal menyimpan produk");
     }
   };
 
-  // =========================
-  // MODAL HANDLERS
-  // =========================
-  const handleOpenAdd = () => setOpenAdd(!openAdd);
+  const submitEdit = async () => {
+    try {
+      const payload = {
+        ...formData,
+        price: Number(formData.price),
+        stock: Number(formData.stock),
+        weight: Number(formData.weight),
+      };
+      await api.patch(`/products/${formData.id}`, payload);
+      toast.success("Produk berhasil diperbarui");
+      setOpenEdit(false);
+      fetchProducts();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Gagal update produk");
+    }
+  };
+
+  const submitDelete = async () => {
+    try {
+      await api.delete(`/products/${formData.id}`);
+      toast.success("Produk berhasil dihapus");
+      setOpenDelete(false);
+      fetchProducts();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Gagal menghapus produk");
+    }
+  };
 
   const handleOpenEdit = (product) => {
     setFormData({
@@ -123,47 +131,11 @@ const ProdukIndex = () => {
     setOpenDelete(true);
   };
 
-  // =========================
-  // UPDATE PRODUCT
-  // =========================
-  const submitEdit = async () => {
-    try {
-      const payload = {
-        ...formData,
-        price: Number(formData.price),
-        stock: Number(formData.stock),
-        weight: Number(formData.weight),
-      };
-
-      await api.patch(`/products/${formData.id}`, payload);
-      toast.success("Produk berhasil diperbarui");
-      setOpenEdit(false);
-      fetchProducts();
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Gagal update produk");
-    }
-  };
-
-  // =========================
-  // DELETE PRODUCT
-  // =========================
-  const submitDelete = async () => {
-    try {
-      await api.delete(`/products/${formData.id}`);
-      toast.success("Produk berhasil dihapus");
-      setOpenDelete(false);
-      fetchProducts();
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Gagal menghapus produk");
-    }
-  };
-
   return (
     <MainLayout>
       <ToastContainer position="top-right" autoClose={3000} />
 
       <div className="p-4 space-y-6">
-        {/* HEADER */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <Typography variant="h4" className="font-black text-blue-900 uppercase italic">
@@ -175,7 +147,7 @@ const ProdukIndex = () => {
           </div>
 
           <Button
-            onClick={handleOpenAdd}
+            onClick={() => setOpenAdd(true)}
             className="bg-blue-600 flex items-center gap-2 rounded-2xl shadow-lg uppercase font-black italic px-6"
           >
             <PlusIcon className="h-5 w-5 stroke-[3]" />
@@ -183,7 +155,6 @@ const ProdukIndex = () => {
           </Button>
         </div>
 
-        {/* FILTER BAR */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-white p-5 rounded-[25px] border-2 border-blue-50 shadow-sm">
           <div className="md:col-span-2">
             <Input
@@ -191,7 +162,6 @@ const ProdukIndex = () => {
               icon={<MagnifyingGlassIcon className="h-5 w-5 text-blue-500" />}
               value={params.search}
               onChange={(e) => setParams({ ...params, search: e.target.value })}
-              onKeyDown={handleSearch}
               className="rounded-xl"
             />
           </div>
@@ -216,7 +186,6 @@ const ProdukIndex = () => {
           </Select>
         </div>
 
-        {/* TABLE */}
         <Card className="overflow-hidden border-2 border-blue-100 rounded-[30px] shadow-sm bg-white">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
@@ -253,7 +222,7 @@ const ProdukIndex = () => {
                         </span>
                       </td>
                       <td className="p-5 text-sm font-black text-blue-800">
-                        Rp {row.price.toLocaleString("id-ID")}
+                        Rp {Number(row.price).toLocaleString("id-ID")}
                       </td>
                       <td className="p-5 flex gap-2">
                         <IconButton variant="text" color="blue" onClick={() => handleOpenEdit(row)} className="bg-blue-50 rounded-xl">
@@ -273,37 +242,13 @@ const ProdukIndex = () => {
               </tbody>
             </table>
           </div>
-
-          {/* PAGINATION */}
-          <div className="flex items-center justify-between p-5 border-t border-blue-50 bg-gray-50/50">
-            <Typography className="text-[11px] font-black text-blue-900/50 uppercase italic">
-              Page <span className="text-blue-700">{params.page}</span> of {totalPages}
-            </Typography>
-            <div className="flex gap-2">
-              <Button
-                variant="white"
-                size="sm"
-                className="rounded-xl border border-blue-100 shadow-sm font-black text-[10px] uppercase"
-                onClick={() => setParams((p) => ({ ...p, page: p.page - 1 }))}
-                disabled={params.page === 1}
-              >
-                <ChevronLeftIcon className="h-3 w-3 mr-1" strokeWidth={3} /> Prev
-              </Button>
-              <Button
-                variant="white"
-                size="sm"
-                className="rounded-xl border border-blue-100 shadow-sm font-black text-[10px] uppercase"
-                onClick={() => setParams((p) => ({ ...p, page: p.page + 1 }))}
-                disabled={params.page === totalPages}
-              >
-                Next <ChevronRightIcon className="h-3 w-3 ml-1" strokeWidth={3} />
-              </Button>
-            </div>
-          </div>
         </Card>
 
-        {/* MODALS */}
-        <AddProductModal open={openAdd} handleOpen={handleOpenAdd} refreshData={fetchProducts} />
+        <AddProductModal 
+            open={openAdd} 
+            handleOpen={() => setOpenAdd(!openAdd)} 
+            onConfirm={submitAdd}
+        />
         <EditProductModal 
           open={openEdit} 
           setOpen={setOpenEdit} 
