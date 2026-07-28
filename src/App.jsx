@@ -15,6 +15,7 @@ import SystemSettingIndex from './SuperAdmin/SystemSettingIndex';
 import ProfileIndex from './SuperAdmin/Profile/index';
 import AreaIndex from './SuperAdmin/Area/index'; 
 import WasteManagementIndex from './SuperAdmin/WasteManagement/index';
+import OrganizationIndex from './SuperAdmin/organization/index'; // Tambahkan ini jika ada halaman organisasi
 
 import DashboardArea from './AdminArea/dashboard';
 import MachineManagement from './AdminArea/Machine/index'; 
@@ -25,6 +26,10 @@ import AreaProfileIndex from './AdminArea/Profile/index';
 import AdminAreaIndex from './AdminArea/Area/index';
 import StoreIndex from './AdminArea/Store';
 import AdminAreaTruckIndex from './AdminArea/SmartTruck/index'; // Diubah namanya agar unik
+
+import DashboardOrganization from "./OrganizationAdmin/dashboard";
+import OrganizationUsers from "./OrganizationAdmin/Users";
+
 
 import OperatorDashboard from './Operator/dashboard'; 
 import OperatorSmartContainer from './Operator/SmartContainer/index'; 
@@ -58,6 +63,7 @@ function App() {
           <Route path="/finansial-reports" element={<FinansialReportsIndex />} />
           <Route path="/settings" element={<SystemSettingIndex />} />
           <Route path="/profile" element={<ProfileIndex />} />
+          <Route path="/organizations" element={<OrganizationIndex />} /> {/* Tambahkan ini jika ada halaman organisasi */}
         </Route>
 
         {/* GROUP 2: KHUSUS ADMIN AREA */}
@@ -72,6 +78,25 @@ function App() {
           <Route path="/AdminArea/store" element={<StoreIndex />} />
           <Route path="/AdminArea/smart-truck" element={<AdminAreaTruckIndex />} /> {/* Menggunakan nama baru */}
         </Route>
+        {/* GROUP 5: KHUSUS ORGANIZATION ADMIN */}
+        <Route
+          element={
+            <ProtectedRoute
+              allowedRoles={["ORGANIZATION_ADMIN"]}
+            />
+          }
+        >
+          <Route
+            path="/OrganizationAdmin/dashboard"
+            element={<DashboardOrganization />}
+          />
+        </Route>
+         <Route
+            path="/OrganizationAdmin/users"
+            element={
+              <OrganizationUsers />
+            }
+          />
 
         {/* GROUP 3: KHUSUS OPERATOR */}
         <Route element={<ProtectedRoute allowedRoles={['MACHINE_OPERATOR']} />}>

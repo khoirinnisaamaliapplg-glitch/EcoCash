@@ -31,6 +31,7 @@ const SidebarArea = ({ open, setOpen }) => {
   // DAFTAR MENU
   const menuItems = [
     { name: "Dashboard", icon: <PresentationChartBarIcon className="h-5 w-5" />, path: "/AdminArea/dashboard" },
+    { name: "User Management", icon: <UserGroupIcon className="h-5 w-5" />, path: "/AdminArea/users" },
     { name: "Machine Management", icon: <CpuChipIcon className="h-5 w-5" />, path: "/AdminArea/machine" },
     { name: "Smart Truck", icon: <TruckIcon className="h-5 w-5" />, path: "/AdminArea/smart-truck" }, // Menu Baru
     { name: "Operator Management", icon: <UserIcon className="h-5 w-5" />, path: "/AdminArea/operator" },

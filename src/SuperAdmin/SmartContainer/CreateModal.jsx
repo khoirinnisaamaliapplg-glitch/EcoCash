@@ -72,6 +72,8 @@ const CreateModal = ({ open, handleOpen, refreshData }) => {
     name: "",
     areaId: "",
     machineType: "BOX",
+    accessType: "PUBLIC",
+    organizationId: "",
     locationType: "OTHER",
     latitude: "-7.3333",
     longitude: "108.2225",
@@ -84,8 +86,10 @@ const CreateModal = ({ open, handleOpen, refreshData }) => {
 
   const [form, setForm] = useState(initialState);
   const [areas, setAreas] = useState([]);
+  const [organizations, setOrganizations] = useState([]);
   const [loading, setLoading] = useState(false);
   const [loadingAreas, setLoadingAreas] = useState(false);
+  const [loadingOrganizations, setLoadingOrganizations] = useState(false);
   const [markerPos, setMarkerPos] = useState(defaultCenter);
 
   // REVERSE GEOCODING
@@ -175,21 +179,46 @@ const CreateModal = ({ open, handleOpen, refreshData }) => {
           const response = await api.get("/areas");
 
           const areaData =
-            response.data.data || response.data;
+            response.data?.data || response.data;
 
           setAreas(
             Array.isArray(areaData)
-              ? areaData.filter((a) => a.isActive)
+              ? areaData.filter((area) => area.isActive)
               : []
           );
         } catch (err) {
           console.error("Gagal load area:", err);
+          toast.error("Gagal mengambil data area.");
         } finally {
           setLoadingAreas(false);
         }
       };
 
+      const fetchOrganizations = async () => {
+        try {
+          setLoadingOrganizations(true);
+
+          const response = await api.get("/organizations");
+          const organizationData =
+            response.data?.data || response.data;
+
+          setOrganizations(
+            Array.isArray(organizationData)
+              ? organizationData.filter(
+                  (organization) => organization.isActive
+                )
+              : []
+          );
+        } catch (err) {
+          console.error("Gagal load organisasi:", err);
+          toast.error("Gagal mengambil data organisasi.");
+        } finally {
+          setLoadingOrganizations(false);
+        }
+      };
+
       fetchAreas();
+      fetchOrganizations();
 
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
@@ -243,6 +272,21 @@ const CreateModal = ({ open, handleOpen, refreshData }) => {
       return;
     }
 
+    if (!["PUBLIC", "ORGANIZATION"].includes(form.accessType)) {
+      toast.warning("Pilih tipe akses mesin!");
+      return;
+    }
+
+    if (
+      form.accessType === "ORGANIZATION" &&
+      !form.organizationId
+    ) {
+      toast.warning(
+        "Pilih organisasi untuk mesin ORGANIZATION!"
+      );
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -252,6 +296,11 @@ const CreateModal = ({ open, handleOpen, refreshData }) => {
           .trim()
           .toUpperCase(),
         areaId: Number(form.areaId),
+        accessType: form.accessType,
+        organizationId:
+          form.accessType === "ORGANIZATION"
+            ? Number(form.organizationId)
+            : null,
         latitude:
           parseFloat(form.latitude) || 0,
         longitude:
@@ -461,6 +510,53 @@ const CreateModal = ({ open, handleOpen, refreshData }) => {
                   </Option>
                 ))}
               </Select>
+
+              <Select
+                label="Tipe Akses Mesin"
+                value={form.accessType}
+                onChange={(value) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    accessType: value,
+                    organizationId:
+                      value === "PUBLIC"
+                        ? ""
+                        : prev.organizationId,
+                  }))
+                }
+              >
+                <Option value="PUBLIC">PUBLIC</Option>
+                <Option value="ORGANIZATION">
+                  ORGANIZATION
+                </Option>
+              </Select>
+
+              {form.accessType === "ORGANIZATION" && (
+                <Select
+                  label="Pilih Organisasi"
+                  value={
+                    form.organizationId
+                      ? form.organizationId.toString()
+                      : ""
+                  }
+                  onChange={(value) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      organizationId: value,
+                    }))
+                  }
+                  disabled={loadingOrganizations}
+                >
+                  {organizations.map((organization) => (
+                    <Option
+                      key={organization.id}
+                      value={organization.id.toString()}
+                    >
+                      {organization.name}
+                    </Option>
+                  ))}
+                </Select>
+              )}
 
               <Input
                 label="Kode Mesin"

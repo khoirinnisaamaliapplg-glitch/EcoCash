@@ -77,6 +77,7 @@ const Login = () => {
               case "AREA_ADMIN": navigate("/AdminArea/dashboard"); break;
               case "MACHINE_OPERATOR": navigate("/operator/dashboard"); break;
               case "STORE_ADMIN": navigate("/store/dashboard"); break;
+              case "ORGANIZATION_ADMIN": navigate("/OrganizationAdmin/dashboard"); break;
               default:
                 toast.warning(`Role "${userRole}" tidak memiliki akses.`);
                 navigate("/");
