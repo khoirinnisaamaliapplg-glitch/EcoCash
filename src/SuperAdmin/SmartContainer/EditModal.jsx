@@ -64,9 +64,11 @@ const ResizeMap = () => {
   const map = useMap();
 
   useEffect(() => {
-    setTimeout(() => {
+    const timeout = setTimeout(() => {
       map.invalidateSize();
     }, 100);
+
+    return () => clearTimeout(timeout);
   }, [map]);
 
   return null;
@@ -80,8 +82,11 @@ const EditModal = ({
 }) => {
   const [formData, setFormData] = useState({});
   const [areas, setAreas] = useState([]);
+  const [organizations, setOrganizations] = useState([]);
+
   const [loading, setLoading] = useState(false);
-  const [loadingAreas, setLoadingAreas] =
+  const [loadingAreas, setLoadingAreas] = useState(false);
+  const [loadingOrganizations, setLoadingOrganizations] =
     useState(false);
 
   const [markerPos, setMarkerPos] =
@@ -95,18 +100,15 @@ const EditModal = ({
           `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`
         );
 
-        if (!response.ok)
+        if (!response.ok) {
           throw new Error(
             "Gagal mengambil data alamat"
           );
+        }
 
-        const resData =
-          await response.json();
+        const resData = await response.json();
 
-        if (
-          resData &&
-          resData.address
-        ) {
+        if (resData?.address) {
           const district =
             resData.address.subdistrict ||
             resData.address.city_district ||
@@ -115,8 +117,7 @@ const EditModal = ({
           const subdistrict =
             resData.address.village ||
             resData.address.suburb ||
-            resData.address
-              .neighbourhood ||
+            resData.address.neighbourhood ||
             "";
 
           const fullAddress =
@@ -157,7 +158,6 @@ const EditModal = ({
         const { lat, lng } = e.latlng;
 
         setMarkerPos({ lat, lng });
-
         fetchAddressInfo(lat, lng);
       },
     });
@@ -172,7 +172,12 @@ const EditModal = ({
           map.getZoom()
         );
       }
-    }, [markerPos, map]);
+    }, [
+      markerPos.lat,
+      markerPos.lng,
+      map,
+      open,
+    ]);
 
     return null;
   };
@@ -183,12 +188,11 @@ const EditModal = ({
       dragend(e) {
         const marker = e.target;
 
-        if (marker != null) {
+        if (marker) {
           const { lat, lng } =
             marker.getLatLng();
 
           setMarkerPos({ lat, lng });
-
           fetchAddressInfo(lat, lng);
         }
       },
@@ -196,99 +200,200 @@ const EditModal = ({
     [fetchAddressInfo]
   );
 
-  // LOAD DATA
+  // LOAD MACHINE DATA
   useEffect(() => {
-    if (data && open) {
-      const cleanId = parseInt(data.id);
+    if (!data || !open) return;
 
-      const initialLat =
-        parseFloat(data.latitude) ||
-        defaultCenter.lat;
+    const cleanId = Number(data.id);
 
-      const initialLng =
-        parseFloat(data.longitude) ||
-        defaultCenter.lng;
+    const initialLat =
+      Number.parseFloat(data.latitude) ||
+      defaultCenter.lat;
 
-      setMarkerPos({
-        lat: initialLat,
-        lng: initialLng,
-      });
+    const initialLng =
+      Number.parseFloat(data.longitude) ||
+      defaultCenter.lng;
 
-      setFormData({
-        id: cleanId,
-        machineCode:
-          data.machineCode || "",
-        name: data.name || "",
-        areaId:
-          data.areaId?.toString() || "",
-        machineType:
-          data.machineType || "BOX",
-        locationType:
-          data.locationType || "OTHER",
-        placeName:
-          data.placeName || "",
-        latitude:
-          initialLat.toString(),
-        longitude:
-          initialLng.toString(),
-        address: data.address || "",
-        district:
-          data.district || "",
-        subdistrict:
-          data.subdistrict || "",
-        description:
-          data.description || "",
-      });
-    }
+    const currentAreaId =
+      data.areaId ??
+      data.area?.id ??
+      "";
+
+    const currentOrganizationId =
+      data.organizationId ??
+      data.organization?.id ??
+      "";
+
+    setMarkerPos({
+      lat: initialLat,
+      lng: initialLng,
+    });
+
+    setFormData({
+      id: cleanId,
+      machineCode:
+        data.machineCode || "",
+      name: data.name || "",
+      areaId:
+        currentAreaId !== ""
+          ? String(currentAreaId)
+          : "",
+      machineType:
+        data.machineType || "BOX",
+
+      // TIPE AKSES MESIN
+      accessType:
+        data.accessType || "PUBLIC",
+      organizationId:
+        currentOrganizationId !== ""
+          ? String(currentOrganizationId)
+          : "",
+
+      locationType:
+        data.locationType || "OTHER",
+      placeName:
+        data.placeName || "",
+      latitude:
+        String(initialLat),
+      longitude:
+        String(initialLng),
+      address:
+        data.address || "",
+      district:
+        data.district || "",
+      subdistrict:
+        data.subdistrict || "",
+      description:
+        data.description || "",
+    });
   }, [data, open]);
 
-  // LOAD AREA
+  // LOAD AREA DAN ORGANIZATION
   useEffect(() => {
-    if (open) {
-      const fetchAreas = async () => {
-        try {
-          setLoadingAreas(true);
+    if (!open) return;
 
-          const response =
-            await api.get("/areas");
+    const fetchAreas = async () => {
+      try {
+        setLoadingAreas(true);
 
-          const areaData =
-            response.data.data ||
-            response.data;
+        const response =
+          await api.get("/areas");
 
-          setAreas(
-            Array.isArray(areaData)
-              ? areaData.filter(
-                  (a) => a.isActive
-                )
-              : []
-          );
-        } catch (err) {
-          console.error(
-            "Gagal load area:",
-            err
-          );
+        const areaData =
+          response.data?.data ||
+          response.data;
 
-          toast.error(
-            "Gagal memuat daftar area."
-          );
-        } finally {
-          setLoadingAreas(false);
-        }
-      };
+        setAreas(
+          Array.isArray(areaData)
+            ? areaData.filter(
+                (area) => area.isActive
+              )
+            : []
+        );
+      } catch (error) {
+        console.error(
+          "Gagal load area:",
+          error.response?.data ||
+            error.message
+        );
 
-      fetchAreas();
-    }
+        toast.error(
+          "Gagal memuat daftar area."
+        );
+      } finally {
+        setLoadingAreas(false);
+      }
+    };
+
+    const fetchOrganizations = async () => {
+      try {
+        setLoadingOrganizations(true);
+
+        const response =
+          await api.get("/organizations");
+
+        const organizationData =
+          response.data?.data ||
+          response.data;
+
+        setOrganizations(
+          Array.isArray(organizationData)
+            ? organizationData.filter(
+                (organization) =>
+                  organization.isActive
+              )
+            : []
+        );
+      } catch (error) {
+        console.error(
+          "Gagal load organisasi:",
+          error.response?.data ||
+            error.message
+        );
+
+        toast.error(
+          "Gagal memuat daftar organisasi."
+        );
+      } finally {
+        setLoadingOrganizations(false);
+      }
+    };
+
+    fetchAreas();
+    fetchOrganizations();
   }, [open]);
+
+  const handleChange = (event) => {
+    const { name, value } =
+      event.target;
+
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
 
   // UPDATE
   const handleUpdate = async () => {
     if (
       !formData.id ||
-      isNaN(formData.id)
+      Number.isNaN(Number(formData.id))
     ) {
       toast.error(
         "ID Unit tidak valid."
+      );
+      return;
+    }
+
+    if (
+      !formData.machineCode?.trim() ||
+      !formData.name?.trim() ||
+      !formData.areaId
+    ) {
+      toast.warning(
+        "Kode mesin, nama mesin, dan area wajib diisi."
+      );
+      return;
+    }
+
+    if (
+      !["PUBLIC", "ORGANIZATION"].includes(
+        formData.accessType
+      )
+    ) {
+      toast.warning(
+        "Pilih tipe akses mesin."
+      );
+      return;
+    }
+
+    if (
+      formData.accessType ===
+        "ORGANIZATION" &&
+      !formData.organizationId
+    ) {
+      toast.warning(
+        "Pilih organisasi untuk mesin bertipe ORGANIZATION."
       );
       return;
     }
@@ -299,61 +404,75 @@ const EditModal = ({
       const payload = {
         machineCode:
           formData.machineCode
-            ?.trim()
+            .trim()
             .toUpperCase(),
 
         name:
-          formData.name?.trim(),
+          formData.name.trim(),
 
-        areaId: parseInt(
-          formData.areaId
-        ),
+        areaId:
+          Number(formData.areaId),
 
         machineType:
           formData.machineType,
 
+        accessType:
+          formData.accessType,
+
+        organizationId:
+          formData.accessType ===
+          "ORGANIZATION"
+            ? Number(
+                formData.organizationId
+              )
+            : null,
+
         locationType:
-          formData.locationType,
+          formData.locationType ||
+          "OTHER",
 
         latitude:
-          parseFloat(
+          Number.parseFloat(
             formData.latitude
           ) || 0,
 
         longitude:
-          parseFloat(
+          Number.parseFloat(
             formData.longitude
           ) || 0,
 
         address:
-          formData.address,
+          formData.address || "",
 
         placeName:
-          formData.placeName,
+          formData.placeName || "",
 
         district:
-          formData.district,
+          formData.district || "",
 
         subdistrict:
-          formData.subdistrict,
+          formData.subdistrict || "",
 
         description:
-          formData.description,
+          formData.description || "",
       };
 
-      await api.patch(
-        `/machines/${formData.id}`,
-        payload
-      );
+      const response =
+        await api.patch(
+          `/machines/${formData.id}`,
+          payload
+        );
 
       toast.success(
-        "Perubahan berhasil disimpan!"
+        response.data?.message ||
+          "Perubahan berhasil disimpan!"
       );
 
       handleOpen();
 
-      if (refreshData)
-        refreshData();
+      if (refreshData) {
+        await refreshData();
+      }
     } catch (error) {
       console.error(
         "PATCH ERROR:",
@@ -362,23 +481,13 @@ const EditModal = ({
       );
 
       const errorMsg =
-        error.response?.data
-          ?.message ||
+        error.response?.data?.message ||
         "Gagal memperbarui data unit AIoT.";
 
       toast.error(errorMsg);
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
   };
 
   const locationOptions = [
@@ -420,8 +529,7 @@ const EditModal = ({
             variant="h5"
             className="font-bold text-blue-gray-900 text-base sm:text-xl"
           >
-            Edit Unit AIoT:
-            {" "}
+            Edit Unit AIoT:{" "}
             {formData.machineCode}
           </Typography>
         </div>
@@ -447,7 +555,6 @@ const EditModal = ({
         "
       >
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-5 lg:gap-8">
-
           {/* MAP */}
           <div className="space-y-4">
             <div className="flex items-center gap-2 border-l-4 border-green-500 pl-3">
@@ -508,7 +615,6 @@ const EditModal = ({
               )}
             </div>
 
-            {/* LAT LNG */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input
                 label="Latitude"
@@ -541,26 +647,25 @@ const EditModal = ({
             </div>
 
             <div className="grid grid-cols-1 gap-4">
-
               <Select
                 label="Area"
                 value={
                   formData.areaId || ""
                 }
-                onChange={(v) =>
-                  setFormData((p) => ({
-                    ...p,
-                    areaId: v,
+                onChange={(value) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    areaId: value,
                   }))
                 }
                 disabled={loadingAreas}
               >
-                {areas.map((a) => (
+                {areas.map((area) => (
                   <Option
-                    key={a.id}
-                    value={a.id.toString()}
+                    key={area.id}
+                    value={String(area.id)}
                   >
-                    {a.name}
+                    {area.name}
                   </Option>
                 ))}
               </Select>
@@ -584,19 +689,18 @@ const EditModal = ({
                 onChange={handleChange}
               />
 
-              {/* TYPE */}
+              {/* TIPE MESIN DAN TIPE AKSES */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-
                 <Select
                   label="Tipe Mesin"
                   value={
                     formData.machineType ||
                     "BOX"
                   }
-                  onChange={(v) =>
-                    setFormData((p) => ({
-                      ...p,
-                      machineType: v,
+                  onChange={(value) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      machineType: value,
                     }))
                   }
                 >
@@ -610,35 +714,94 @@ const EditModal = ({
                 </Select>
 
                 <Select
-                  label="Kategori Lokasi"
+                  label="Tipe Akses Mesin"
                   value={
-                    formData.locationType ||
-                    "OTHER"
+                    formData.accessType ||
+                    "PUBLIC"
                   }
-                  onChange={(v) =>
-                    setFormData((p) => ({
-                      ...p,
-                      locationType: v,
+                  onChange={(value) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      accessType: value,
+                      organizationId:
+                        value === "PUBLIC"
+                          ? ""
+                          : prev.organizationId,
                     }))
                   }
                 >
-                  {locationOptions.map(
-                    (opt) => (
+                  <Option value="PUBLIC">
+                    PUBLIC
+                  </Option>
+
+                  <Option value="ORGANIZATION">
+                    ORGANIZATION
+                  </Option>
+                </Select>
+              </div>
+
+              {/* PILIH ORGANISASI */}
+              {formData.accessType ===
+                "ORGANIZATION" && (
+                <Select
+                  label="Pilih Organisasi"
+                  value={
+                    formData.organizationId ||
+                    ""
+                  }
+                  onChange={(value) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      organizationId: value,
+                    }))
+                  }
+                  disabled={
+                    loadingOrganizations
+                  }
+                >
+                  {organizations.map(
+                    (organization) => (
                       <Option
-                        key={opt}
-                        value={opt}
-                      >
-                        {opt.replace(
-                          "_",
-                          " "
+                        key={organization.id}
+                        value={String(
+                          organization.id
                         )}
+                      >
+                        {organization.name}
                       </Option>
                     )
                   )}
                 </Select>
-              </div>
+              )}
 
-              {/* DISTRICT */}
+              <Select
+                label="Kategori Lokasi"
+                value={
+                  formData.locationType ||
+                  "OTHER"
+                }
+                onChange={(value) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    locationType: value,
+                  }))
+                }
+              >
+                {locationOptions.map(
+                  (option) => (
+                    <Option
+                      key={option}
+                      value={option}
+                    >
+                      {option.replace(
+                        "_",
+                        " "
+                      )}
+                    </Option>
+                  )
+                )}
+              </Select>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Input
                   label="Kecamatan"
@@ -677,6 +840,17 @@ const EditModal = ({
                 rows={3}
                 value={
                   formData.address || ""
+                }
+                onChange={handleChange}
+              />
+
+              <Textarea
+                label="Deskripsi"
+                name="description"
+                rows={2}
+                value={
+                  formData.description ||
+                  ""
                 }
                 onChange={handleChange}
               />

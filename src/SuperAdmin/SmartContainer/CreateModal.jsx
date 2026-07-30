@@ -17,6 +17,8 @@ import {
 import {
   XMarkIcon,
   CpuChipIcon,
+  ClipboardDocumentIcon,
+  CheckCircleIcon,
 } from "@heroicons/react/24/outline";
 
 import api from "../../utils/api";
@@ -66,7 +68,12 @@ const ResizeMap = () => {
   return null;
 };
 
-const CreateModal = ({ open, handleOpen, refreshData }) => {
+const CreateModal = ({
+  open,
+  handleOpen,
+  refreshData,
+  onMachineCreated,
+}) => {
   const initialState = {
     machineCode: "",
     name: "",
@@ -91,6 +98,14 @@ const CreateModal = ({ open, handleOpen, refreshData }) => {
   const [loadingAreas, setLoadingAreas] = useState(false);
   const [loadingOrganizations, setLoadingOrganizations] = useState(false);
   const [markerPos, setMarkerPos] = useState(defaultCenter);
+
+  const [apiKeyDialogOpen, setApiKeyDialogOpen] = useState(false);
+  const [createdMachine, setCreatedMachine] = useState({
+    id: null,
+    machineCode: "",
+    name: "",
+    apiKey: "",
+  });
 
   // REVERSE GEOCODING
   const fetchAddressInfo = useCallback(async (lat, lng) => {
@@ -260,15 +275,54 @@ const CreateModal = ({ open, handleOpen, refreshData }) => {
     }));
   };
 
+  const resetCreateForm = () => {
+    setForm(initialState);
+    setMarkerPos(defaultCenter);
+  };
+
+  const handleCopyApiKey = async () => {
+    if (!createdMachine.apiKey) {
+      toast.error("API Key tidak tersedia.");
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(createdMachine.apiKey);
+      toast.success("API Key berhasil disalin!");
+    } catch (error) {
+      console.error("Gagal menyalin API Key:", error);
+
+      const textarea = document.createElement("textarea");
+      textarea.value = createdMachine.apiKey;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+
+      toast.success("API Key berhasil disalin!");
+    }
+  };
+
+  const handleCloseApiKeyDialog = () => {
+    setApiKeyDialogOpen(false);
+    setCreatedMachine({
+      id: null,
+      machineCode: "",
+      name: "",
+      apiKey: "",
+    });
+  };
+
   const handleSubmit = async () => {
     if (
       !form.machineCode.trim() ||
       !form.name.trim() ||
       !form.areaId
     ) {
-      toast.warning(
-        "Harap isi Kode, Nama, dan Area!"
-      );
+      toast.warning("Harap isi Kode, Nama, dan Area!");
       return;
     }
 
@@ -292,33 +346,89 @@ const CreateModal = ({ open, handleOpen, refreshData }) => {
     try {
       const payload = {
         ...form,
-        machineCode: form.machineCode
-          .trim()
-          .toUpperCase(),
+        machineCode: form.machineCode.trim().toUpperCase(),
+        name: form.name.trim(),
         areaId: Number(form.areaId),
+        machineType: form.machineType,
         accessType: form.accessType,
         organizationId:
           form.accessType === "ORGANIZATION"
             ? Number(form.organizationId)
             : null,
-        latitude:
-          parseFloat(form.latitude) || 0,
-        longitude:
-          parseFloat(form.longitude) || 0,
+        locationType: form.locationType || "OTHER",
+        latitude: Number(form.latitude) || 0,
+        longitude: Number(form.longitude) || 0,
+        district: form.district || "",
+        subdistrict: form.subdistrict || "",
+        address: form.address || "",
+        placeName: form.placeName || "",
+        description: form.description || "",
       };
 
-      await api.post("/machines", payload);
+      const response = await api.post("/machines", payload);
+
+      // Struktur backend:
+      // {
+      //   message: "Machine created successfully",
+      //   data: machine,
+      //   apiKey: "..."
+      // }
+      const machineData = response.data?.data;
+      const apiKey =
+        response.data?.apiKey ||
+        response.data?.data?.apiKey;
+
+      if (!machineData) {
+        throw new Error(
+          "Data mesin tidak ditemukan pada response backend."
+        );
+      }
+
+      if (!apiKey) {
+        throw new Error(
+          "API Key tidak ditemukan pada response backend."
+        );
+      }
+
+      const createdResult = {
+        ...machineData,
+        apiKey,
+      };
+
+      setCreatedMachine({
+        id: machineData.id,
+        machineCode:
+          machineData.machineCode || payload.machineCode,
+        name: machineData.name || payload.name,
+        apiKey,
+      });
+
+      // Kirim hasil create ke index agar API Key dapat muncul pada tabel.
+      if (onMachineCreated) {
+        onMachineCreated(createdResult);
+      }
+
+      resetCreateForm();
+      handleOpen();
+      setApiKeyDialogOpen(true);
+
+      if (refreshData) {
+        await refreshData();
+      }
 
       toast.success(
-        "Mesin berhasil ditambahkan!"
+        response.data?.message ||
+          "Mesin berhasil ditambahkan!"
+      );
+    } catch (error) {
+      console.error(
+        "Create machine error:",
+        error.response?.data || error
       );
 
-      handleClose();
-
-      if (refreshData) refreshData();
-    } catch (error) {
       toast.error(
         error.response?.data?.message ||
+          error.message ||
           "Terjadi kesalahan server."
       );
     } finally {
@@ -327,8 +437,7 @@ const CreateModal = ({ open, handleOpen, refreshData }) => {
   };
 
   const handleClose = () => {
-    setForm(initialState);
-    setMarkerPos(defaultCenter);
+    resetCreateForm();
     handleOpen();
   };
 
@@ -345,7 +454,8 @@ const CreateModal = ({ open, handleOpen, refreshData }) => {
   ];
 
   return (
-    <Dialog
+    <>
+      <Dialog
       open={open}
       handler={handleClose}
       size="xl"
@@ -664,7 +774,117 @@ const CreateModal = ({ open, handleOpen, refreshData }) => {
           )}
         </Button>
       </DialogFooter>
-    </Dialog>
+      </Dialog>
+
+      {/* DIALOG API KEY - NILAI DIAMBIL DARI response.data.apiKey */}
+      <Dialog
+        open={apiKeyDialogOpen}
+        handler={() => {}}
+        size="md"
+        dismiss={{
+          enabled: false,
+        }}
+        className="rounded-2xl overflow-hidden"
+      >
+        <DialogHeader className="flex items-center gap-3 border-b border-gray-200">
+          <div className="rounded-full bg-green-50 p-2">
+            <CheckCircleIcon className="h-7 w-7 text-green-600" />
+          </div>
+
+          <div>
+            <Typography
+              variant="h5"
+              className="font-bold text-gray-900"
+            >
+              Mesin Berhasil Dibuat
+            </Typography>
+
+            <Typography className="text-sm font-normal text-gray-500">
+              Simpan API Key untuk konfigurasi perangkat.
+            </Typography>
+          </div>
+        </DialogHeader>
+
+        <DialogBody className="space-y-5">
+          <div className="rounded-xl border border-green-100 bg-green-50 p-4">
+            <Typography className="text-xs font-semibold uppercase text-green-800">
+              Informasi Mesin
+            </Typography>
+
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <Typography className="text-xs text-gray-500">
+                  Kode Mesin
+                </Typography>
+
+                <Typography className="font-bold text-gray-900">
+                  {createdMachine.machineCode}
+                </Typography>
+              </div>
+
+              <div>
+                <Typography className="text-xs text-gray-500">
+                  Nama Mesin
+                </Typography>
+
+                <Typography className="font-bold text-gray-900">
+                  {createdMachine.name}
+                </Typography>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <Typography className="mb-2 text-sm font-bold text-gray-800">
+              API Key
+            </Typography>
+
+            <div className="flex items-start gap-2 rounded-xl border border-blue-gray-100 bg-blue-gray-50 p-3">
+              <Typography className="flex-1 break-all font-mono text-sm text-blue-gray-900">
+                {createdMachine.apiKey}
+              </Typography>
+
+              <IconButton
+                variant="text"
+                color="blue"
+                onClick={handleCopyApiKey}
+                title="Salin API Key"
+              >
+                <ClipboardDocumentIcon className="h-5 w-5" />
+              </IconButton>
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+            <Typography className="text-xs leading-relaxed text-amber-900">
+              API Key digunakan oleh perangkat mesin untuk terhubung
+              ke backend. Simpan key ini dan jangan membagikannya
+              kepada pihak yang tidak berkepentingan.
+            </Typography>
+          </div>
+        </DialogBody>
+
+        <DialogFooter className="flex flex-col gap-2 border-t border-gray-200 sm:flex-row">
+          <Button
+            variant="outlined"
+            color="blue"
+            onClick={handleCopyApiKey}
+            className="flex w-full items-center justify-center gap-2 sm:w-auto"
+          >
+            <ClipboardDocumentIcon className="h-4 w-4" />
+            Salin API Key
+          </Button>
+
+          <Button
+            color="green"
+            onClick={handleCloseApiKeyDialog}
+            className="w-full sm:w-auto"
+          >
+            Saya Sudah Menyimpannya
+          </Button>
+        </DialogFooter>
+      </Dialog>
+    </>
   );
 };
 
