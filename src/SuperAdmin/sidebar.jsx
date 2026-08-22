@@ -1,11 +1,13 @@
 import React from "react";
 import { NavLink, Link } from "react-router-dom";
+
 import {
   List,
   ListItem,
   ListItemPrefix,
   Typography,
 } from "@material-tailwind/react";
+
 import {
   Square2StackIcon,
   UserGroupIcon,
@@ -18,67 +20,108 @@ import {
   XMarkIcon,
   MapIcon,
   TrashIcon,
-  BuildingOffice2Icon, // Tambahan icon Organization
+  BuildingOffice2Icon,
+  BuildingLibraryIcon, // FOUNDATION
+  TicketIcon,
 } from "@heroicons/react/24/outline";
+
 import logo2 from "../assets/logo2.png";
 import sidebarIllustration from "../assets/banner2.jpeg";
-import { useNavigate, useLocation } from "react-router-dom";
 
 const Sidebar = ({ open, setOpen }) => {
+  // ============================================================
+  // MENU SUPER ADMIN
+  // ============================================================
+
   const menu = [
     {
       name: "Dashboard",
       icon: <Square2StackIcon className="h-5 w-5" />,
       path: "/dashboard",
     },
+
     {
       name: "Smart Container",
       icon: <CubeIcon className="h-5 w-5" />,
       path: "/smart-container",
     },
+
     {
       name: "Smart Truck",
       icon: <TruckIcon className="h-5 w-5" />,
       path: "/smart-truck",
     },
+
     {
       name: "Data Wilayah",
       icon: <MapIcon className="h-5 w-5" />,
       path: "/areas",
     },
 
-    // Menu Organization ditambahkan
+    // ========================================================
+    // ORGANIZATION
+    // ========================================================
+
     {
       name: "Organizations",
       icon: <BuildingOffice2Icon className="h-5 w-5" />,
       path: "/organizations",
     },
 
+    // ========================================================
+    // FOUNDATION
+    // ========================================================
+
+    {
+      name: "Foundations",
+      icon: <BuildingLibraryIcon className="h-5 w-5" />,
+      path: "/foundations",
+    },
+
+    // ========================================================
+
     {
       name: "Waste Management",
       icon: <TrashIcon className="h-5 w-5" />,
       path: "/waste-management",
     },
+
     {
       name: "Users",
       icon: <UserGroupIcon className="h-5 w-5" />,
       path: "/users",
     },
+
     {
       name: "Waste Prices",
       icon: <TagIcon className="h-5 w-5" />,
       path: "/waste-prices",
     },
+
     {
       name: "Store",
       icon: <ShoppingBagIcon className="h-5 w-5" />,
       path: "/marketplace",
     },
+
+    // ========================================================
+    // VOUCHER SUPER ADMIN
+    // ========================================================
+
+    {
+      name: "Vouchers",
+      icon: <TicketIcon className="h-5 w-5" />,
+      path: "/vouchers",
+    },
+
+    // ========================================================
+
     {
       name: "Financial Reports",
       icon: <ChartBarIcon className="h-5 w-5" />,
       path: "/finansial-reports",
     },
+
     {
       name: "System Setting",
       icon: <Cog6ToothIcon className="h-5 w-5" />,
@@ -88,15 +131,28 @@ const Sidebar = ({ open, setOpen }) => {
 
   return (
     <>
-      {/* Overlay untuk Mobile */}
+      {/* ======================================================
+          OVERLAY MOBILE
+      ====================================================== */}
+
       {open && (
         <div
-          className="fixed inset-0 z-20 bg-black/20 backdrop-blur-sm md:hidden"
+          className="
+            fixed
+            inset-0
+            z-20
+            bg-black/20
+            backdrop-blur-sm
+            md:hidden
+          "
           onClick={() => setOpen(false)}
         />
       )}
 
-      {/* Sidebar Container */}
+      {/* ======================================================
+          SIDEBAR
+      ====================================================== */}
+
       <div
         className={`
           fixed md:static inset-y-0 left-0 z-30
@@ -105,6 +161,7 @@ const Sidebar = ({ open, setOpen }) => {
           border-r border-gray-100
           transition-transform duration-300 ease-in-out
           flex flex-col justify-between
+
           ${
             open
               ? "translate-x-0"
@@ -112,36 +169,76 @@ const Sidebar = ({ open, setOpen }) => {
           }
         `}
       >
-        {/* BAGIAN ATAS: Logo & Menu List */}
+        {/* ====================================================
+            BAGIAN ATAS
+        ==================================================== */}
+
         <div className="flex flex-col h-[calc(100%-130px)]">
-          {/* Logo Section */}
-          <div className="mb-4 p-4 flex items-center justify-between border-b border-gray-50 pb-6 shrink-0">
+          {/* ==================================================
+              LOGO
+          ================================================== */}
+
+          <div
+            className="
+              mb-4
+              p-4
+              flex
+              items-center
+              justify-between
+              border-b
+              border-gray-50
+              pb-6
+              shrink-0
+            "
+          >
             <Link
               to="/dashboard"
-              className="flex items-center gap-4 hover:opacity-80 transition-opacity"
+              className="
+                flex
+                items-center
+                gap-4
+                hover:opacity-80
+                transition-opacity
+              "
             >
               <img
                 src={logo2}
                 alt="EcoCash"
-                className="h-14 w-14 object-contain"
+                className="
+                  h-14
+                  w-14
+                  object-contain
+                "
               />
 
               <div>
                 <Typography
                   variant="h5"
-                  className="text-[#2b6cb0] font-black leading-tight"
+                  className="
+                    text-[#2b6cb0]
+                    font-black
+                    leading-tight
+                  "
                 >
                   EcoCash
                 </Typography>
 
                 <Typography
                   variant="small"
-                  className="text-green-500 font-bold text-[10px] uppercase tracking-widest"
+                  className="
+                    text-green-500
+                    font-bold
+                    text-[10px]
+                    uppercase
+                    tracking-widest
+                  "
                 >
                   Super Admin
                 </Typography>
               </div>
             </Link>
+
+            {/* CLOSE MOBILE */}
 
             <button
               onClick={() => setOpen(false)}
@@ -151,7 +248,10 @@ const Sidebar = ({ open, setOpen }) => {
             </button>
           </div>
 
-          {/* Menu List */}
+          {/* ==================================================
+              MENU
+          ================================================== */}
+
           <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar">
             <List className="gap-1 p-0">
               {menu.map((item, idx) => (
@@ -168,7 +268,12 @@ const Sidebar = ({ open, setOpen }) => {
                             ? "bg-blue-50 text-[#2b6cb0]"
                             : "text-gray-600 hover:text-[#2b6cb0]"
                         }
-                        font-semibold text-sm py-3 transition-all rounded-xl
+
+                        font-semibold
+                        text-sm
+                        py-3
+                        transition-all
+                        rounded-xl
                       `}
                     >
                       <ListItemPrefix>
@@ -184,12 +289,36 @@ const Sidebar = ({ open, setOpen }) => {
           </div>
         </div>
 
-        {/* BAGIAN BAWAH: GAMBAR FOTO ILUSTRASI */}
-        <div className="pt-4 border-t border-gray-50 flex flex-col items-center justify-center shrink-0 w-full">
+        {/* ====================================================
+            BAGIAN BAWAH
+        ==================================================== */}
+
+        <div
+          className="
+            pt-4
+            border-t
+            border-gray-50
+            flex
+            flex-col
+            items-center
+            justify-center
+            shrink-0
+            w-full
+          "
+        >
           <img
             src={sidebarIllustration}
             alt="Admin Panel Illustration"
-            className="w-full h-[140px] object-cover opacity-90 hover:opacity-100 transition-opacity duration-300 rounded-xl"
+            className="
+              w-full
+              h-[140px]
+              object-cover
+              opacity-90
+              hover:opacity-100
+              transition-opacity
+              duration-300
+              rounded-xl
+            "
           />
         </div>
       </div>
