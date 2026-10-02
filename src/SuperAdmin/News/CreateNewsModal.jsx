@@ -1,4 +1,8 @@
-import React, { useState } from "react";
+import React, {
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 import {
   Dialog,
@@ -8,213 +12,988 @@ import {
   Input,
   Button,
   Textarea,
+  Typography,
 } from "@material-tailwind/react";
 
+import {
+  PhotoIcon,
+  ArrowPathIcon,
+} from "@heroicons/react/24/outline";
+
 import { toast } from "react-toastify";
+
 import api from "../../utils/api";
+
 
 const CreateNewsModal = ({
   open,
   handleOpen,
   refreshData,
 }) => {
-  const [loading, setLoading] = useState(false);
 
-  const [form, setForm] = useState({
+  // =====================================================
+  // STATE
+  // =====================================================
+
+  const [
+    loading,
+    setLoading,
+  ] = useState(false);
+
+  const [
+    uploadingImage,
+    setUploadingImage,
+  ] = useState(false);
+
+
+  const [
+    form,
+    setForm,
+  ] = useState({
     title: "",
     category: "",
     content: "",
     status: "DRAFT",
+
+    // Cloudinary handle
+    imageProvider: null,
+    imagePublicId: null,
   });
 
-  const [thumbnail, setThumbnail] = useState(null);
-  const [preview, setPreview] = useState(null);
 
-  // =========================
+  // Preview URL dari API upload
+  const [
+    imagePreview,
+    setImagePreview,
+  ] = useState(null);
+
+
+  // Informasi image upload
+  const [
+    uploadedImage,
+    setUploadedImage,
+  ] = useState(null);
+
+
+  const fileInputRef =
+    useRef(null);
+
+
+  // =====================================================
   // HANDLE INPUT
-  // =========================
-  const handleChange = (e) => {
-    setForm({
-      ...form,
-      [e.target.name]: e.target.value,
-    });
+  // =====================================================
+
+  const handleChange = (
+    e
+  ) => {
+
+    const {
+      name,
+      value,
+    } = e.target;
+
+
+    setForm(
+      (prev) => ({
+        ...prev,
+        [name]: value,
+      })
+    );
+
   };
 
-  // =========================
-  // HANDLE IMAGE
-  // =========================
-  const handleImageChange = (e) => {
-    const file = e.target.files?.[0];
 
-    if (!file) return;
+  // =====================================================
+  // VALIDATE IMAGE
+  // =====================================================
 
-    // Validasi tipe file
+  const validateImage = (
+    file
+  ) => {
+
     const allowedTypes = [
       "image/jpeg",
-      "image/jpg",
       "image/png",
       "image/webp",
     ];
 
-    if (!allowedTypes.includes(file.type)) {
-      toast.error("Format gambar harus JPG, PNG, atau WEBP");
-      return;
-    }
 
-    // Validasi maksimal 5 MB
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Ukuran gambar maksimal 5 MB");
-      return;
-    }
-
-    setThumbnail(file);
-
-    const imageUrl = URL.createObjectURL(file);
-    setPreview(imageUrl);
-  };
-
-  // =========================
-  // SUBMIT
-  // =========================
-  const submit = async () => {
-    try {
-      if (!form.title.trim()) {
-        toast.warning("Judul berita wajib diisi");
-        return;
-      }
-
-      if (!thumbnail) {
-        toast.warning("Thumbnail wajib dipilih");
-        return;
-      }
-
-      setLoading(true);
-
-      const formData = new FormData();
-
-      formData.append("title", form.title);
-      formData.append("category", form.category);
-      formData.append("content", form.content);
-      formData.append("status", form.status);
-
-      // FILE GAMBAR
-      formData.append("thumbnail", thumbnail);
-
-      await api.post(
-        "/superadmin/news",
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
-
-      toast.success("Berita berhasil dibuat");
-
-      refreshData();
-
-      // reset
-      setForm({
-        title: "",
-        category: "",
-        content: "",
-        status: "DRAFT",
-      });
-
-      setThumbnail(null);
-
-      if (preview) {
-        URL.revokeObjectURL(preview);
-      }
-
-      setPreview(null);
-
-      handleOpen();
-    } catch (error) {
-      console.error(
-        "Create News Error:",
-        error?.response?.data || error
-      );
+    if (
+      !allowedTypes.includes(
+        file.type
+      )
+    ) {
 
       toast.error(
-        error?.response?.data?.message ||
-          "Gagal membuat berita"
+        "Format gambar harus JPEG, PNG, atau WebP"
       );
-    } finally {
-      setLoading(false);
+
+      return false;
+
     }
+
+
+    const maxSize =
+      5 * 1024 * 1024;
+
+
+    if (
+      file.size > maxSize
+    ) {
+
+      toast.error(
+        "Ukuran gambar maksimal 5 MB"
+      );
+
+      return false;
+
+    }
+
+
+    return true;
+
   };
 
-  // =========================
-  // CLOSE MODAL
-  // =========================
-  const handleClose = () => {
-    if (preview) {
-      URL.revokeObjectURL(preview);
+
+  // =====================================================
+  // HANDLE UPLOAD ERROR
+  // =====================================================
+
+  const handleUploadError = (
+    error
+  ) => {
+
+    console.error(
+      "UPLOAD IMAGE ERROR:",
+      error?.response?.data ||
+        error
+    );
+
+
+    const status =
+      error?.response?.status;
+
+
+    if (status === 400) {
+
+      toast.error(
+        "Periksa gambar dan coba lagi"
+      );
+
+      return;
+
     }
 
-    setPreview(null);
-    setThumbnail(null);
+
+    if (status === 401) {
+
+      toast.error(
+        "Sesi login berakhir. Silakan login kembali."
+      );
+
+      return;
+
+    }
+
+
+    if (status === 403) {
+
+      toast.error(
+        "Gambar tidak valid. Silakan upload ulang."
+      );
+
+      return;
+
+    }
+
+
+    if (
+      status === 500 ||
+      status === 502
+    ) {
+
+      toast.error(
+        "Upload gambar gagal. Silakan coba lagi."
+      );
+
+      return;
+
+    }
+
+
+    toast.error(
+      error?.response?.data?.message ||
+        "Upload gambar gagal"
+    );
+
+  };
+
+
+  // =====================================================
+  // UPLOAD IMAGE TO CLOUDINARY VIA BACKEND
+  // =====================================================
+
+  const uploadImage = async (
+    file
+  ) => {
+
+    if (!file) {
+      return;
+    }
+
+
+    if (
+      !validateImage(file)
+    ) {
+
+      if (
+        fileInputRef.current
+      ) {
+
+        fileInputRef.current.value =
+          "";
+
+      }
+
+      return;
+
+    }
+
+
+    try {
+
+      setUploadingImage(true);
+
+
+      const uploadForm =
+        new FormData();
+
+
+      // WAJIB field "image"
+      uploadForm.append(
+        "image",
+        file
+      );
+
+
+      /*
+        PENTING:
+
+        Jangan tambahkan:
+
+        headers: {
+          "Content-Type": "multipart/form-data"
+        }
+
+        Browser / Axios akan otomatis membuat
+        multipart boundary.
+      */
+
+      const response =
+        await api.post(
+          "/superadmin/news/images",
+          uploadForm
+        );
+
+
+      console.log(
+        "IMAGE UPLOAD RESPONSE:",
+        response.data
+      );
+
+
+      /*
+        Mendukung response:
+
+        {
+          provider: "...",
+          publicId: "...",
+          url: "...",
+          ...
+        }
+
+        ataupun:
+
+        {
+          data: {
+            provider: "...",
+            ...
+          }
+        }
+      */
+
+      const imageData =
+        response.data?.data ||
+        response.data;
+
+
+      if (
+        !imageData?.provider ||
+        !imageData?.publicId
+      ) {
+
+        throw new Error(
+          "Response upload gambar tidak valid"
+        );
+
+      }
+
+
+      // ===============================================
+      // SIMPAN HANDLE CLOUDINARY
+      // ===============================================
+
+      setForm(
+        (prev) => ({
+          ...prev,
+
+          imageProvider:
+            imageData.provider,
+
+          imagePublicId:
+            imageData.publicId,
+        })
+      );
+
+
+      // ===============================================
+      // SIMPAN DATA GAMBAR
+      // ===============================================
+
+      setUploadedImage(
+        imageData
+      );
+
+
+      // ===============================================
+      // PREVIEW
+      //
+      // Gunakan URL dari API.
+      // JANGAN membuat Cloudinary URL manual.
+      // ===============================================
+
+      setImagePreview(
+        imageData.thumbnailUrl ||
+        imageData.url ||
+        null
+      );
+
+
+      toast.success(
+        "Gambar berhasil diupload"
+      );
+
+
+    } catch (error) {
+
+      // Reset jika upload gagal
+
+      setForm(
+        (prev) => ({
+          ...prev,
+
+          imageProvider: null,
+          imagePublicId: null,
+        })
+      );
+
+
+      setUploadedImage(
+        null
+      );
+
+
+      setImagePreview(
+        null
+      );
+
+
+      if (
+        fileInputRef.current
+      ) {
+
+        fileInputRef.current.value =
+          "";
+
+      }
+
+
+      handleUploadError(
+        error
+      );
+
+
+    } finally {
+
+      setUploadingImage(false);
+
+    }
+
+  };
+
+
+  // =====================================================
+  // FILE CHANGE
+  // =====================================================
+
+  const handleImageChange = (
+    e
+  ) => {
+
+    const file =
+      e.target.files?.[0];
+
+
+    if (!file) {
+      return;
+    }
+
+
+    uploadImage(
+      file
+    );
+
+  };
+
+
+  // =====================================================
+  // CREATE NEWS
+  // =====================================================
+
+  const submit =
+    async () => {
+
+      // ===============================================
+      // VALIDATION
+      // ===============================================
+
+      if (
+        !form.title.trim()
+      ) {
+
+        toast.warning(
+          "Judul berita wajib diisi"
+        );
+
+        return;
+
+      }
+
+
+      if (
+        !form.content.trim()
+      ) {
+
+        toast.warning(
+          "Isi berita wajib diisi"
+        );
+
+        return;
+
+      }
+
+
+      if (
+        uploadingImage
+      ) {
+
+        toast.warning(
+          "Tunggu proses upload gambar selesai"
+        );
+
+        return;
+
+      }
+
+
+      /*
+        Pair harus selalu lengkap.
+
+        Tidak boleh:
+        imageProvider ada
+        tapi imagePublicId kosong.
+
+        Atau sebaliknya.
+      */
+
+      const hasProvider =
+        Boolean(
+          form.imageProvider
+        );
+
+      const hasPublicId =
+        Boolean(
+          form.imagePublicId
+        );
+
+
+      if (
+        hasProvider !==
+        hasPublicId
+      ) {
+
+        toast.error(
+          "Data gambar tidak lengkap. Silakan upload ulang."
+        );
+
+        return;
+
+      }
+
+
+      try {
+
+        setLoading(true);
+
+
+        // ===============================================
+        // PAYLOAD NEWS
+        //
+        // BUKAN FormData.
+        // Kirim JSON biasa.
+        // ===============================================
+
+        const payload = {
+
+          title:
+            form.title.trim(),
+
+          content:
+            form.content.trim(),
+
+        };
+
+
+        /*
+          Pertahankan category/status jika API News
+          kamu memang menerima field ini.
+        */
+
+        if (
+          form.category.trim()
+        ) {
+
+          payload.category =
+            form.category.trim();
+
+        }
+
+
+        payload.status =
+          form.status;
+
+
+        // ===============================================
+        // COVER IMAGE
+        // ===============================================
+
+        if (
+          form.imageProvider &&
+          form.imagePublicId
+        ) {
+
+          payload.imageProvider =
+            form.imageProvider;
+
+          payload.imagePublicId =
+            form.imagePublicId;
+
+        }
+
+
+        console.log(
+          "CREATE NEWS PAYLOAD:",
+          payload
+        );
+
+
+        const response =
+          await api.post(
+            "/superadmin/news",
+            payload
+          );
+
+
+        console.log(
+          "CREATE NEWS RESPONSE:",
+          response.data
+        );
+
+
+        toast.success(
+          response.data?.message ||
+            "Berita berhasil dibuat"
+        );
+
+
+        await refreshData();
+
+
+        resetForm();
+
+
+        handleOpen();
+
+
+      } catch (error) {
+
+        console.error(
+          "CREATE NEWS ERROR:",
+          error?.response?.data ||
+            error
+        );
+
+
+        const status =
+          error?.response?.status;
+
+
+        if (status === 400) {
+
+          toast.error(
+            error?.response?.data?.message ||
+              "Data berita atau gambar tidak valid"
+          );
+
+        } else if (
+          status === 401
+        ) {
+
+          toast.error(
+            "Sesi login berakhir. Silakan login kembali."
+          );
+
+        } else if (
+          status === 403
+        ) {
+
+          toast.error(
+            "Gambar tidak valid. Silakan upload ulang."
+          );
+
+        } else {
+
+          toast.error(
+            error?.response?.data?.message ||
+              "Gagal membuat berita"
+          );
+
+        }
+
+
+      } finally {
+
+        setLoading(false);
+
+      }
+
+    };
+
+
+  // =====================================================
+  // RESET FORM
+  // =====================================================
+
+  const resetForm = () => {
 
     setForm({
       title: "",
       category: "",
       content: "",
       status: "DRAFT",
+
+      imageProvider: null,
+      imagePublicId: null,
     });
 
-    handleOpen();
+
+    setUploadedImage(
+      null
+    );
+
+
+    setImagePreview(
+      null
+    );
+
+
+    if (
+      fileInputRef.current
+    ) {
+
+      fileInputRef.current.value =
+        "";
+
+    }
+
   };
 
+
+  // =====================================================
+  // CLOSE MODAL
+  // =====================================================
+
+  const handleClose = () => {
+
+    if (
+      loading ||
+      uploadingImage
+    ) {
+
+      return;
+
+    }
+
+
+    resetForm();
+
+
+    handleOpen();
+
+  };
+
+
+  // =====================================================
+  // RESET WHEN MODAL CLOSED EXTERNALLY
+  // =====================================================
+
+  useEffect(() => {
+
+    if (!open) {
+
+      resetForm();
+
+    }
+
+  }, [open]);
+
+
+  // =====================================================
+  // RETURN
+  // =====================================================
+
   return (
+
     <Dialog
       open={open}
       handler={handleClose}
       size="md"
     >
+
+      {/* ================================================= */}
+      {/* HEADER */}
+      {/* ================================================= */}
+
       <DialogHeader>
+
         Tambah Berita
+
       </DialogHeader>
 
-      <DialogBody className="space-y-4">
 
-        {/* JUDUL */}
+      {/* ================================================= */}
+      {/* BODY */}
+      {/* ================================================= */}
+
+      <DialogBody
+        className="
+          max-h-[75vh]
+          space-y-5
+          overflow-y-auto
+        "
+      >
+
+        {/* ================================================= */}
+        {/* TITLE */}
+        {/* ================================================= */}
+
         <Input
           label="Judul Berita"
           name="title"
-          value={form.title}
-          onChange={handleChange}
+          value={
+            form.title
+          }
+          onChange={
+            handleChange
+          }
         />
 
-        {/* KATEGORI */}
+
+        {/* ================================================= */}
+        {/* CATEGORY */}
+        {/* ================================================= */}
+
         <Input
           label="Kategori"
           name="category"
-          value={form.category}
-          onChange={handleChange}
+          value={
+            form.category
+          }
+          onChange={
+            handleChange
+          }
         />
 
-        {/* UPLOAD THUMBNAIL */}
-        <div>
-          <label className="mb-2 block text-sm font-medium text-gray-700">
-            Thumbnail Berita
-          </label>
+
+        {/* ================================================= */}
+        {/* COVER IMAGE */}
+        {/* ================================================= */}
+
+        <div
+          className="
+            space-y-3
+          "
+        >
+
+          <Typography
+            className="
+              text-sm
+              font-medium
+              text-gray-700
+            "
+          >
+
+            Cover Berita
+
+          </Typography>
+
+
+          {/* =============================================== */}
+          {/* IMAGE PREVIEW */}
+          {/* =============================================== */}
+
+          {imagePreview ? (
+
+            <div
+              className="
+                overflow-hidden
+                rounded-2xl
+                border
+                border-gray-200
+                bg-gray-50
+              "
+            >
+
+              <img
+                src={
+                  imagePreview
+                }
+                alt="Preview cover berita"
+                className="
+                  h-52
+                  w-full
+                  object-cover
+                "
+              />
+
+            </div>
+
+          ) : (
+
+            <div
+              className="
+                flex
+                h-44
+                w-full
+                flex-col
+                items-center
+                justify-center
+                rounded-2xl
+                border
+                border-dashed
+                border-gray-300
+                bg-gray-50
+              "
+            >
+
+              {uploadingImage ? (
+
+                <>
+
+                  <ArrowPathIcon
+                    className="
+                      mb-2
+                      h-9
+                      w-9
+                      animate-spin
+                      text-blue-500
+                    "
+                  />
+
+                  <Typography
+                    className="
+                      text-sm
+                      text-gray-500
+                    "
+                  >
+                    Mengupload gambar...
+                  </Typography>
+
+                </>
+
+              ) : (
+
+                <>
+
+                  <PhotoIcon
+                    className="
+                      mb-2
+                      h-10
+                      w-10
+                      text-gray-400
+                    "
+                  />
+
+                  <Typography
+                    className="
+                      text-sm
+                      text-gray-500
+                    "
+                  >
+                    Belum ada cover
+                  </Typography>
+
+                </>
+
+              )}
+
+            </div>
+
+          )}
+
+
+          {/* =============================================== */}
+          {/* FILE INPUT */}
+          {/* =============================================== */}
 
           <input
+            ref={
+              fileInputRef
+            }
             type="file"
-            accept="image/jpeg,image/png,image/webp"
-            onChange={handleImageChange}
+            accept="
+              image/jpeg,
+              image/png,
+              image/webp
+            "
+            disabled={
+              uploadingImage ||
+              loading
+            }
+            onChange={
+              handleImageChange
+            }
             className="
               block
               w-full
               cursor-pointer
-              rounded-lg
+              rounded-xl
               border
               border-gray-300
               bg-white
               text-sm
-              text-gray-700
+              text-gray-600
+
               file:mr-4
               file:border-0
               file:bg-green-600
@@ -223,85 +1002,217 @@ const CreateNewsModal = ({
               file:text-sm
               file:font-medium
               file:text-white
+
               hover:file:bg-green-700
+
+              disabled:cursor-not-allowed
+              disabled:opacity-60
             "
           />
 
-          <p className="mt-1 text-xs text-gray-500">
-            JPG, PNG, atau WEBP. Maksimal 5 MB.
-          </p>
+
+          <Typography
+            className="
+              text-xs
+              text-gray-500
+            "
+          >
+
+            JPEG, PNG, atau WebP.
+            Maksimal 5 MB.
+
+          </Typography>
+
+
+          {/* =============================================== */}
+          {/* UPLOAD INFO */}
+          {/* =============================================== */}
+
+          {uploadedImage && (
+
+            <div
+              className="
+                rounded-xl
+                border
+                border-green-100
+                bg-green-50
+                p-3
+              "
+            >
+
+              <Typography
+                className="
+                  text-xs
+                  font-semibold
+                  text-green-700
+                "
+              >
+                Gambar berhasil
+                tersimpan
+              </Typography>
+
+
+              <Typography
+                className="
+                  mt-1
+                  text-xs
+                  text-gray-600
+                "
+              >
+
+                {uploadedImage.width &&
+                uploadedImage.height
+                  ? `${uploadedImage.width} × ${uploadedImage.height}px`
+                  : ""}
+
+                {uploadedImage.format
+                  ? ` • ${uploadedImage.format.toUpperCase()}`
+                  : ""}
+
+              </Typography>
+
+            </div>
+
+          )}
+
         </div>
 
-        {/* PREVIEW */}
-        {preview && (
-          <div className="overflow-hidden rounded-xl border border-gray-200">
-            <img
-              src={preview}
-              alt="Preview thumbnail"
-              className="
-                h-52
-                w-full
-                object-cover
-              "
-            />
-          </div>
-        )}
 
+        {/* ================================================= */}
         {/* CONTENT */}
+        {/* ================================================= */}
+
         <Textarea
           label="Isi Berita"
           name="content"
-          value={form.content}
-          onChange={handleChange}
+          value={
+            form.content
+          }
+          onChange={
+            handleChange
+          }
+          rows={7}
         />
 
-        {/* STATUS */}
-        <select
-          className="
-            w-full
-            rounded-lg
-            border
-            border-gray-300
-            p-3
-            outline-none
-            focus:border-green-500
-          "
-          name="status"
-          value={form.status}
-          onChange={handleChange}
-        >
-          <option value="DRAFT">
-            Draft
-          </option>
 
-          <option value="PUBLISHED">
-            Published
-          </option>
-        </select>
+        {/* ================================================= */}
+        {/* STATUS */}
+        {/* ================================================= */}
+
+        <div>
+
+          <label
+            className="
+              mb-2
+              block
+              text-sm
+              font-medium
+              text-gray-700
+            "
+          >
+
+            Status Berita
+
+          </label>
+
+
+          <select
+            className="
+              w-full
+              rounded-lg
+              border
+              border-gray-300
+              bg-white
+              p-3
+              text-sm
+              outline-none
+
+              focus:border-green-500
+            "
+            name="status"
+            value={
+              form.status
+            }
+            onChange={
+              handleChange
+            }
+          >
+
+            <option
+              value="DRAFT"
+            >
+              Draft
+            </option>
+
+
+            <option
+              value="PUBLISHED"
+            >
+              Published
+            </option>
+
+          </select>
+
+        </div>
 
       </DialogBody>
 
-      <DialogFooter className="gap-2">
+
+      {/* ================================================= */}
+      {/* FOOTER */}
+      {/* ================================================= */}
+
+      <DialogFooter
+        className="
+          gap-2
+        "
+      >
 
         <Button
           variant="text"
-          onClick={handleClose}
-          disabled={loading}
+          onClick={
+            handleClose
+          }
+          disabled={
+            loading ||
+            uploadingImage
+          }
         >
+
           Batal
+
         </Button>
 
+
         <Button
-          className="bg-green-600"
-          loading={loading}
-          onClick={submit}
+          className="
+            bg-green-600
+            shadow-none
+          "
+          loading={
+            loading
+          }
+          disabled={
+            uploadingImage
+          }
+          onClick={
+            submit
+          }
         >
-          Simpan
+
+          {uploadingImage
+            ? "Uploading..."
+            : "Simpan"}
+
         </Button>
 
       </DialogFooter>
+
     </Dialog>
+
   );
+
 };
+
 
 export default CreateNewsModal;

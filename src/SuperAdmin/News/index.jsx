@@ -72,57 +72,60 @@ const TABLE_HEAD = [
 
 
 // ==========================================================
-// GET IMAGE URL
+// NEWS THUMBNAIL
 // ==========================================================
 
-const getThumbnailUrl = (item) => {
-  // Mendukung beberapa kemungkinan nama field backend
-  const thumbnail =
-    item?.thumbnail ||
-    item?.imageUrl ||
-    item?.thumbnailUrl ||
-    item?.image ||
-    null;
+const NewsThumbnail = ({
+  item,
+}) => {
 
-  if (!thumbnail) {
-    return null;
-  }
-
-  // Kalau backend sudah memberikan URL lengkap
-  if (
-    thumbnail.startsWith("http://") ||
-    thumbnail.startsWith("https://")
-  ) {
-    return thumbnail;
-  }
-
-  // Base URL backend
-  const SERVER_URL =
-    import.meta.env.VITE_SERVER_URL ||
-    "http://localhost:3000";
-
-  // Kalau path sudah diawali /
-  if (thumbnail.startsWith("/")) {
-    return `${SERVER_URL}${thumbnail}`;
-  }
-
-  return `${SERVER_URL}/${thumbnail}`;
-};
+  const [
+    imageError,
+    setImageError,
+  ] = useState(false);
 
 
-// ==========================================================
-// IMAGE COMPONENT
-// ==========================================================
+  /*
+    PENTING:
 
-const NewsThumbnail = ({ item }) => {
-  const [imageError, setImageError] =
-    useState(false);
+    Gunakan URL langsung dari News API.
+
+    LIST / TABLE:
+    imageThumbnailUrl
+
+    Fallback:
+    imageUrl
+
+    Jangan membuat Cloudinary URL secara manual.
+  */
 
   const imageUrl =
-    getThumbnailUrl(item);
+    item?.imageThumbnailUrl ||
+    item?.imageUrl ||
+    null;
 
-  if (!imageUrl || imageError) {
+
+  // Reset error jika item berubah
+  useEffect(() => {
+
+    setImageError(false);
+
+  }, [
+    imageUrl,
+  ]);
+
+
+  // ========================================================
+  // PLACEHOLDER
+  // ========================================================
+
+  if (
+    !imageUrl ||
+    imageError
+  ) {
+
     return (
+
       <div
         className="
           flex
@@ -133,6 +136,7 @@ const NewsThumbnail = ({ item }) => {
           bg-green-50
         "
       >
+
         <NewspaperIcon
           className="
             h-7
@@ -140,13 +144,24 @@ const NewsThumbnail = ({ item }) => {
             text-green-600
           "
         />
+
       </div>
+
     );
+
   }
 
+
+  // ========================================================
+  // IMAGE
+  // ========================================================
+
   return (
+
     <img
-      src={imageUrl}
+      src={
+        imageUrl
+      }
       alt={
         item?.title ||
         "Thumbnail berita"
@@ -160,7 +175,9 @@ const NewsThumbnail = ({ item }) => {
         object-cover
       "
     />
+
   );
+
 };
 
 
@@ -174,47 +191,76 @@ const NewsIndex = () => {
   // STATE
   // ========================================================
 
-  const [news, setNews] =
-    useState([]);
+  const [
+    news,
+    setNews,
+  ] = useState([]);
 
-  const [loading, setLoading] =
-    useState(true);
 
-  const [search, setSearch] =
-    useState("");
+  const [
+    loading,
+    setLoading,
+  ] = useState(true);
 
-  const [page, setPage] =
-    useState(1);
+
+  const [
+    search,
+    setSearch,
+  ] = useState("");
+
+
+  const [
+    page,
+    setPage,
+  ] = useState(1);
+
 
   const limit = 10;
+
 
   const [
     totalPages,
     setTotalPages,
   ] = useState(1);
 
-  const [sortBy, setSortBy] =
-    useState("title");
+
+  const [
+    sortBy,
+    setSortBy,
+  ] = useState(
+    "title"
+  );
+
 
   const [
     sortOrder,
     setSortOrder,
-  ] = useState("asc");
+  ] = useState(
+    "asc"
+  );
+
+
+  // ========================================================
+  // MODALS
+  // ========================================================
 
   const [
     openCreate,
     setOpenCreate,
   ] = useState(false);
 
+
   const [
     openEdit,
     setOpenEdit,
   ] = useState(false);
 
+
   const [
     openDelete,
     setOpenDelete,
   ] = useState(false);
+
 
   const [
     selectedNews,
@@ -233,6 +279,7 @@ const NewsIndex = () => {
 
         setLoading(true);
 
+
         const response =
           await api.get(
             "/superadmin/news",
@@ -245,34 +292,71 @@ const NewsIndex = () => {
             }
           );
 
+
         console.log(
           "NEWS RESPONSE:",
           response.data
         );
 
+
+        // ==================================================
+        // NEWS DATA
+        // ==================================================
+
+        const newsData =
+          Array.isArray(
+            response.data?.data
+          )
+            ? response.data.data
+            : [];
+
+
         setNews(
-          response.data?.data ||
-            []
+          newsData
         );
 
+
+        // ==================================================
+        // PAGINATION
+        // ==================================================
+
+        const meta =
+          response.data?.meta ||
+          response.data?.pagination ||
+          {};
+
+
+        const apiTotalPages =
+          Number(
+            meta?.totalPages ??
+            meta?.pages ??
+            1
+          );
+
+
         setTotalPages(
-          response.data?.meta
-            ?.totalPages || 1
+          Math.max(
+            1,
+            apiTotalPages
+          )
         );
+
 
       } catch (error) {
 
         console.error(
           "GET NEWS ERROR:",
           error?.response?.data ||
-            error
+          error
         );
+
 
         toast.error(
           error?.response?.data
             ?.message ||
-            "Gagal mengambil data news"
+          "Gagal mengambil data news"
         );
+
 
       } finally {
 
@@ -294,7 +378,9 @@ const NewsIndex = () => {
 
     fetchNews();
 
-  }, [fetchNews]);
+  }, [
+    fetchNews,
+  ]);
 
 
   // ========================================================
@@ -304,38 +390,57 @@ const NewsIndex = () => {
   const sortedNews =
     useMemo(() => {
 
-      return [...news].sort(
-        (a, b) => {
+      return [
+        ...news,
+      ].sort(
+        (
+          a,
+          b
+        ) => {
 
           const first =
             String(
-              a?.[sortBy] ?? ""
+              a?.[sortBy] ??
+              ""
             ).toLowerCase();
+
 
           const second =
             String(
-              b?.[sortBy] ?? ""
+              b?.[sortBy] ??
+              ""
             ).toLowerCase();
 
-          if (first < second) {
+
+          if (
+            first <
+            second
+          ) {
 
             return (
-              sortOrder === "asc"
+              sortOrder ===
+              "asc"
                 ? -1
                 : 1
             );
 
           }
 
-          if (first > second) {
+
+          if (
+            first >
+            second
+          ) {
 
             return (
-              sortOrder === "asc"
+              sortOrder ===
+              "asc"
                 ? 1
                 : -1
             );
 
           }
+
 
           return 0;
 
@@ -361,7 +466,10 @@ const NewsIndex = () => {
       return;
     }
 
-    if (sortBy === field) {
+
+    if (
+      sortBy === field
+    ) {
 
       setSortOrder(
         (prev) =>
@@ -372,9 +480,13 @@ const NewsIndex = () => {
 
     } else {
 
-      setSortBy(field);
+      setSortBy(
+        field
+      );
 
-      setSortOrder("asc");
+      setSortOrder(
+        "asc"
+      );
 
     }
 
@@ -389,9 +501,13 @@ const NewsIndex = () => {
     item
   ) => {
 
-    setSelectedNews(item);
+    setSelectedNews(
+      item
+    );
 
-    setOpenEdit(true);
+    setOpenEdit(
+      true
+    );
 
   };
 
@@ -404,9 +520,13 @@ const NewsIndex = () => {
     item
   ) => {
 
-    setSelectedNews(item);
+    setSelectedNews(
+      item
+    );
 
-    setOpenDelete(true);
+    setOpenDelete(
+      true
+    );
 
   };
 
@@ -418,7 +538,9 @@ const NewsIndex = () => {
   const handleCreateClose =
     () => {
 
-      setOpenCreate(false);
+      setOpenCreate(
+        false
+      );
 
     };
 
@@ -430,9 +552,13 @@ const NewsIndex = () => {
   const handleEditClose =
     () => {
 
-      setOpenEdit(false);
+      setOpenEdit(
+        false
+      );
 
-      setSelectedNews(null);
+      setSelectedNews(
+        null
+      );
 
     };
 
@@ -444,9 +570,13 @@ const NewsIndex = () => {
   const handleDeleteClose =
     () => {
 
-      setOpenDelete(false);
+      setOpenDelete(
+        false
+      );
 
-      setSelectedNews(null);
+      setSelectedNews(
+        null
+      );
 
     };
 
@@ -480,8 +610,11 @@ const NewsIndex = () => {
               text-[#2b6cb0]
             "
           >
+
             News Management
+
           </Typography>
+
 
           <Typography
             className="
@@ -489,9 +622,11 @@ const NewsIndex = () => {
               text-gray-500
             "
           >
+
             Kelola berita dan
             informasi terbaru
             EcoCash
+
           </Typography>
 
         </div>
@@ -506,6 +641,7 @@ const NewsIndex = () => {
             flex
             flex-col
             gap-4
+
             lg:flex-row
             lg:items-center
             lg:justify-between
@@ -514,7 +650,9 @@ const NewsIndex = () => {
 
           <Button
             onClick={() =>
-              setOpenCreate(true)
+              setOpenCreate(
+                true
+              )
             }
             className="
               flex
@@ -541,6 +679,8 @@ const NewsIndex = () => {
           </Button>
 
 
+          {/* SEARCH */}
+
           <div
             className="
               w-full
@@ -551,21 +691,29 @@ const NewsIndex = () => {
             <Input
               label="Cari berita..."
               icon={
+
                 <MagnifyingGlassIcon
                   className="
                     h-5
                     w-5
                   "
                 />
+
               }
-              value={search}
-              onChange={(e) => {
+              value={
+                search
+              }
+              onChange={(
+                e
+              ) => {
 
                 setSearch(
                   e.target.value
                 );
 
-                setPage(1);
+                setPage(
+                  1
+                );
 
               }}
             />
@@ -617,7 +765,9 @@ const NewsIndex = () => {
                 >
 
                   {TABLE_HEAD.map(
-                    (head) => (
+                    (
+                      head
+                    ) => (
 
                       <th
                         key={
@@ -710,7 +860,9 @@ const NewsIndex = () => {
                         text-gray-500
                       "
                     >
+
                       Loading...
+
                     </td>
 
                   </tr>
@@ -719,7 +871,7 @@ const NewsIndex = () => {
                   0 ? (
 
                   // =========================================
-                  // EMPTY DATA
+                  // EMPTY
                   // =========================================
 
                   <tr>
@@ -746,10 +898,14 @@ const NewsIndex = () => {
                   // =========================================
 
                   sortedNews.map(
-                    (item) => (
+                    (
+                      item
+                    ) => (
 
                       <tr
-                        key={item.id}
+                        key={
+                          item.id
+                        }
                         className="
                           border-b
                           transition-colors
@@ -780,7 +936,9 @@ const NewsIndex = () => {
                           >
 
                             <NewsThumbnail
-                              item={item}
+                              item={
+                                item
+                              }
                             />
 
                           </div>
@@ -891,9 +1049,12 @@ const NewsIndex = () => {
                             {
                               item.author
                                 ?.name ||
+
                               item.author
                                 ?.fullName ||
+
                               item.authorName ||
+
                               "-"
                             }
 
@@ -949,16 +1110,20 @@ const NewsIndex = () => {
                             item.createdAt
                               ? new Date(
                                   item.createdAt
-                                ).toLocaleDateString(
-                                  "id-ID",
-                                  {
-                                    day: "2-digit",
-                                    month:
-                                      "short",
-                                    year:
-                                      "numeric",
-                                  }
                                 )
+                                  .toLocaleDateString(
+                                    "id-ID",
+                                    {
+                                      day:
+                                        "2-digit",
+
+                                      month:
+                                        "short",
+
+                                      year:
+                                        "numeric",
+                                    }
+                                  )
                               : "-"
                           }
 
@@ -1097,7 +1262,8 @@ const NewsIndex = () => {
               <Button
                 size="sm"
                 disabled={
-                  page === 1
+                  page <= 1 ||
+                  loading
                 }
                 onClick={() =>
                   setPage(
@@ -1132,7 +1298,8 @@ const NewsIndex = () => {
                 size="sm"
                 disabled={
                   page >=
-                  totalPages
+                    totalPages ||
+                  loading
                 }
                 onClick={() =>
                   setPage(
@@ -1236,6 +1403,8 @@ const NewsIndex = () => {
     </MainLayout>
 
   );
+
 };
+
 
 export default NewsIndex;

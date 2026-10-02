@@ -1,5 +1,6 @@
 import React, {
   useEffect,
+  useRef,
   useState,
 } from "react";
 
@@ -16,49 +17,15 @@ import {
 
 import {
   PhotoIcon,
+  ArrowPathIcon,
+  TrashIcon,
+  ArrowUturnLeftIcon,
 } from "@heroicons/react/24/outline";
 
-import {
-  toast,
-} from "react-toastify";
+import { toast } from "react-toastify";
 
 import api from "../../utils/api";
 
-
-// =====================================================
-// GET IMAGE URL
-// =====================================================
-
-const getImageUrl = (imageUrl) => {
-  if (!imageUrl) {
-    return null;
-  }
-
-  // Kalau backend mengembalikan URL lengkap
-  if (
-    imageUrl.startsWith("http://") ||
-    imageUrl.startsWith("https://") ||
-    imageUrl.startsWith("blob:")
-  ) {
-    return imageUrl;
-  }
-
-  // URL server backend
-  const SERVER_URL =
-    import.meta.env.VITE_SERVER_URL ||
-    "http://localhost:3000";
-
-  if (imageUrl.startsWith("/")) {
-    return `${SERVER_URL}${imageUrl}`;
-  }
-
-  return `${SERVER_URL}/${imageUrl}`;
-};
-
-
-// =====================================================
-// EDIT NEWS
-// =====================================================
 
 const EditNewsModal = ({
   open,
@@ -67,9 +34,19 @@ const EditNewsModal = ({
   refreshData,
 }) => {
 
+  // =====================================================
+  // STATE
+  // =====================================================
+
   const [
     loading,
     setLoading,
+  ] = useState(false);
+
+
+  const [
+    uploadingImage,
+    setUploadingImage,
   ] = useState(false);
 
 
@@ -83,30 +60,43 @@ const EditNewsModal = ({
   });
 
 
-  // File baru yang dipilih
-  const [
-    imageFile,
-    setImageFile,
-  ] = useState(null);
+  // =====================================================
+  // GAMBAR LAMA DARI NEWS API
+  // =====================================================
 
-
-  // Gambar lama dari backend
   const [
     currentImage,
     setCurrentImage,
   ] = useState(null);
 
 
-  // Preview gambar baru
+  // =====================================================
+  // HANDLE GAMBAR BARU DARI ENDPOINT UPLOAD
+  // =====================================================
+
   const [
-    previewImage,
-    setPreviewImage,
+    uploadedImage,
+    setUploadedImage,
   ] = useState(null);
 
 
-  // ===================================================
+  // =====================================================
+  // TRUE JIKA USER INGIN HAPUS COVER
+  // =====================================================
+
+  const [
+    removeImage,
+    setRemoveImage,
+  ] = useState(false);
+
+
+  const fileInputRef =
+    useRef(null);
+
+
+  // =====================================================
   // SET DATA NEWS
-  // ===================================================
+  // =====================================================
 
   useEffect(() => {
 
@@ -127,59 +117,50 @@ const EditNewsModal = ({
     });
 
 
-    // Mendukung beberapa kemungkinan field backend
-    const existingImage =
-      news.imageUrl ||
-      news.thumbnail ||
-      news.thumbnailUrl ||
-      news.image ||
-      null;
+    /*
+      PENTING:
 
+      Gunakan URL yang diberikan News API.
+
+      Jangan bikin URL Cloudinary manual.
+    */
 
     setCurrentImage(
-      existingImage
+      news.imageUrl ||
+      news.imageThumbnailUrl ||
+      null
     );
 
 
-    // Reset gambar baru
-    setImageFile(null);
-
-    setPreviewImage(null);
-
-  }, [news]);
+    setUploadedImage(
+      null
+    );
 
 
-  // ===================================================
-  // CLEANUP BLOB PREVIEW
-  // ===================================================
-
-  useEffect(() => {
-
-    return () => {
-
-      if (
-        previewImage &&
-        previewImage.startsWith(
-          "blob:"
-        )
-      ) {
-
-        URL.revokeObjectURL(
-          previewImage
-        );
-
-      }
-
-    };
-
-  }, [previewImage]);
+    setRemoveImage(
+      false
+    );
 
 
-  // ===================================================
-  // HANDLE TEXT
-  // ===================================================
+    if (
+      fileInputRef.current
+    ) {
 
-  const change = (e) => {
+      fileInputRef.current.value =
+        "";
+
+    }
+
+  }, [news, open]);
+
+
+  // =====================================================
+  // TEXT CHANGE
+  // =====================================================
+
+  const change = (
+    e
+  ) => {
 
     const {
       name,
@@ -190,16 +171,316 @@ const EditNewsModal = ({
     setForm(
       (prev) => ({
         ...prev,
-        [name]: value,
+
+        [name]:
+          value,
       })
     );
 
   };
 
 
-  // ===================================================
-  // HANDLE IMAGE
-  // ===================================================
+  // =====================================================
+  // VALIDASI FILE
+  // =====================================================
+
+  const validateImage = (
+    file
+  ) => {
+
+    const allowedTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+    ];
+
+
+    if (
+      !allowedTypes.includes(
+        file.type
+      )
+    ) {
+
+      toast.error(
+        "Format gambar harus JPEG, PNG, atau WebP"
+      );
+
+      return false;
+
+    }
+
+
+    const maxSize =
+      5 * 1024 * 1024;
+
+
+    if (
+      file.size > maxSize
+    ) {
+
+      toast.error(
+        "Ukuran gambar maksimal 5 MB"
+      );
+
+      return false;
+
+    }
+
+
+    return true;
+
+  };
+
+
+  // =====================================================
+  // HANDLE ERROR UPLOAD
+  // =====================================================
+
+  const handleUploadError = (
+    error
+  ) => {
+
+    console.error(
+      "UPLOAD IMAGE ERROR:",
+      error?.response?.data ||
+        error
+    );
+
+
+    const status =
+      error?.response?.status;
+
+
+    if (status === 400) {
+
+      toast.error(
+        "Periksa gambar dan coba lagi"
+      );
+
+      return;
+
+    }
+
+
+    if (status === 401) {
+
+      toast.error(
+        "Sesi login berakhir. Silakan login kembali."
+      );
+
+      return;
+
+    }
+
+
+    if (status === 403) {
+
+      toast.error(
+        "Gambar tidak valid. Silakan upload ulang."
+      );
+
+      return;
+
+    }
+
+
+    if (
+      status === 500 ||
+      status === 502
+    ) {
+
+      toast.error(
+        "Upload gambar gagal. Silakan coba lagi."
+      );
+
+      return;
+
+    }
+
+
+    toast.error(
+      error?.response?.data?.message ||
+        "Gagal mengupload gambar"
+    );
+
+  };
+
+
+  // =====================================================
+  // UPLOAD GAMBAR BARU
+  // =====================================================
+
+  const uploadImage =
+    async (
+      file
+    ) => {
+
+      if (!file) {
+        return;
+      }
+
+
+      if (
+        !validateImage(
+          file
+        )
+      ) {
+
+        if (
+          fileInputRef.current
+        ) {
+
+          fileInputRef.current.value =
+            "";
+
+        }
+
+        return;
+
+      }
+
+
+      try {
+
+        setUploadingImage(
+          true
+        );
+
+
+        const imageForm =
+          new FormData();
+
+
+        /*
+          WAJIB field = image
+        */
+
+        imageForm.append(
+          "image",
+          file
+        );
+
+
+        /*
+          PENTING:
+
+          JANGAN menambahkan header:
+
+          Content-Type:
+          multipart/form-data
+
+          Axios / Browser akan
+          membuat multipart boundary
+          secara otomatis.
+        */
+
+        const response =
+          await api.post(
+            "/superadmin/news/images",
+            imageForm
+          );
+
+
+        console.log(
+          "UPLOAD RESPONSE:",
+          response.data
+        );
+
+
+        /*
+          Support response langsung:
+
+          {
+            provider,
+            publicId,
+            url,
+            thumbnailUrl
+          }
+
+          ataupun:
+
+          {
+            data: {
+              provider,
+              publicId,
+              ...
+            }
+          }
+        */
+
+        const imageData =
+          response.data?.data ||
+          response.data;
+
+
+        if (
+          !imageData?.provider ||
+          !imageData?.publicId
+        ) {
+
+          throw new Error(
+            "Response upload gambar tidak valid"
+          );
+
+        }
+
+
+        setUploadedImage(
+          imageData
+        );
+
+
+        /*
+          Karena user upload gambar baru,
+          berarti jangan hapus cover.
+        */
+
+        setRemoveImage(
+          false
+        );
+
+
+        toast.success(
+          "Gambar baru berhasil diupload"
+        );
+
+
+      } catch (error) {
+
+        setUploadedImage(
+          null
+        );
+
+
+        if (
+          fileInputRef.current
+        ) {
+
+          fileInputRef.current.value =
+            "";
+
+        }
+
+
+        handleUploadError(
+          error
+        );
+
+
+      } finally {
+
+        setUploadingImage(
+          false
+        );
+
+      }
+
+    };
+
+
+  // =====================================================
+  // FILE CHANGE
+  // =====================================================
 
   const handleImageChange = (
     e
@@ -214,88 +495,86 @@ const EditNewsModal = ({
     }
 
 
-    // Format gambar
-    const allowedTypes = [
-      "image/jpeg",
-      "image/jpg",
-      "image/png",
-      "image/webp",
-    ];
-
-
-    if (
-      !allowedTypes.includes(
-        file.type
-      )
-    ) {
-
-      toast.error(
-        "Format gambar harus JPG, JPEG, PNG, atau WEBP"
-      );
-
-      e.target.value = "";
-
-      return;
-    }
-
-
-    // Maksimal 5 MB
-    const maxSize =
-      5 * 1024 * 1024;
-
-
-    if (
-      file.size > maxSize
-    ) {
-
-      toast.error(
-        "Ukuran gambar maksimal 5 MB"
-      );
-
-      e.target.value = "";
-
-      return;
-    }
-
-
-    // Hapus blob preview sebelumnya
-    if (
-      previewImage &&
-      previewImage.startsWith(
-        "blob:"
-      )
-    ) {
-
-      URL.revokeObjectURL(
-        previewImage
-      );
-
-    }
-
-
-    const preview =
-      URL.createObjectURL(
-        file
-      );
-
-
-    setImageFile(file);
-
-    setPreviewImage(
-      preview
+    uploadImage(
+      file
     );
 
   };
 
 
-  // ===================================================
-  // UPDATE
-  // ===================================================
+  // =====================================================
+  // HAPUS COVER
+  // =====================================================
+
+  const handleRemoveImage =
+    () => {
+
+      setRemoveImage(
+        true
+      );
+
+
+      setUploadedImage(
+        null
+      );
+
+
+      if (
+        fileInputRef.current
+      ) {
+
+        fileInputRef.current.value =
+          "";
+
+      }
+
+
+      toast.info(
+        "Cover akan dihapus setelah berita diperbarui"
+      );
+
+    };
+
+
+  // =====================================================
+  // BATAL HAPUS / KEMBALI KE GAMBAR LAMA
+  // =====================================================
+
+  const handleUseExistingImage =
+    () => {
+
+      setRemoveImage(
+        false
+      );
+
+
+      setUploadedImage(
+        null
+      );
+
+
+      if (
+        fileInputRef.current
+      ) {
+
+        fileInputRef.current.value =
+          "";
+
+      }
+
+    };
+
+
+  // =====================================================
+  // UPDATE NEWS
+  // =====================================================
 
   const update =
     async () => {
 
+      // ===================================================
       // VALIDASI
+      // ===================================================
 
       if (
         !form.title.trim()
@@ -323,101 +602,122 @@ const EditNewsModal = ({
       }
 
 
+      if (
+        uploadingImage
+      ) {
+
+        toast.warning(
+          "Tunggu upload gambar selesai"
+        );
+
+        return;
+
+      }
+
+
       try {
 
-        setLoading(true);
-
-
-        // ===============================================
-        // FORMDATA
-        // ===============================================
-
-        const formData =
-          new FormData();
-
-
-        formData.append(
-          "title",
-          form.title.trim()
+        setLoading(
+          true
         );
 
 
-        formData.append(
-          "content",
-          form.content.trim()
-        );
+        // =================================================
+        // PAYLOAD JSON
+        // =================================================
+
+        const payload = {
+
+          title:
+            form.title.trim(),
+
+          content:
+            form.content.trim(),
+
+          isPublished:
+            form.isPublished,
+
+        };
 
 
-        formData.append(
-          "isPublished",
-          String(
-            form.isPublished
-          )
-        );
+        // =================================================
+        // CASE 1:
+        // REMOVE IMAGE
+        //
+        // Kirim keduanya null
+        // =================================================
 
-
-        // Kirim gambar HANYA kalau user memilih gambar baru
-        if (imageFile) {
-
-          formData.append(
-            "image",
-            imageFile
-          );
-
-        }
-
-
-        // DEBUG
-        console.log(
-          "UPDATE NEWS"
-        );
-
-        for (
-          const [
-            key,
-            value,
-          ] of formData.entries()
+        if (
+          removeImage
         ) {
 
-          console.log(
-            key,
-            value
-          );
+          payload.imageProvider =
+            null;
+
+          payload.imagePublicId =
+            null;
 
         }
 
 
-        // ===============================================
-        // REQUEST
-        // ===============================================
+        // =================================================
+        // CASE 2:
+        // REPLACE IMAGE
+        //
+        // Kirim handle gambar baru
+        // =================================================
+
+        else if (
+          uploadedImage
+        ) {
+
+          payload.imageProvider =
+            uploadedImage.provider;
+
+          payload.imagePublicId =
+            uploadedImage.publicId;
+
+        }
+
+
+        // =================================================
+        // CASE 3:
+        // KEEP EXISTING IMAGE
+        //
+        // Jangan kirim imageProvider
+        // Jangan kirim imagePublicId
+        // =================================================
+
+
+        console.log(
+          "UPDATE NEWS PAYLOAD:",
+          payload
+        );
+
 
         const response =
           await api.put(
             `/superadmin/news/${news.id}`,
-            formData
+            payload
           );
 
 
         console.log(
-          "UPDATE RESPONSE:",
+          "UPDATE NEWS RESPONSE:",
           response.data
         );
 
 
         toast.success(
           response.data?.message ||
-          "Berita berhasil diperbarui"
+            "Berita berhasil diperbarui"
         );
 
 
-        // Refresh tabel
         await refreshData();
 
 
-        // Reset
-        setImageFile(null);
-
-        setPreviewImage(null);
+        resetImageState();
 
 
         handleOpen();
@@ -426,91 +726,149 @@ const EditNewsModal = ({
       } catch (error) {
 
         console.error(
-          "UPDATE ERROR:",
+          "UPDATE NEWS ERROR:",
           error?.response?.data ||
-          error
+            error
         );
 
 
-        toast.error(
-          error?.response?.data
-            ?.message ||
-          error?.response?.data
-            ?.error ||
-          "Gagal update berita"
-        );
+        const status =
+          error?.response?.status;
+
+
+        if (status === 400) {
+
+          toast.error(
+            error?.response?.data?.message ||
+              "Data berita atau gambar tidak valid"
+          );
+
+        } else if (
+          status === 401
+        ) {
+
+          toast.error(
+            "Sesi login berakhir. Silakan login kembali."
+          );
+
+        } else if (
+          status === 403
+        ) {
+
+          toast.error(
+            "Gambar tidak valid. Silakan upload ulang."
+          );
+
+        } else {
+
+          toast.error(
+            error?.response?.data?.message ||
+              "Gagal memperbarui berita"
+          );
+
+        }
 
 
       } finally {
 
-        setLoading(false);
+        setLoading(
+          false
+        );
 
       }
 
     };
 
 
-  // ===================================================
-  // CLOSE
-  // ===================================================
+  // =====================================================
+  // RESET IMAGE STATE
+  // =====================================================
 
-  const handleClose = () => {
+  const resetImageState =
+    () => {
 
-    if (loading) {
-      return;
-    }
-
-
-    if (
-      previewImage &&
-      previewImage.startsWith(
-        "blob:"
-      )
-    ) {
-
-      URL.revokeObjectURL(
-        previewImage
+      setUploadedImage(
+        null
       );
 
-    }
+
+      setRemoveImage(
+        false
+      );
 
 
-    setImageFile(null);
+      if (
+        fileInputRef.current
+      ) {
 
-    setPreviewImage(null);
+        fileInputRef.current.value =
+          "";
+
+      }
+
+    };
 
 
-    handleOpen();
+  // =====================================================
+  // CLOSE
+  // =====================================================
 
-  };
+  const handleClose =
+    () => {
+
+      if (
+        loading ||
+        uploadingImage
+      ) {
+
+        return;
+
+      }
 
 
-  // ===================================================
-  // IMAGE TO DISPLAY
-  // ===================================================
+      resetImageState();
+
+
+      handleOpen();
+
+    };
+
+
+  // =====================================================
+  // GAMBAR YANG DITAMPILKAN
+  // =====================================================
 
   const displayedImage =
-    previewImage ||
-    getImageUrl(
-      currentImage
-    );
+    removeImage
+      ? null
+      : uploadedImage
+      ? (
+          uploadedImage.thumbnailUrl ||
+          uploadedImage.url ||
+          null
+        )
+      : currentImage;
 
 
-  // ===================================================
+  // =====================================================
   // RETURN
-  // ===================================================
+  // =====================================================
 
   return (
 
     <Dialog
-      open={open}
+      open={
+        open
+      }
       handler={
         handleClose
       }
       size="md"
     >
 
+      {/* ================================================= */}
       {/* HEADER */}
+      {/* ================================================= */}
 
       <DialogHeader>
 
@@ -519,7 +877,9 @@ const EditNewsModal = ({
       </DialogHeader>
 
 
+      {/* ================================================= */}
       {/* BODY */}
+      {/* ================================================= */}
 
       <DialogBody
         className="
@@ -529,7 +889,9 @@ const EditNewsModal = ({
         "
       >
 
+        {/* ================================================= */}
         {/* TITLE */}
+        {/* ================================================= */}
 
         <Input
           label="Judul Berita"
@@ -543,9 +905,9 @@ const EditNewsModal = ({
         />
 
 
-        {/* =========================================== */}
+        {/* ================================================= */}
         {/* IMAGE */}
-        {/* =========================================== */}
+        {/* ================================================= */}
 
         <div
           className="
@@ -561,12 +923,14 @@ const EditNewsModal = ({
             "
           >
 
-            Gambar Berita
+            Cover Berita
 
           </Typography>
 
 
-          {/* EXISTING / NEW IMAGE PREVIEW */}
+          {/* =============================================== */}
+          {/* PREVIEW */}
+          {/* =============================================== */}
 
           {displayedImage ? (
 
@@ -587,28 +951,17 @@ const EditNewsModal = ({
                 }
                 alt={
                   form.title ||
-                  "Gambar berita"
+                  "Cover berita"
                 }
                 className="
                   h-56
                   w-full
                   object-cover
                 "
-                onError={(e) => {
-
-                  console.error(
-                    "Gambar gagal dimuat:",
-                    displayedImage
-                  );
-
-                  e.currentTarget.style.display =
-                    "none";
-
-                }}
               />
 
 
-              {/* LABEL GAMBAR */}
+              {/* LABEL */}
 
               <div
                 className="
@@ -620,21 +973,20 @@ const EditNewsModal = ({
                   px-3
                   py-1.5
                   text-xs
+                  font-medium
                   text-white
                 "
               >
 
-                {imageFile
-                  ? "Gambar Baru"
-                  : "Gambar Saat Ini"}
+                {uploadedImage
+                  ? "Cover Baru"
+                  : "Cover Saat Ini"}
 
               </div>
 
             </div>
 
           ) : (
-
-            // BELUM ADA GAMBAR
 
             <div
               className="
@@ -652,121 +1004,179 @@ const EditNewsModal = ({
               "
             >
 
-              <PhotoIcon
-                className="
-                  mb-2
-                  h-10
-                  w-10
-                  text-gray-400
-                "
-              />
+              {uploadingImage ? (
 
-              <Typography
-                className="
-                  text-sm
-                  text-gray-500
-                "
-              >
+                <>
 
-                Belum ada gambar
+                  <ArrowPathIcon
+                    className="
+                      mb-2
+                      h-9
+                      w-9
+                      animate-spin
+                      text-blue-500
+                    "
+                  />
 
-              </Typography>
+
+                  <Typography
+                    className="
+                      text-sm
+                      text-gray-500
+                    "
+                  >
+
+                    Mengupload gambar...
+
+                  </Typography>
+
+                </>
+
+              ) : (
+
+                <>
+
+                  <PhotoIcon
+                    className="
+                      mb-2
+                      h-10
+                      w-10
+                      text-gray-400
+                    "
+                  />
+
+
+                  <Typography
+                    className="
+                      text-sm
+                      text-gray-500
+                    "
+                  >
+
+                    {removeImage
+                      ? "Cover akan dihapus"
+                      : "Belum ada cover"}
+
+                  </Typography>
+
+                </>
+
+              )}
 
             </div>
 
           )}
 
 
-          {/* ========================================= */}
-          {/* UPLOAD */}
-          {/* ========================================= */}
+          {/* =============================================== */}
+          {/* FILE INPUT */}
+          {/* =============================================== */}
 
-          <div>
+          <input
+            ref={
+              fileInputRef
+            }
+            type="file"
+            accept="
+              image/jpeg,
+              image/png,
+              image/webp
+            "
+            disabled={
+              uploadingImage ||
+              loading
+            }
+            onChange={
+              handleImageChange
+            }
+            className="
+              block
+              w-full
+              cursor-pointer
+              rounded-xl
+              border
+              border-gray-300
+              bg-white
+              text-sm
+              text-gray-600
 
-            <input
-              type="file"
-              accept="
-                image/jpeg,
-                image/png,
-                image/webp
-              "
-              onChange={
-                handleImageChange
-              }
-              className="
-                block
-                w-full
-                cursor-pointer
-                rounded-xl
-                border
-                border-gray-300
-                bg-white
-                text-sm
-                text-gray-600
+              file:mr-4
+              file:border-0
+              file:bg-[#2b6cb0]
+              file:px-4
+              file:py-3
+              file:text-sm
+              file:font-medium
+              file:text-white
 
-                file:mr-4
-                file:border-0
-                file:bg-[#2b6cb0]
-                file:px-4
-                file:py-3
-                file:text-sm
-                file:font-medium
-                file:text-white
+              hover:file:bg-blue-700
 
-                hover:file:bg-blue-700
-              "
-            />
-
-
-            <Typography
-              className="
-                mt-2
-                text-xs
-                text-gray-500
-              "
-            >
-
-              JPG, PNG, atau WEBP.
-              Maksimal 5 MB.
-
-              {currentImage &&
-                !imageFile && (
-                  <>
-                    {" "}
-                    Pilih gambar baru
-                    jika ingin mengganti
-                    gambar saat ini.
-                  </>
-                )}
-
-            </Typography>
-
-          </div>
+              disabled:cursor-not-allowed
+              disabled:opacity-60
+            "
+          />
 
 
-          {/* FILE SELECTED */}
+          <Typography
+            className="
+              text-xs
+              text-gray-500
+            "
+          >
 
-          {imageFile && (
+            JPEG, PNG, atau WebP.
+            Maksimal 5 MB.
+
+          </Typography>
+
+
+          {/* =============================================== */}
+          {/* INFO UPLOAD BARU */}
+          {/* =============================================== */}
+
+          {uploadedImage && (
 
             <div
               className="
-                rounded-lg
-                bg-blue-50
-                px-4
-                py-3
+                rounded-xl
+                border
+                border-green-100
+                bg-green-50
+                p-3
               "
             >
 
               <Typography
                 className="
                   text-xs
-                  font-medium
-                  text-blue-700
+                  font-semibold
+                  text-green-700
                 "
               >
 
-                Gambar baru:{" "}
-                {imageFile.name}
+                Cover baru berhasil
+                diupload
+
+              </Typography>
+
+
+              <Typography
+                className="
+                  mt-1
+                  text-xs
+                  text-gray-600
+                "
+              >
+
+                {uploadedImage.width &&
+                uploadedImage.height
+                  ? `${uploadedImage.width} × ${uploadedImage.height}px`
+                  : ""}
+
+
+                {uploadedImage.format
+                  ? ` • ${uploadedImage.format.toUpperCase()}`
+                  : ""}
 
               </Typography>
 
@@ -774,12 +1184,140 @@ const EditNewsModal = ({
 
           )}
 
+
+          {/* =============================================== */}
+          {/* IMAGE ACTIONS */}
+          {/* =============================================== */}
+
+          <div
+            className="
+              flex
+              flex-wrap
+              gap-2
+            "
+          >
+
+            {/* HAPUS COVER */}
+
+            {(currentImage ||
+              uploadedImage) &&
+              !removeImage && (
+
+              <Button
+                size="sm"
+                variant="outlined"
+                color="red"
+                disabled={
+                  loading ||
+                  uploadingImage
+                }
+                onClick={
+                  handleRemoveImage
+                }
+                className="
+                  flex
+                  items-center
+                  gap-2
+                  normal-case
+                "
+              >
+
+                <TrashIcon
+                  className="
+                    h-4
+                    w-4
+                  "
+                />
+
+                Hapus Cover
+
+              </Button>
+
+            )}
+
+
+            {/* BATAL GANTI */}
+
+            {uploadedImage &&
+              currentImage &&
+              !removeImage && (
+
+              <Button
+                size="sm"
+                variant="outlined"
+                disabled={
+                  loading ||
+                  uploadingImage
+                }
+                onClick={
+                  handleUseExistingImage
+                }
+                className="
+                  flex
+                  items-center
+                  gap-2
+                  normal-case
+                "
+              >
+
+                <ArrowUturnLeftIcon
+                  className="
+                    h-4
+                    w-4
+                  "
+                />
+
+                Gunakan Cover Lama
+
+              </Button>
+
+            )}
+
+
+            {/* BATAL HAPUS */}
+
+            {removeImage &&
+              currentImage && (
+
+              <Button
+                size="sm"
+                variant="outlined"
+                disabled={
+                  loading ||
+                  uploadingImage
+                }
+                onClick={
+                  handleUseExistingImage
+                }
+                className="
+                  flex
+                  items-center
+                  gap-2
+                  normal-case
+                "
+              >
+
+                <ArrowUturnLeftIcon
+                  className="
+                    h-4
+                    w-4
+                  "
+                />
+
+                Batalkan Hapus
+
+              </Button>
+
+            )}
+
+          </div>
+
         </div>
 
 
-        {/* =========================================== */}
+        {/* ================================================= */}
         {/* CONTENT */}
-        {/* =========================================== */}
+        {/* ================================================= */}
 
         <Textarea
           label="Konten Berita"
@@ -794,9 +1332,9 @@ const EditNewsModal = ({
         />
 
 
-        {/* =========================================== */}
+        {/* ================================================= */}
         {/* STATUS */}
-        {/* =========================================== */}
+        {/* ================================================= */}
 
         <div>
 
@@ -869,7 +1407,9 @@ const EditNewsModal = ({
       </DialogBody>
 
 
+      {/* ================================================= */}
       {/* FOOTER */}
+      {/* ================================================= */}
 
       <DialogFooter
         className="
@@ -883,7 +1423,8 @@ const EditNewsModal = ({
             handleClose
           }
           disabled={
-            loading
+            loading ||
+            uploadingImage
           }
         >
 
@@ -900,12 +1441,17 @@ const EditNewsModal = ({
           loading={
             loading
           }
+          disabled={
+            uploadingImage
+          }
           onClick={
             update
           }
         >
 
-          Update
+          {uploadingImage
+            ? "Uploading..."
+            : "Update"}
 
         </Button>
 
