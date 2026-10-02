@@ -23,7 +23,9 @@ import {
   BuildingOffice2Icon,
   BuildingLibraryIcon, // FOUNDATION
   TicketIcon,
+  QuestionMarkCircleIcon,
 } from "@heroicons/react/24/outline";
+import { Bot } from "lucide-react";
 
 import logo2 from "../assets/logo2.png";
 import sidebarIllustration from "../assets/banner2.jpeg";
@@ -112,6 +114,21 @@ const Sidebar = ({ open, setOpen }) => {
       name: "Vouchers",
       icon: <TicketIcon className="h-5 w-5" />,
       path: "/vouchers",
+    },
+    {
+      name:"News",
+      icon: <BuildingLibraryIcon className="h-5 w-5" />,
+      path: "/news",
+    },
+    {
+      name: "Bot Management",
+      icon: <Bot className="h-5 w-5" />,
+      path: "/bot-management",
+    },
+    {
+      name: "FAQ Management",
+      icon: <QuestionMarkCircleIcon className="h-5 w-5" />,
+      path: "/faq-management",
     },
 
     // ========================================================

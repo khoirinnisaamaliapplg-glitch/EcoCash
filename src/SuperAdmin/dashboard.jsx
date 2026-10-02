@@ -1,21 +1,24 @@
 import React, { useState, useEffect } from "react";
 import api from "../utils/api";
 import MainLayout from "./MainLayout";
-
-// UI Components
 import {
   Card,
   Typography,
   Chip,
   Progress,
 } from "@material-tailwind/react";
-
 import {
   UserGroupIcon,
   ScaleIcon,
   TrashIcon,
+  BuildingOfficeIcon,
+  GlobeAltIcon,
+  ArrowTrendingUpIcon,
+  BoltIcon,
+  ArrowDownTrayIcon,
+  MegaphoneIcon,
+  PlusIcon,
 } from "@heroicons/react/24/outline";
-
 import {
   AreaChart,
   Area,
@@ -25,145 +28,174 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-
-// ============================================================
-// LEAFLET
-// ============================================================
-
 import {
   MapContainer,
   TileLayer,
   Marker,
   Popup,
   useMap,
-  useMapEvents,
 } from "react-leaflet";
-
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-
 import pinIcon from "../assets/pin.png";
+import shadowIcon from "leaflet/dist/images/marker-shadow.png";
 
-// ============================================================
-// HELPER EXTRACT RESPONSE
-// ============================================================
+const BANDUNG_CENTER = [-6.9175, 107.6191];
+const machineIcon = new L.Icon({
+  iconUrl: pinIcon,
+  iconSize: [60, 60],
+  iconAnchor: [30, 60],
+  popupAnchor: [0, -60],
+  shadowUrl: shadowIcon,
+  shadowSize: [60, 60],
+});
 
-const extractData = (response) => {
-  return response?.data?.data ?? response?.data ?? null;
-};
+const extractData = (response) => response?.data?.data ?? response?.data ?? null;
 
 const extractArray = (response) => {
   const data = extractData(response);
-
-  if (Array.isArray(data)) {
-    return data;
-  }
-
-  if (Array.isArray(data?.items)) {
-    return data.items;
-  }
-
-  if (Array.isArray(data?.users)) {
-    return data.users;
-  }
-
-  if (Array.isArray(data?.machines)) {
-    return data.machines;
-  }
-
-  if (Array.isArray(data?.wasteTypes)) {
-    return data.wasteTypes;
-  }
-
-  return [];
+  if (Array.isArray(data)) return data;
+  return [data?.items, data?.users, data?.machines, data?.wasteTypes]
+    .find(Array.isArray) ?? [];
 };
 
-// ============================================================
-// FORMAT NUMBER
-// ============================================================
-
-const formatNumber = (value, maximumFractionDigits = 1) => {
+const toNumber = (value, fallback = 0) => {
+  if (value === null || value === undefined || value === "") return fallback;
   const number = Number(value);
+  return Number.isNaN(number) ? fallback : number;
+};
 
-  if (Number.isNaN(number)) {
-    return "0";
-  }
-
-  return number.toLocaleString("id-ID", {
+const formatNumber = (value, maximumFractionDigits = 1) =>
+  toNumber(value).toLocaleString("id-ID", {
     minimumFractionDigits: 0,
     maximumFractionDigits,
   });
-};
-
-// ============================================================
-// FORMAT PERCENTAGE
-// ============================================================
 
 const formatChange = (value) => {
-  if (
-    value === undefined ||
-    value === null ||
-    Number.isNaN(Number(value))
-  ) {
+  if (value === undefined || value === null || Number.isNaN(Number(value))) {
     return "PERIODE INI";
   }
-
   const number = Number(value);
-
-  if (number > 0) {
-    return `+${formatNumber(number)}% VS LAST PERIOD`;
-  }
-
-  if (number < 0) {
-    return `${formatNumber(number)}% VS LAST PERIOD`;
-  }
-
-  return "0% VS LAST PERIOD";
+  return number === 0
+    ? "0% VS LAST PERIOD"
+    : `${number > 0 ? "+" : ""}${formatNumber(number)}% VS LAST PERIOD`;
 };
 
-// ============================================================
-// MAP CONTROLLER
-// ============================================================
+const normalizeSummary = (rawSummary) => {
+  if (!rawSummary || typeof rawSummary !== "object") return {};
+  return rawSummary.summary ?? rawSummary.dashboard ?? rawSummary.stats ?? rawSummary;
+};
 
-const MapController = ({ setZoomLevel }) => {
-  const map = useMapEvents({
-    zoomend() {
-      setZoomLevel(map.getZoom());
-    },
-  });
+
+const getWasteCollected = (summary) => {
+  const data = normalizeSummary(summary);
+  const waste = data?.wasteCollected;
+  if (waste && typeof waste === "object" && !Array.isArray(waste)) {
+    return toNumber([
+      waste.current,
+      waste.currentValue,
+      waste.currentKg,
+      waste.total,
+      waste.totalKg,
+      waste.totalWeight,
+      waste.weight,
+      waste.kg,
+      waste.value,
+    ].find((value) => value != null));
+  }
+  if (waste !== undefined && waste !== null && typeof waste !== "object") {
+    return toNumber(waste);
+  }
+  return toNumber([
+    data?.totalWasteKg,
+    data?.totalWasteKG,
+    data?.totalWeightKg,
+    data?.totalWeightKG,
+    data?.wasteCollectedKg,
+    data?.wasteCollectedKG,
+    data?.wasteKg,
+    data?.wasteKG,
+    data?.totalWaste,
+    data?.totalWeight,
+  ].find((value) => value != null));
+};
+
+const getWasteChange = (summary) => {
+  const data = normalizeSummary(summary);
+  const waste = data?.wasteCollected;
+  if (waste && typeof waste === "object" && !Array.isArray(waste)) {
+    return [
+      waste.changePercent,
+      waste.percentageChange,
+      waste.change,
+      waste.growthPercent,
+    ].find((value) => value != null) ?? null;
+  }
+  return [
+    data?.wasteChangePercent,
+    data?.wasteChange,
+    data?.wasteGrowthPercent,
+  ].find((value) => value != null) ?? null;
+};
+
+
+const MapController = ({ mapCenter }) => {
+  const map = useMap();
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      map.invalidateSize();
-    }, 500);
+    const timer =
+      setTimeout(
+        () => {
+          map.invalidateSize();
+        },
+        500
+      );
 
-    return () => clearTimeout(timer);
+    return () =>
+      clearTimeout(
+        timer
+      );
   }, [map]);
+
+  useEffect(() => {
+    if (mapCenter) {
+      map.setView(mapCenter, map.getZoom());
+    }
+  }, [map, mapCenter]);
 
   return null;
 };
 
-// ============================================================
-// MARKER FLY TO
-// ============================================================
 
 const MarkerWithFlyTo = ({
   position,
   icon,
   children,
 }) => {
-  const map = useMap();
+  const map =
+    useMap();
 
   return (
     <Marker
-      position={position}
-      icon={icon}
+      position={
+        position
+      }
+      icon={
+        icon
+      }
       eventHandlers={{
         click: () => {
-          map.flyTo(position, 16, {
-            animate: true,
-            duration: 0.8,
-          });
+          map.flyTo(
+            position,
+            16,
+            {
+              animate:
+                true,
+
+              duration:
+                0.8,
+            }
+          );
         },
       }}
     >
@@ -172,336 +204,737 @@ const MarkerWithFlyTo = ({
   );
 };
 
+
+
+
 // ============================================================
-// DASHBOARD
+// ECOCASH DASHBOARD OVERVIEW - PREMIUM UI
 // ============================================================
+
+const DashboardOverview = ({
+  summary,
+  machines,
+  totalUsers,
+  wasteTypes,
+}) => {
+  const waste = getWasteCollected(summary);
+  const wasteChange = getWasteChange(summary);
+
+  const carbon = toNumber(
+    summary?.carbonReduction ??
+      summary?.co2 ??
+      summary?.totalCarbon ??
+      summary?.co2Avoided ??
+      summary?.carbonAvoided ??
+      0
+  );
+
+  const activeMachines = machines.filter((machine) => {
+    const status = String(
+      machine.status ??
+      machine.machineStatus ??
+      machine.state ??
+      ""
+    ).toUpperCase();
+
+    return ["ACTIVE", "ONLINE", "READY", "RUNNING"].includes(status);
+  }).length;
+
+  const stats = [
+  {
+    title: "Total Sampah Terkumpul",
+    value: `${formatNumber(waste, 2)} Kg`,
+    caption:
+      wasteChange !== null
+        ? formatChange(wasteChange)
+        : "Akumulasi periode terpilih",
+
+    icon: TrashIcon,
+
+    iconClass:
+      "bg-gradient-to-br from-amber-300 to-orange-500",
+
+    glowClass:
+      "bg-amber-100",
+  },
+
+  {
+    title: "Jumlah Instansi",
+    value: formatNumber(machines.length, 0),
+    caption:
+      activeMachines > 0
+        ? `${activeMachines} unit aktif/online`
+        : "Unit terhubung ke EcoCash",
+
+    icon: BuildingOfficeIcon,
+
+    iconClass:
+      "bg-gradient-to-br from-teal-400 to-emerald-600",
+
+    glowClass:
+      "bg-teal-100",
+  },
+
+  {
+    title: "Total Pengguna",
+    value: formatNumber(totalUsers, 0),
+    caption:
+      "Seluruh role pengguna",
+
+    icon: UserGroupIcon,
+
+    iconClass:
+      "bg-gradient-to-br from-amber-300 to-orange-500",
+
+    glowClass:
+      "bg-amber-100",
+  },
+
+  {
+    title: "CO₂e Direduksi",
+    value: `${formatNumber(carbon, 2)} Kg`,
+    caption:
+      "Estimasi emisi yang dihindari",
+
+    icon: GlobeAltIcon,
+
+    iconClass:
+      "bg-gradient-to-br from-teal-400 to-emerald-600",
+
+    glowClass:
+      "bg-teal-100",
+  },
+];
+
+  const topInstitutions = [...machines]
+    .map((item) => ({
+      ...item,
+      collected: toNumber(
+        item.totalCollected ??
+          item.wasteCollected ??
+          item.totalWasteKg ??
+          item.collectedKg ??
+          item.totalWeight ??
+          0
+      ),
+    }))
+    .sort((a, b) => b.collected - a.collected)
+    .slice(0, 5);
+
+  const maxCollected = Math.max(
+    1,
+    ...topInstitutions.map((item) => item.collected)
+  );
+
+  const quickActions = [
+    {
+    label: "Tambah Instalasi",
+    icon: <PlusIcon className="h-5 w-5" />,
+    className:
+      "from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700",
+  },
+    {
+      label: "Unduh Laporan",
+      icon: <ArrowDownTrayIcon className="h-5 w-5" />,
+      className:
+        "from-amber-400 to-orange-500 hover:from-amber-500 hover:to-orange-600",
+    },
+    {
+    label: "Kelola Program",
+    icon: <BoltIcon className="h-5 w-5" />,
+    className:
+      "from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700",
+  },
+    {
+      label: "Kirim Pengumuman",
+      icon: <MegaphoneIcon className="h-5 w-5" />,
+      className:
+        "from-amber-400 to-orange-500 hover:from-amber-500 hover:to-orange-600",
+    },
+    
+  ];
+
+  return (
+    <div className="space-y-5">
+      {/* SUMMARY CARDS */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {stats.map((item) => (
+          <Card
+            key={item.title}
+            className="group relative overflow-hidden rounded-2xl border border-gray-100 bg-white p-5 shadow-[0_8px_30px_rgba(15,23,42,0.06)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_45px_rgba(15,23,42,0.12)]"
+          >
+            <div
+              className={`absolute -right-7 -top-7 h-24 w-24 rounded-full ${item.glowClass} opacity-60 blur-2xl transition-transform duration-300 group-hover:scale-125`}
+            />
+
+            <div className="relative flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <Typography className="text-[11px] font-bold uppercase tracking-[0.08em] text-gray-400">
+                  {item.title}
+                </Typography>
+
+                <Typography className="mt-2 text-3xl font-black tracking-tight text-blue-gray-900">
+                  {item.value}
+                </Typography>
+
+                <div className="mt-2 flex items-center gap-1.5">
+                  <ArrowTrendingUpIcon className="h-3.5 w-3.5 text-emerald-500" />
+                  <Typography className="truncate text-[10px] font-semibold text-gray-500">
+                    {item.caption}
+                  </Typography>
+                </div>
+              </div>
+
+              <div
+                className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl shadow-lg ${item.iconClass}`}
+              >
+                <item.icon
+                  className="h-7 w-7 text-white"
+                  strokeWidth={2}
+                />
+              </div>
+            </div>
+          </Card>
+        ))}
+      </div>
+
+      {/* ANALYTICS ROW */}
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
+        {/* WASTE TYPES */}
+        <Card className="rounded-2xl border border-gray-100 bg-white p-5 shadow-[0_8px_30px_rgba(15,23,42,0.06)] xl:col-span-5">
+          <div className="mb-5 flex items-start justify-between gap-3">
+            <div>
+              <Typography className="text-sm font-black text-blue-gray-900">
+                Komposisi Jenis Sampah
+              </Typography>
+              <Typography className="mt-1 text-[10px] font-medium text-gray-400">
+                Jenis material & harga yang tersedia
+              </Typography>
+            </div>
+
+            <div className="rounded-xl bg-emerald-50 px-3 py-1.5">
+              <Typography className="text-[10px] font-black text-emerald-600">
+                {wasteTypes.length} JENIS
+              </Typography>
+            </div>
+          </div>
+
+          <div className="space-y-2.5">
+            {wasteTypes.length > 0 ? (
+              wasteTypes.slice(0, 6).map((item, index) => {
+                const price =
+                  item.price_per_kg ??
+                  item.pricePerKg ??
+                  item.price ??
+                  0;
+
+                const dotClasses = [
+                  "bg-emerald-500",
+                  "bg-sky-500",
+                  "bg-amber-400",
+                  "bg-orange-500",
+                  "bg-rose-500",
+                  "bg-violet-500",
+                ];
+
+                return (
+                  <div
+                    key={item.id ?? index}
+                    className="flex items-center justify-between rounded-xl border border-transparent bg-gray-50/80 px-3.5 py-3 transition-all hover:border-gray-100 hover:bg-white hover:shadow-sm"
+                  >
+                    <div className="flex min-w-0 items-center gap-3">
+                      <span
+                        className={`h-2.5 w-2.5 shrink-0 rounded-full ${
+                          dotClasses[index % dotClasses.length]
+                        }`}
+                      />
+                      <Typography className="truncate text-xs font-bold capitalize text-blue-gray-800">
+                        {item.name || item.type || "-"}
+                      </Typography>
+                    </div>
+
+                    <Typography className="ml-3 whitespace-nowrap text-xs font-black text-emerald-600">
+                      Rp {formatNumber(price, 0)}/kg
+                    </Typography>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="flex min-h-[180px] items-center justify-center rounded-xl border border-dashed border-gray-200 bg-gray-50/60">
+                <Typography className="text-xs font-semibold text-gray-400">
+                  Belum ada data jenis sampah
+                </Typography>
+              </div>
+            )}
+          </div>
+        </Card>
+
+        {/* TOP INSTITUTIONS */}
+        <Card className="rounded-2xl border border-gray-100 bg-white p-5 shadow-[0_8px_30px_rgba(15,23,42,0.06)] xl:col-span-4">
+          <div className="mb-5">
+            <Typography className="text-sm font-black text-blue-gray-900">
+              Top Instansi Pengumpul
+            </Typography>
+            <Typography className="mt-1 text-[10px] font-medium text-gray-400">
+              Berdasarkan data pengumpulan yang tersedia
+            </Typography>
+          </div>
+
+          <div className="space-y-4">
+            {topInstitutions.length > 0 ? (
+              topInstitutions.map((item, index) => {
+                const width = Math.max(
+                  item.collected > 0
+                    ? 8
+                    : 0,
+                  (item.collected / maxCollected) * 100
+                );
+
+                return (
+                  <div key={item.id ?? index}>
+                    <div className="mb-1.5 flex items-center justify-between gap-3">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-[10px] font-black text-emerald-600">
+                          {index + 1}
+                        </div>
+                        <Typography className="truncate text-[11px] font-bold text-blue-gray-700">
+                          {item.organization?.name ||
+                            item.placeName ||
+                            item.name ||
+                            item.machineCode ||
+                            "Instansi"}
+                        </Typography>
+                      </div>
+
+                      <Typography className="whitespace-nowrap text-[11px] font-black text-blue-gray-900">
+                        {formatNumber(item.collected, 1)} Kg
+                      </Typography>
+                    </div>
+
+                    <div className="ml-8 h-2 overflow-hidden rounded-full bg-gray-100">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-teal-500 transition-all duration-500"
+                        style={{ width: `${width}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <Typography className="py-10 text-center text-xs font-semibold text-gray-400">
+                Belum ada data instansi
+              </Typography>
+            )}
+          </div>
+        </Card>
+
+        {/* QUICK ACTION */}
+        <Card className="rounded-2xl border border-gray-100 bg-white p-5 shadow-[0_8px_30px_rgba(15,23,42,0.06)] xl:col-span-3">
+          <div className="mb-5">
+            <Typography className="text-sm font-black text-blue-gray-900">
+              Aksi Cepat
+            </Typography>
+            <Typography className="mt-1 text-[10px] font-medium text-gray-400">
+              Shortcut pengelolaan EcoCash
+            </Typography>
+          </div>
+
+          <div className="space-y-3">
+            {quickActions.map((action, index) => (
+              <button
+                key={`${action.label}-${index}`}
+                type="button"
+                className={`flex min-h-[48px] w-full items-center gap-3 rounded-xl bg-gradient-to-r px-4 py-3 text-left text-xs font-bold text-white shadow-md transition-all duration-200 hover:-translate-y-1 hover:shadow-lg ${action.className}`}
+              >
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/25">
+                  {action.icon}
+                </span>
+                <span className="block">{action.label}</span>
+              </button>
+            ))}
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+};
+
+
+// FINAL VERSION
+// Monitoring Map ditempatkan paling atas
+// Statistik double dihapus pada bagian bawah
 
 const Dashboard = () => {
-  // ==========================================================
-  // DATA LAMA
-  // ==========================================================
+ 
+  const [
+    wasteTypes,
+    setWasteTypes,
+  ] = useState([]);
 
-  const [wasteTypes, setWasteTypes] = useState([]);
-  const [machines, setMachines] = useState([]);
+  const [
+    machines,
+    setMachines,
+  ] = useState([]);
 
-  // USER TETAP MENGGUNAKAN LOGIKA LAMA
-  const [users, setUsers] = useState([]);
+const [
+  totalUsers,
+  setTotalUsers,
+] = useState(0);
 
-  // ==========================================================
-  // DASHBOARD STATISTICS
-  // ==========================================================
+  
+  const [
+    summary,
+    setSummary,
+  ] = useState({});
 
-  const [summary, setSummary] = useState({});
-  const [carbonData, setCarbonData] = useState([]);
+  
+  const [
+    carbonData,
+    setCarbonData,
+  ] = useState([]);
 
-  // ==========================================================
-  // STATE
-  // ==========================================================
+  
+  const [
+    loading,
+    setLoading,
+  ] = useState(true);
 
-  const [loading, setLoading] = useState(true);
-  const [zoomLevel, setZoomLevel] = useState(13);
+  const [
+    mapCenter,
+    setMapCenter,
+  ] = useState(BANDUNG_CENTER);
 
-  // Periode statistik
-  const [period, setPeriod] = useState("month");
+  const [
+    period,
+    setPeriod,
+  ] = useState(
+    "month"
+  );
 
-  // ==========================================================
-  // FETCH DATA
-  // ==========================================================
-
+  
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
+    const fetchData =
+      async () => {
+        try {
+          setLoading(
+            true
+          );
 
-        const [
-          resWaste,
-          resMachines,
-          resUsers,
-          resSummary,
-          resCarbon,
-        ] = await Promise.all([
-          // ====================================================
-          // DATA LAMA
-          // ====================================================
-
-          api.get("/waste-types/"),
-
-          api.get("/machines/"),
-
-          // USER TETAP SEPERTI DASHBOARD SEBELUMNYA
-          api.get("/admin/users/"),
-
-          // ====================================================
-          // DASHBOARD BARU
-          // ====================================================
-
-          api.get("/admin/dashboard/summary", {
-            params: {
-              period,
-            },
-          }),
-
-          api.get("/admin/dashboard/carbon", {
-            params: {
-              period,
-              granularity: "day",
-              days:
-                period === "week"
-                  ? 7
-                  : period === "year"
-                  ? 365
-                  : 30,
-            },
-          }),
-        ]);
-
-        // ====================================================
-        // WASTE TYPES
-        // ====================================================
-
-        const wasteData = extractArray(resWaste);
-
-        setWasteTypes(wasteData);
-
-        // ====================================================
-        // MACHINES
-        // ====================================================
-
-        const machineData = extractArray(resMachines);
-
-        setMachines(machineData);
-
-        // ====================================================
-        // USERS
-        // LOGIKA SAMA DENGAN DASHBOARD LAMA
-        // ====================================================
-
-        const userData = extractArray(resUsers);
-
-        setUsers(userData);
-
-        console.log("USERS:", userData);
-        console.log("TOTAL USERS:", userData.length);
-
-        // ====================================================
-        // SUMMARY
-        // ====================================================
-
-        const summaryData = extractData(resSummary) || {};
-
-        console.log("DASHBOARD SUMMARY:", summaryData);
-
-        setSummary(summaryData);
-
-        // ====================================================
-        // CARBON
-        // ====================================================
-
-        const carbonResponse = extractData(resCarbon);
-
-        console.log("CARBON RESPONSE:", carbonResponse);
-
-        let carbonItems = [];
-
-        // Response langsung array
-        if (Array.isArray(carbonResponse)) {
-          carbonItems = carbonResponse;
-        }
-
-        // Response object
-        else if (carbonResponse) {
-          carbonItems =
-            carbonResponse.trend ||
-            carbonResponse.trends ||
-            carbonResponse.series ||
-            carbonResponse.points ||
-            carbonResponse.items ||
-            carbonResponse.data ||
-            [];
-        }
-
-        if (!Array.isArray(carbonItems)) {
-          carbonItems = [];
-        }
-
-        // ====================================================
-        // NORMALISASI DATA CARBON UNTUK RECHARTS
-        // ====================================================
-
-        const normalizedCarbon = carbonItems.map(
-          (item, index) => {
-            const rawDate =
-              item.date ||
-              item.name ||
-              item.label ||
-              item.period ||
-              item.bucket ||
-              item.createdAt ||
-              "";
-
-            let label = rawDate;
-
-            // Kalau date valid → buat format Indonesia
-            if (rawDate) {
-              const date = new Date(rawDate);
-
-              if (!Number.isNaN(date.getTime())) {
-                if (period === "year") {
-                  label = date.toLocaleDateString(
-                    "id-ID",
-                    {
-                      month: "short",
-                    }
-                  );
-                } else {
-                  label = date.toLocaleDateString(
-                    "id-ID",
-                    {
-                      day: "2-digit",
-                      month: "short",
-                    }
-                  );
-                }
-              }
-            }
-
-            return {
-              name: label || `${index + 1}`,
-
-              reduction: Number(
-                item.reduction ??
-                  item.co2 ??
-                  item.co2e ??
-                  item.value ??
-                  item.total ??
-                  item.totalCo2 ??
-                  item.totalCO2 ??
-                  item.totalKgCO2e ??
-                  item.carbonReduction ??
-                  0
+          const [
+            resWaste,
+            resMachines,
+            resUsers,
+            resSummary,
+            resCarbon,
+          ] =
+            await Promise.all([
+              
+              api.get(
+                "/waste-types/"
               ),
-            };
+
+             
+              api.get(
+                "/machines/"
+              ),
+
+             
+              api.get(
+                "/admin/users/",
+                {
+                  params: {
+                    page:
+                      1,
+
+                    limit:
+                      1000,
+                  },
+                }
+              ),
+
+             
+              api.get(
+                "/admin/dashboard/summary",
+                {
+                  params: {
+                    period,
+                  },
+                }
+              ),
+
+              api.get(
+                "/admin/dashboard/carbon",
+                {
+                  params: {
+                    period,
+
+                    granularity:
+                      "day",
+
+                    days:
+                      period ===
+                      "week"
+                        ? 7
+                        : period ===
+                          "year"
+                        ? 365
+                        : 30,
+                  },
+                }
+              ),
+            ]);
+
+         
+          const wasteData =
+            extractArray(
+              resWaste
+            );
+
+          setWasteTypes(
+            wasteData
+          );
+
+          const machineData =
+            extractArray(
+              resMachines
+            );
+
+          setMachines(
+            machineData
+          );
+
+          const firstMachineWithLocation = machineData.find((machine) => {
+            const latitude = Number.parseFloat(
+              machine.latitude ?? machine.lat
+            );
+            const longitude = Number.parseFloat(
+              machine.longitude ?? machine.lng
+            );
+            return !Number.isNaN(latitude) && !Number.isNaN(longitude);
+          });
+
+          if (firstMachineWithLocation) {
+            setMapCenter([
+              Number.parseFloat(
+                firstMachineWithLocation.latitude ?? firstMachineWithLocation.lat
+              ),
+              Number.parseFloat(
+                firstMachineWithLocation.longitude ?? firstMachineWithLocation.lng
+              ),
+            ]);
           }
-        );
 
-        console.log(
-          "NORMALIZED CARBON:",
-          normalizedCarbon
-        );
+const total =
+  resUsers?.data?.pagination?.total ??
+  resUsers?.data?.meta?.total ??
+  resUsers?.data?.data?.pagination?.total ??
+  resUsers?.data?.total ??
+  0;
 
-        setCarbonData(normalizedCarbon);
-      } catch (error) {
-        console.error(
-          "Dashboard Fetch Error:",
-          error?.response?.data || error
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
+
+          setTotalUsers(total);
+
+          const summaryData =
+            extractData(
+              resSummary
+            ) || {};
+
+          setSummary(
+            summaryData
+          );
+
+          
+          const carbonResponse =
+            extractData(
+              resCarbon
+            );
+
+          let carbonItems =
+            [];
+
+          if (
+            Array.isArray(
+              carbonResponse
+            )
+          ) {
+            carbonItems =
+              carbonResponse;
+          } else if (
+            carbonResponse &&
+            typeof carbonResponse ===
+              "object"
+          ) {
+            carbonItems =
+              carbonResponse.trend ??
+              carbonResponse.trends ??
+              carbonResponse.series ??
+              carbonResponse.points ??
+              carbonResponse.items ??
+              carbonResponse.data ??
+              [];
+          }
+
+          if (
+            !Array.isArray(
+              carbonItems
+            )
+          ) {
+            carbonItems =
+              [];
+          }
+
+         
+          const normalizedCarbon =
+            carbonItems.map(
+              (
+                item,
+                index
+              ) => {
+                const rawDate =
+                  item.date ??
+                  item.name ??
+                  item.label ??
+                  item.period ??
+                  item.bucket ??
+                  item.createdAt ??
+                  "";
+
+                let label =
+                  rawDate;
+
+                if (
+                  rawDate
+                ) {
+                  const date =
+                    new Date(
+                      rawDate
+                    );
+
+                  if (
+                    !Number.isNaN(
+                      date.getTime()
+                    )
+                  ) {
+                    if (
+                      period ===
+                      "year"
+                    ) {
+                      label =
+                        date.toLocaleDateString(
+                          "id-ID",
+                          {
+                            month:
+                              "short",
+                          }
+                        );
+                    } else {
+                      label =
+                        date.toLocaleDateString(
+                          "id-ID",
+                          {
+                            day:
+                              "2-digit",
+
+                            month:
+                              "short",
+                          }
+                        );
+                    }
+                  }
+                }
+
+                const reduction =
+                  toNumber(
+                    item.reduction ??
+                      item.co2 ??
+                      item.co2e ??
+                      item.value ??
+                      item.total ??
+                      item.totalCo2 ??
+                      item.totalCO2 ??
+                      item.totalKgCO2e ??
+                      item.carbonReduction ??
+                      item.carbonReductionKg ??
+                      0
+                  );
+
+                return {
+                  name:
+                    label ||
+                    `${index + 1}`,
+
+                  reduction,
+                };
+              }
+            );
+
+          setCarbonData(
+            normalizedCarbon
+          );
+        } catch (
+          error
+        ) {
+          console.error(
+            "DASHBOARD FETCH ERROR:",
+            error
+          );
+
+          console.error(
+            "DASHBOARD ERROR RESPONSE:",
+            error
+              ?.response
+              ?.data
+          );
+        } finally {
+          setLoading(
+            false
+          );
+        }
+      };
 
     fetchData();
   }, [period]);
 
-  // ==========================================================
-  // WASTE COLLECTED
-  // ==========================================================
-
-  /*
-    Mendukung beberapa kemungkinan response backend.
-
-    Contoh:
-    wasteCollected: {
-      value: 12.5,
-      changePercent: 80
-    }
-
-    atau:
-
-    wasteCollected: 12.5
-  */
-
+  
   const wasteCollected =
-    summary?.wasteCollected?.value ??
-    summary?.wasteCollected?.total ??
-    summary?.wasteCollected ??
-    summary?.totalWasteKg ??
-    summary?.totalWaste ??
-    summary?.wasteKg ??
-    summary?.waste ??
-    0;
-
-  const wasteChange =
-    summary?.wasteCollected?.changePercent ??
-    summary?.wasteCollected?.change ??
-    summary?.wasteChangePercent ??
-    summary?.wasteChange ??
-    null;
-
-  // ==========================================================
-  // MAP ICON
-  // ==========================================================
-
-  const getDynamicIcon = (currentZoom) => {
-    const baseSize = 90;
-
-    const dynamicSize = Math.max(
-      35,
-      baseSize *
-        Math.pow(
-          1.22,
-          currentZoom - 13
-        )
+    getWasteCollected(
+      summary
     );
 
-    return new L.Icon({
-      iconUrl: pinIcon,
+  const wasteChange =
+    getWasteChange(
+      summary
+    );
 
-      iconSize: [
-        dynamicSize,
-        dynamicSize,
-      ],
-
-      iconAnchor: [
-        dynamicSize / 2,
-        dynamicSize,
-      ],
-
-      popupAnchor: [
-        0,
-        -dynamicSize,
-      ],
-    });
-  };
-
-  // ==========================================================
-  // LOADING
-  // ==========================================================
-
-  if (loading) {
+ 
+  
+  if (
+    loading
+  ) {
     return (
-      <div className="h-screen w-full flex items-center justify-center bg-white">
-        <Typography className="animate-pulse font-black text-blue-600 uppercase italic">
+      <div className="flex h-screen w-full items-center justify-center bg-white">
+
+        <Typography className="animate-pulse font-black uppercase italic text-blue-600">
           Syncing EcoCash Data...
         </Typography>
+
       </div>
     );
   }
 
-  // ==========================================================
-  // UI
-  // ==========================================================
-
   return (
     <MainLayout>
-      <div className="space-y-6">
+
+      <div className="space-y-6 rounded-[2rem] bg-gradient-to-b from-slate-50/80 via-white to-emerald-50/30 p-1 md:p-2">
 
         {/* ====================================================
-            HEADER + FILTER
+            HEADER
         ==================================================== */}
 
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div className="flex flex-col justify-between gap-3 md:flex-row md:items-center">
+
           <div>
+
             <Typography
               variant="h4"
               className="font-black text-blue-gray-900"
@@ -509,31 +942,44 @@ const Dashboard = () => {
               Dashboard
             </Typography>
 
-            <Typography className="text-xs text-gray-500 font-medium">
-              EcoCash Smart Circular Waste Platform
+            <Typography className="text-xs font-medium text-gray-500">
+              Ringkasan aktivitas seluruh instansi dan unit EcoCash
             </Typography>
+
           </div>
 
+          {/* =================================================
+              PERIOD
+          ================================================= */}
+
           <select
-            value={period}
-            onChange={(e) =>
-              setPeriod(e.target.value)
+            value={
+              period
+            }
+            onChange={(
+              event
+            ) =>
+              setPeriod(
+                event.target
+                  .value
+              )
             }
             className="
-              bg-white
+              cursor-pointer
+              rounded-xl
               border
               border-gray-200
-              rounded-xl
+              bg-white
               px-4
               py-2.5
               text-xs
               font-bold
               text-blue-gray-700
-              outline-none
               shadow-sm
-              cursor-pointer
+              outline-none
             "
           >
+
             <option value="week">
               Minggu Ini
             </option>
@@ -545,20 +991,22 @@ const Dashboard = () => {
             <option value="year">
               Tahun Ini
             </option>
+
           </select>
+
         </div>
 
         {/* ====================================================
-            SECTION 1
-            MONITORING MAP
+            MAP
         ==================================================== */}
 
         <section>
-          <div className="flex items-center gap-2 border-l-4 border-blue-500 pl-3 mb-4">
+
+          <div className="mb-4 flex items-center gap-2 border-l-4 border-blue-500 pl-3">
 
             <Typography
               variant="h5"
-              className="font-bold text-blue-gray-900 uppercase italic"
+              className="font-black text-blue-gray-900"
             >
               Monitoring Unit Kontainer AI-IoT
             </Typography>
@@ -567,28 +1015,32 @@ const Dashboard = () => {
 
           <Card
             className="
-              w-full
-              h-[400px]
-              rounded-2xl
-              overflow-hidden
-              border-2
-              border-white
-              shadow-lg
-              bg-gray-100
-              z-0
               relative
+              z-0
+              h-[420px]
+              w-full
+              overflow-hidden
+              rounded-[1.75rem]
+              border
+              border-gray-100
+              bg-gray-100
+              shadow-[0_18px_55px_rgba(15,23,42,0.10)]
             "
           >
 
             <MapContainer
-              center={[
-                -7.3333,
-                108.2225,
-              ]}
-              zoom={13}
+              center={
+                mapCenter
+              }
+              zoom={
+                13
+              }
               style={{
-                width: "100%",
-                height: "100%",
+                width:
+                  "100%",
+
+                height:
+                  "100%",
               }}
             >
 
@@ -598,8 +1050,8 @@ const Dashboard = () => {
               />
 
               <MapController
-                setZoomLevel={
-                  setZoomLevel
+                mapCenter={
+                  mapCenter
                 }
               />
 
@@ -607,226 +1059,205 @@ const Dashboard = () => {
                   MACHINE MARKERS
               ================================================= */}
 
-              {machines.map((m) => {
-                const lat = parseFloat(
-                  m.latitude
-                );
+              {machines.map(
+                (
+                  machine
+                ) => {
+                  const lat =
+                    parseFloat(
+                      machine.latitude ?? machine.lat
+                    );
 
-                const lng = parseFloat(
-                  m.longitude
-                );
+                  const lng =
+                    parseFloat(
+                      machine.longitude ?? machine.lng
+                    );
 
-                if (
-                  Number.isNaN(lat) ||
-                  Number.isNaN(lng)
-                ) {
-                  return null;
-                }
+                  if (
+                    Number.isNaN(
+                      lat
+                    ) ||
+                    Number.isNaN(
+                      lng
+                    )
+                  ) {
+                    return null;
+                  }
 
-                return (
-                  <MarkerWithFlyTo
-                    key={m.id}
-                    position={[
-                      lat,
-                      lng,
-                    ]}
-                    icon={getDynamicIcon(
-                      zoomLevel
-                    )}
-                  >
-
-                    <Popup
-                      minWidth={200}
-                      className="custom-popup"
+                  return (
+                    <MarkerWithFlyTo
+                      key={
+                        machine.id
+                      }
+                      position={[
+                        lat,
+                        lng,
+                      ]}
+                      icon={machineIcon}
                     >
 
-                      <div className="p-1">
+                      <Popup
+                        minWidth={
+                          200
+                        }
+                        className="custom-popup"
+                      >
 
-                        <Typography className="font-black text-blue-600 text-[10px] uppercase">
-                          {m.machineCode ||
-                            m.code ||
-                            "-"}
-                        </Typography>
+                        <div className="p-1">
 
-                        <Typography className="font-bold text-blue-gray-900 text-sm">
-                          {m.name ||
-                            "EcoCash Container"}
-                        </Typography>
+                          <Typography className="text-[10px] font-black uppercase text-blue-600">
 
-                        <Typography className="text-[10px] text-gray-500 mb-2 italic">
-                          {m.placeName ||
-                            m.address ||
-                            "-"}
-                        </Typography>
+                            {machine.machineCode ||
+                              machine.code ||
+                              "-"}
 
-                        <div className="space-y-1 mt-2 border-t pt-2">
+                          </Typography>
 
-                          <div className="flex justify-between text-[10px] font-bold">
+                          <Typography className="text-sm font-bold text-blue-gray-900">
 
-                            <span>
-                              Kapasitas
-                            </span>
+                            {machine.name ||
+                              "EcoCash Container"}
 
-                            <span>
-                              {m.fillPercentage ||
-                                0}
-                              %
-                            </span>
+                          </Typography>
+
+                          <Typography className="mb-2 text-[10px] italic text-gray-500">
+
+                            {machine.placeName ||
+                              machine.address ||
+                              "-"}
+
+                          </Typography>
+
+                          <div className="mt-2 space-y-1 border-t pt-2">
+
+                            <div className="flex justify-between text-[10px] font-bold">
+
+                              <span>
+                                Kapasitas
+                              </span>
+
+                              <span>
+
+                                {toNumber(
+                                  machine.fillPercentage,
+                                  0
+                                )}
+
+                                %
+
+                              </span>
+
+                            </div>
+
+                            <Progress
+                              value={
+                                toNumber(
+                                  machine.fillPercentage,
+                                  0
+                                )
+                              }
+                              size="sm"
+                              color={
+                                toNumber(
+                                  machine.fillPercentage,
+                                  0
+                                ) >
+                                80
+                                  ? "red"
+                                  : "blue"
+                              }
+                            />
 
                           </div>
 
-                          <Progress
-                            value={
-                              Number(
-                                m.fillPercentage
-                              ) || 0
-                            }
-                            size="sm"
-                            color={
-                              Number(
-                                m.fillPercentage
-                              ) > 80
-                                ? "red"
-                                : "blue"
-                            }
-                          />
-
                         </div>
 
-                      </div>
+                      </Popup>
 
-                    </Popup>
-
-                  </MarkerWithFlyTo>
-                );
-              })}
+                    </MarkerWithFlyTo>
+                  );
+                }
+              )}
 
             </MapContainer>
 
             {/* =================================================
-                LIVE LABEL
+                LIVE
             ================================================= */}
 
-            <div className="absolute top-4 right-4 z-[1000]">
+            <div className="absolute right-4 top-4 z-[1000]">
 
               <Chip
                 value="LIVE MONITORING"
-                className="bg-blue-600 px-4 shadow-lg text-[10px] font-black"
+                className="rounded-full bg-emerald-500 px-4 py-2 text-[10px] font-black tracking-wider shadow-lg"
               />
 
             </div>
 
           </Card>
+
         </section>
 
-        {/* ====================================================
-            SECTION 2
-            STATISTIC CARDS
-        ==================================================== */}
+        <DashboardOverview
+          summary={summary}
+          machines={machines}
+          totalUsers={totalUsers}
+          wasteTypes={wasteTypes}
+        />
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-
-          {/* WASTE */}
-
-          <StatCard
-            title="Waste Collected"
-            value={`${formatNumber(
-              wasteCollected
-            )} Kg`}
-            subValue={
-              wasteChange !== null
-                ? formatChange(
-                    wasteChange
-                  )
-                : "TOTAL WASTE COLLECTED"
-            }
-            color="bg-green-500"
-            icon={
-              <ScaleIcon className="h-6 w-6 text-white" />
-            }
-          />
-
-          {/* =================================================
-              USERS
-
-              PENTING:
-              Tetap menggunakan users.length
-              seperti kode dashboard lama.
-          ================================================= */}
-
-          <StatCard
-            title="Users Active"
-            value={users.length}
-            subValue="TOTAL SUPERVISED"
-            color="bg-blue-500"
-            icon={
-              <UserGroupIcon className="h-6 w-6 text-white" />
-            }
-          />
-
-          {/* =================================================
-              CONTAINERS
-
-              Tetap menggunakan machines.length
-              seperti kode dashboard lama.
-          ================================================= */}
-
-          <StatCard
-            title="Containers"
-            value={machines.length}
-            subValue="UNIT AKTIF"
-            color="bg-teal-500"
-            icon={
-              <TrashIcon className="h-6 w-6 text-white" />
-            }
-          />
-
-        </div>
 
         {/* ====================================================
-            SECTION 3
-            WASTE PRICES & CARBON
+            PRICE + CARBON
         ==================================================== */}
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-10">
+        <div className="grid grid-cols-1 gap-6 pb-10 lg:grid-cols-2">
 
           {/* =================================================
-              WASTE PRICES
+              WASTE PRICE
           ================================================= */}
 
-          <Card className="p-6 border border-gray-100 shadow-sm rounded-[2rem] bg-white">
+          <Card className="rounded-[2rem] border border-gray-100 bg-white p-6 shadow-sm">
 
-            <Typography className="font-black text-blue-900 mb-4 text-xs uppercase italic tracking-widest">
+            <Typography className="mb-4 text-xs font-black uppercase italic tracking-widest text-blue-900">
               Waste Prices
             </Typography>
 
             <div className="space-y-3">
 
-              {wasteTypes.length > 0 ? (
-                wasteTypes.map((t) => {
+              {wasteTypes.length >
+              0 ? (
 
-                  const price =
-                    t.price_per_kg ??
-                    t.pricePerKg ??
-                    t.price ??
-                    0;
+                wasteTypes.map(
+                  (
+                    type
+                  ) => {
+                    const price =
+                      type.price_per_kg ??
+                      type.pricePerKg ??
+                      type.price ??
+                      0;
 
-                  return (
-                    <PriceRow
-                      key={t.id}
-                      label={
-                        t.name ||
-                        t.type ||
-                        "-"
-                      }
-                      price={`Rp.${formatNumber(
-                        price,
-                        0
-                      )}/kg`}
-                    />
-                  );
-                })
+                    return (
+                      <PriceRow
+                        key={
+                          type.id
+                        }
+                        label={
+                          type.name ||
+                          type.type ||
+                          "-"
+                        }
+                        price={`Rp.${formatNumber(
+                          price,
+                          0
+                        )}/kg`}
+                      />
+                    );
+                  }
+                )
+
               ) : (
+
                 <div className="py-10 text-center">
 
                   <Typography className="text-xs font-bold text-gray-400">
@@ -834,6 +1265,7 @@ const Dashboard = () => {
                   </Typography>
 
                 </div>
+
               )}
 
             </div>
@@ -841,20 +1273,20 @@ const Dashboard = () => {
           </Card>
 
           {/* =================================================
-              CARBON REDUCTION
+              CARBON
           ================================================= */}
 
-          <Card className="p-6 border border-gray-100 shadow-sm bg-white rounded-[2rem]">
+          <Card className="rounded-[2rem] border border-gray-100 bg-white p-6 shadow-sm">
 
-            <div className="flex items-center justify-between mb-2">
+            <div className="mb-2 flex items-center justify-between">
 
               <div>
 
-                <Typography className="font-black text-blue-900 text-xs uppercase italic tracking-widest">
+                <Typography className="text-xs font-black uppercase italic tracking-widest text-blue-900">
                   Carbon Reduction Trend
                 </Typography>
 
-                <Typography className="text-[10px] text-gray-400 font-medium mt-1">
+                <Typography className="mt-1 text-[10px] font-medium text-gray-400">
                   KG CO₂e AVOIDED
                 </Typography>
 
@@ -869,9 +1301,10 @@ const Dashboard = () => {
 
             </div>
 
-            <div className="w-full h-64">
+            <div className="h-64 w-full">
 
-              {carbonData.length > 0 ? (
+              {carbonData.length >
+              0 ? (
 
                 <ResponsiveContainer
                   width="100%"
@@ -879,7 +1312,9 @@ const Dashboard = () => {
                 >
 
                   <AreaChart
-                    data={carbonData}
+                    data={
+                      carbonData
+                    }
                   >
 
                     <defs>
@@ -895,13 +1330,17 @@ const Dashboard = () => {
                         <stop
                           offset="5%"
                           stopColor="#10b981"
-                          stopOpacity={0.3}
+                          stopOpacity={
+                            0.3
+                          }
                         />
 
                         <stop
                           offset="95%"
                           stopColor="#10b981"
-                          stopOpacity={0}
+                          stopOpacity={
+                            0
+                          }
                         />
 
                       </linearGradient>
@@ -910,40 +1349,63 @@ const Dashboard = () => {
 
                     <CartesianGrid
                       strokeDasharray="3 3"
-                      vertical={false}
+                      vertical={
+                        false
+                      }
                       stroke="#f1f5f9"
                     />
 
                     <XAxis
                       dataKey="name"
-                      axisLine={false}
-                      tickLine={false}
+                      axisLine={
+                        false
+                      }
+                      tickLine={
+                        false
+                      }
                       tick={{
-                        fontSize: 10,
-                        fontWeight: "bold",
+                        fontSize:
+                          10,
+
+                        fontWeight:
+                          "bold",
                       }}
                     />
 
                     <YAxis
-                      axisLine={false}
-                      tickLine={false}
+                      axisLine={
+                        false
+                      }
+                      tickLine={
+                        false
+                      }
                       tick={{
-                        fontSize: 10,
-                        fontWeight: "bold",
+                        fontSize:
+                          10,
+
+                        fontWeight:
+                          "bold",
                       }}
                     />
 
                     <Tooltip
-                      formatter={(value) => [
+                      formatter={(
+                        value
+                      ) => [
                         `${formatNumber(
-                          value
+                          value,
+                          2
                         )} kg CO₂e`,
+
                         "Carbon Reduction",
                       ]}
                       contentStyle={{
                         borderRadius:
                           "15px",
-                        border: "none",
+
+                        border:
+                          "none",
+
                         boxShadow:
                           "0 10px 15px -3px rgba(0,0,0,0.1)",
                       }}
@@ -953,7 +1415,9 @@ const Dashboard = () => {
                       type="monotone"
                       dataKey="reduction"
                       stroke="#10b981"
-                      strokeWidth={4}
+                      strokeWidth={
+                        4
+                      }
                       fill="url(#colorGreen)"
                     />
 
@@ -963,13 +1427,13 @@ const Dashboard = () => {
 
               ) : (
 
-                <div className="h-full flex flex-col items-center justify-center">
+                <div className="flex h-full flex-col items-center justify-center">
 
-                  <Typography className="font-bold text-gray-400 text-sm">
+                  <Typography className="text-sm font-bold text-gray-400">
                     Belum ada data karbon
                   </Typography>
 
-                  <Typography className="text-[10px] text-gray-400 mt-1">
+                  <Typography className="mt-1 text-[10px] text-gray-400">
                     Data karbon akan muncul setelah terdapat transaksi sampah.
                   </Typography>
 
@@ -984,69 +1448,10 @@ const Dashboard = () => {
         </div>
 
       </div>
+
     </MainLayout>
   );
 };
-
-// ============================================================
-// STAT CARD
-// ============================================================
-
-const StatCard = ({
-  title,
-  value,
-  subValue,
-  icon,
-  color,
-}) => (
-  <Card
-    className="
-      p-5
-      flex
-      flex-row
-      items-center
-      justify-between
-      rounded-[1.5rem]
-      bg-white
-      border
-      border-gray-100
-      shadow-sm
-    "
-  >
-
-    <div className="min-w-0">
-
-      <Typography className="text-gray-500 text-[10px] font-black uppercase tracking-tighter">
-        {title}
-      </Typography>
-
-      <Typography
-        variant="h3"
-        className="text-blue-900 font-black"
-      >
-        {value}
-      </Typography>
-
-      <Typography className="text-blue-500 text-[9px] font-black italic">
-        {subValue}
-      </Typography>
-
-    </div>
-
-    <div
-      className={`
-        ${color}
-        p-4
-        rounded-2xl
-        shadow-lg
-        ml-3
-      `}
-    >
-      {icon}
-    </div>
-
-  </Card>
-);
 
 // ============================================================
 // PRICE ROW
@@ -1056,9 +1461,9 @@ const PriceRow = ({
   label,
   price,
 }) => (
-  <div className="flex items-center justify-between py-2.5 border-b border-gray-50 last:border-0 px-1">
+  <div className="flex items-center justify-between border-b border-gray-50 px-1 py-2.5 last:border-0">
 
-    <Typography className="text-[11px] font-bold text-gray-700 uppercase">
+    <Typography className="text-[11px] font-bold uppercase text-gray-700">
       {label}
     </Typography>
 
@@ -1068,5 +1473,9 @@ const PriceRow = ({
 
   </div>
 );
+
+// ============================================================
+// EXPORT
+// ============================================================
 
 export default Dashboard;

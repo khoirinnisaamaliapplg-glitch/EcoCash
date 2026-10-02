@@ -33,6 +33,9 @@ import WasteManagementIndex from "./SuperAdmin/WasteManagement/index";
 import OrganizationIndex from "./SuperAdmin/organization/index";
 import VoucherManagement from "./SuperAdmin/VoucherManagement";
 import FoundationIndex from "./SuperAdmin/Foundation/index";
+import NewsIndex from "./SuperAdmin/News/index";
+import BotManagementIndex from "./SuperAdmin/BotManagement/BotIndex";
+import FaqManagementIndex from "./SuperAdmin/FaqManagement/FaqIndex"; 
 
 // ============================================================
 // ADMIN AREA
@@ -70,6 +73,7 @@ import FoundationProfile from "./AdminFoundation/profile/index";
 
 import OperatorDashboard from "./Operator/dashboard";
 import OperatorSmartContainer from "./Operator/SmartContainer/index";
+import OperatorScheduling from "./Operator/Scheduling/index";
 import OperatorSystemSetting from "./Operator/SystemSettingIndex";
 import OperatorProfile from "./Operator/Profile/index";
 
@@ -182,6 +186,18 @@ function App() {
           <Route
             path="/foundations"
             element={<FoundationIndex />}
+          />
+          <Route
+            path="/news"
+            element={<NewsIndex />}
+          />
+          <Route
+            path="/bot-management"
+            element={<BotManagementIndex />}
+          />
+          <Route
+            path="/faq-management"
+            element={<FaqManagementIndex />}
           />
         </Route>
 
@@ -324,6 +340,10 @@ function App() {
           <Route
             path="/operator/smart-container"
             element={<OperatorSmartContainer />}
+          />
+          <Route
+            path="/operator/scheduling"
+            element={<OperatorScheduling />}
           />
 
           <Route

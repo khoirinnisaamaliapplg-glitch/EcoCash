@@ -37,6 +37,12 @@ import api from "../../utils/api";
 import MainLayout from "../MainLayout";
 
 // ============================================================
+// CONFIG
+// ============================================================
+
+const PAGE_LIMIT = 10;
+
+// ============================================================
 // DEFAULT FORM
 // ============================================================
 
@@ -166,8 +172,7 @@ const buildAuthConfig = (
   params
 ) => ({
   headers: {
-    Authorization:
-      `Bearer ${token}`,
+    Authorization: `Bearer ${token}`,
   },
 
   ...(params
@@ -176,6 +181,10 @@ const buildAuthConfig = (
       }
     : {}),
 });
+
+// ============================================================
+// EXTRACT USERS
+// ============================================================
 
 const extractUsers = (
   response
@@ -196,8 +205,99 @@ const extractUsers = (
     return response.data.data;
   }
 
+  if (
+    Array.isArray(
+      response?.data?.data?.items
+    )
+  ) {
+    return response.data.data.items;
+  }
+
+  if (
+    Array.isArray(
+      response?.data?.users
+    )
+  ) {
+    return response.data.users;
+  }
+
   return [];
 };
+
+// ============================================================
+// EXTRACT PAGINATION
+// ============================================================
+
+const extractPagination = (
+  response,
+  currentPage
+) => {
+  const body =
+    response?.data || {};
+
+  const pagination =
+    body.pagination ||
+    body.meta ||
+    body?.data?.pagination ||
+    body?.data?.meta ||
+    {};
+
+  const total =
+    Number(
+      pagination.totalItems ??
+        pagination.total ??
+        pagination.count ??
+        body.totalItems ??
+        body.total ??
+        0
+    ) || 0;
+
+  const limit =
+    Number(
+      pagination.limit ??
+        pagination.pageSize ??
+        PAGE_LIMIT
+    ) || PAGE_LIMIT;
+
+  const page =
+    Number(
+      pagination.page ??
+        pagination.currentPage ??
+        currentPage
+    ) || currentPage;
+
+  let totalPages =
+    Number(
+      pagination.totalPages ??
+        pagination.pages ??
+        0
+    ) || 0;
+
+  if (
+    totalPages <= 0 &&
+    total > 0
+  ) {
+    totalPages =
+      Math.ceil(
+        total / limit
+      );
+  }
+
+  return {
+    total,
+    limit,
+    page,
+    totalPages:
+      Math.max(
+        totalPages,
+        1
+      ),
+  };
+};
+
+// ============================================================
+// EXTRACT CREDENTIAL
+// ============================================================
 
 const extractCredentials = (
   response
@@ -310,7 +410,7 @@ const getActiveQrCredential = (
 };
 
 // ============================================================
-// HTML ESCAPE UNTUK PRINT
+// HTML ESCAPE
 // ============================================================
 
 const escapeHtml = (
@@ -379,29 +479,47 @@ const OrganizationUsers = () => {
   // USER
   // ==========================================================
 
-  const [users, setUsers] =
-    useState([]);
+  const [
+    users,
+    setUsers,
+  ] = useState([]);
 
-  const [loading, setLoading] =
-    useState(true);
+  const [
+    loading,
+    setLoading,
+  ] = useState(true);
 
   const [
     submitting,
     setSubmitting,
   ] = useState(false);
 
-  const [search, setSearch] =
-    useState("");
+  // ==========================================================
+  // SEARCH
+  // ==========================================================
 
-  const [page, setPage] =
-    useState(1);
+  const [
+    search,
+    setSearch,
+  ] = useState("");
 
-  const [meta, setMeta] =
-    useState({
-      total: 0,
-      totalPages: 1,
-      limit: 10,
-    });
+  // ==========================================================
+  // PAGINATION
+  // ==========================================================
+
+  const [
+    page,
+    setPage,
+  ] = useState(1);
+
+  const [
+    meta,
+    setMeta,
+  ] = useState({
+    total: 0,
+    totalPages: 1,
+    limit: PAGE_LIMIT,
+  });
 
   // ==========================================================
   // MODAL
@@ -477,7 +595,7 @@ const OrganizationUsers = () => {
   );
 
   // ==========================================================
-  // LOGIN DATA
+  // LOGIN
   // ==========================================================
 
   const loggedInUser =
@@ -516,23 +634,21 @@ const OrganizationUsers = () => {
     null;
 
   const organizationId =
-    tokenUser
-      ?.organizationId ??
-    tokenUser
-      ?.organization?.id ??
-    loggedInUser
-      ?.organizationId ??
-    loggedInUser
-      ?.organization?.id ??
+    tokenUser?.organizationId ??
+    tokenUser?.organization?.id ??
+    loggedInUser?.organizationId ??
+    loggedInUser?.organization?.id ??
     null;
 
   const organizationName =
     loggedInUser
-      ?.organization?.name ||
+      ?.organization
+      ?.name ||
     loggedInUser
       ?.organizationName ||
     tokenUser
-      ?.organization?.name ||
+      ?.organization
+      ?.name ||
     (
       organizationId
         ? `Organization ${organizationId}`
@@ -573,7 +689,7 @@ const OrganizationUsers = () => {
     );
 
   // ==========================================================
-  // UPDATE CREDENTIAL USER DI STATE
+  // UPDATE USER CREDENTIAL STATE
   // ==========================================================
 
   const updateUserCredentials =
@@ -604,9 +720,7 @@ const OrganizationUsers = () => {
     );
 
   // ==========================================================
-  // GET CREDENTIAL PER USER
-  //
-  // GET /admin/credentials/users/{id}/credentials
+  // GET USER CREDENTIAL
   // ==========================================================
 
   const fetchUserCredentials =
@@ -622,11 +736,6 @@ const OrganizationUsers = () => {
             )
           );
 
-        console.log(
-          "GET USER CREDENTIAL:",
-          response?.data
-        );
-
         return extractCredentials(
           response
         );
@@ -635,9 +744,7 @@ const OrganizationUsers = () => {
     );
 
   // ==========================================================
-  // QR REFRESH
-  //
-  // POST /admin/credentials/users/:id/credentials/qr/refresh
+  // REFRESH QR
   // ==========================================================
 
   const refreshQrCredential =
@@ -654,11 +761,6 @@ const OrganizationUsers = () => {
             )
           );
 
-        console.log(
-          "QR REFRESH RESPONSE:",
-          response?.data
-        );
-
         return extractSingleData(
           response
         );
@@ -667,9 +769,7 @@ const OrganizationUsers = () => {
     );
 
   // ==========================================================
-  // GET ALL USERS
-  //
-  // GET /admin/users?includeCredentials=true
+  // FETCH USERS
   // ==========================================================
 
   const fetchUsers =
@@ -677,6 +777,13 @@ const OrganizationUsers = () => {
       async () => {
         if (!token) {
           setUsers([]);
+
+          setMeta({
+            total: 0,
+            totalPages: 1,
+            limit:
+              PAGE_LIMIT,
+          });
 
           setLoading(false);
 
@@ -724,41 +831,67 @@ const OrganizationUsers = () => {
                   includeCredentials:
                     true,
 
-                  page:
-                    1,
+                  // ==========================================
+                  // PAGINATION BACKEND
+                  // ==========================================
+
+                  page,
 
                   limit:
-                    1000,
+                    PAGE_LIMIT,
                 }
               )
             );
 
           console.log(
-            "GET USERS WITH CREDENTIALS:",
+            "GET USERS RESPONSE:",
             response?.data
           );
+
+          // ==================================================
+          // USER HASIL BACKEND
+          // ==================================================
 
           const result =
             extractUsers(
               response
             );
 
-          const filteredUsers =
-            result.filter(
-              (user) => {
-                if (
-                  user.role !==
-                  "REGULAR_USER"
-                ) {
-                  return false;
-                }
+          // ==================================================
+          // FILTER ROLE
+          // ==================================================
 
-                if (
-                  isSuperAdmin
-                ) {
-                  if (
-                    organizationId
-                  ) {
+          const regularUsers =
+            result.filter(
+              (user) =>
+                !user.role ||
+                user.role ===
+                  "REGULAR_USER"
+            );
+
+          // ==================================================
+          // FILTER ORGANIZATION
+          // ==================================================
+
+          const organizationUsers =
+            organizationId
+              ? regularUsers.filter(
+                  (
+                    user
+                  ) => {
+                    /*
+                     * Jika backend tidak mengembalikan
+                     * organizationId, jangan hilangkan user.
+                     */
+                    if (
+                      user.organizationId ===
+                        undefined ||
+                      user.organizationId ===
+                        null
+                    ) {
+                      return true;
+                    }
+
                     return (
                       Number(
                         user.organizationId
@@ -768,51 +901,37 @@ const OrganizationUsers = () => {
                       )
                     );
                   }
-
-                  return true;
-                }
-
-                if (
-                  organizationId
-                ) {
-                  return (
-                    Number(
-                      user.organizationId
-                    ) ===
-                    Number(
-                      organizationId
-                    )
-                  );
-                }
-
-                /*
-                 * Kalau organizationId
-                 * tidak ada di token admin,
-                 * percaya scope backend.
-                 */
-                return true;
-              }
-            );
+                )
+              : regularUsers;
 
           setUsers(
-            filteredUsers
+            organizationUsers
+          );
+
+          // ==================================================
+          // PAGINATION BACKEND
+          // ==================================================
+
+          const pagination =
+            extractPagination(
+              response,
+              page
+            );
+
+          console.log(
+            "PAGINATION:",
+            pagination
           );
 
           setMeta({
             total:
-              filteredUsers.length,
+              pagination.total,
 
             totalPages:
-              Math.max(
-                Math.ceil(
-                  filteredUsers.length /
-                    10
-                ),
-                1
-              ),
+              pagination.totalPages,
 
             limit:
-              10,
+              pagination.limit,
           });
         } catch (
           error
@@ -824,21 +943,18 @@ const OrganizationUsers = () => {
 
           console.error(
             "GET USERS RESPONSE:",
-            error?.response
+            error
+              ?.response
               ?.data
           );
 
           setUsers([]);
 
           setMeta({
-            total:
-              0,
-
-            totalPages:
-              1,
-
+            total: 0,
+            totalPages: 1,
             limit:
-              10,
+              PAGE_LIMIT,
           });
 
           toast.error(
@@ -856,6 +972,7 @@ const OrganizationUsers = () => {
       [
         token,
         search,
+        page,
         organizationId,
         isOrganizationAdmin,
         isSuperAdmin,
@@ -863,7 +980,7 @@ const OrganizationUsers = () => {
     );
 
   // ==========================================================
-  // FETCH USERS
+  // FETCH WITH DEBOUNCE
   // ==========================================================
 
   useEffect(() => {
@@ -879,25 +996,15 @@ const OrganizationUsers = () => {
   }, [fetchUsers]);
 
   // ==========================================================
-  // PAGINATION
+  // USER SUDAH DIPAGINATION BACKEND
   // ==========================================================
 
   const visibleUsers =
-    useMemo(() => {
-      const startIndex =
-        (page - 1) *
-        meta.limit;
+    users;
 
-      return users.slice(
-        startIndex,
-        startIndex +
-          meta.limit
-      );
-    }, [
-      users,
-      page,
-      meta.limit,
-    ]);
+  // ==========================================================
+  // PAGE VALIDATION
+  // ==========================================================
 
   useEffect(() => {
     if (
@@ -905,7 +1012,10 @@ const OrganizationUsers = () => {
       meta.totalPages
     ) {
       setPage(
-        meta.totalPages
+        Math.max(
+          meta.totalPages,
+          1
+        )
       );
     }
   }, [
@@ -940,8 +1050,11 @@ const OrganizationUsers = () => {
     } = event.target;
 
     setCreateForm(
-      (previous) => ({
+      (
+        previous
+      ) => ({
         ...previous,
+
         [name]:
           value,
       })
@@ -957,8 +1070,11 @@ const OrganizationUsers = () => {
     } = event.target;
 
     setEditForm(
-      (previous) => ({
+      (
+        previous
+      ) => ({
         ...previous,
+
         [name]:
           value,
       })
@@ -1114,11 +1230,6 @@ const OrganizationUsers = () => {
 
   // ==========================================================
   // OPEN QR
-  //
-  // 1. GET credential
-  // 2. kalau QR sudah ada -> tampil
-  // 3. kalau belum ada -> POST refresh
-  // 4. GET ulang bila perlu
   // ==========================================================
 
   const openQrModal =
@@ -1148,10 +1259,6 @@ const OrganizationUsers = () => {
       );
 
       try {
-        // ====================================================
-        // 1. CEK QR TERBARU
-        // ====================================================
-
         let credentials =
           await fetchUserCredentials(
             user.id
@@ -1161,10 +1268,6 @@ const OrganizationUsers = () => {
           findActiveQrCredential(
             credentials
           );
-
-        // ====================================================
-        // 2. QR SUDAH ADA
-        // ====================================================
 
         if (
           activeQr
@@ -1181,25 +1284,10 @@ const OrganizationUsers = () => {
           return;
         }
 
-        // ====================================================
-        // 3. BELUM ADA QR
-        //
-        // POST
-        // /admin/credentials/users/:id/credentials/qr/refresh
-        // ====================================================
-
-        console.log(
-          "QR belum ada. Menjalankan QR refresh..."
-        );
-
         const refreshed =
           await refreshQrCredential(
             user.id
           );
-
-        // ====================================================
-        // 4A. BACKEND LANGSUNG MENGEMBALIKAN CREDENTIAL
-        // ====================================================
 
         if (
           refreshed
@@ -1253,11 +1341,6 @@ const OrganizationUsers = () => {
           return;
         }
 
-        // ====================================================
-        // 4B. KALAU RESPONSE REFRESH TIDAK BERISI IDENTIFIER,
-        // GET ULANG CREDENTIAL
-        // ====================================================
-
         credentials =
           await fetchUserCredentials(
             user.id
@@ -1294,13 +1377,6 @@ const OrganizationUsers = () => {
         console.error(
           "OPEN QR ERROR:",
           error
-        );
-
-        console.error(
-          "OPEN QR RESPONSE:",
-          error
-            ?.response
-            ?.data
         );
 
         toast.error(
@@ -1400,10 +1476,6 @@ const OrganizationUsers = () => {
 
   // ==========================================================
   // CREATE USER
-  //
-  // 1. POST USER
-  // 2. POST QR REFRESH
-  // 3. GET USER includeCredentials
   // ==========================================================
 
   const handleCreateUser =
@@ -1466,10 +1538,6 @@ const OrganizationUsers = () => {
             ),
         };
 
-        // ====================================================
-        // 1. CREATE USER
-        // ====================================================
-
         const userResponse =
           await api.post(
             "/admin/users",
@@ -1478,11 +1546,6 @@ const OrganizationUsers = () => {
               token
             )
           );
-
-        console.log(
-          "CREATE USER RESPONSE:",
-          userResponse?.data
-        );
 
         const newUser =
           extractSingleData(
@@ -1493,23 +1556,13 @@ const OrganizationUsers = () => {
           !newUser?.id
         ) {
           throw new Error(
-            "User berhasil dibuat tetapi ID user tidak ditemukan pada response backend."
+            "User berhasil dibuat tetapi ID user tidak ditemukan."
           );
         }
 
-        // ====================================================
-        // 2. QR REFRESH USER BARU
-        // ====================================================
-
         try {
-          const qrResponse =
-            await refreshQrCredential(
-              newUser.id
-            );
-
-          console.log(
-            "AUTO QR REFRESH:",
-            qrResponse
+          await refreshQrCredential(
+            newUser.id
           );
 
           toast.success(
@@ -1518,26 +1571,15 @@ const OrganizationUsers = () => {
         } catch (
           qrError
         ) {
-          /*
-           * User sudah berhasil dibuat.
-           * Jadi jangan tampilkan bahwa create user gagal.
-           */
           console.error(
             "AUTO QR REFRESH ERROR:",
             qrError
           );
 
-          console.error(
-            "AUTO QR REFRESH RESPONSE:",
-            qrError
-              ?.response
-              ?.data
-          );
-
           toast.warning(
             getErrorMessage(
               qrError,
-              "User berhasil dibuat, tetapi QR belum berhasil diaktifkan. Klik QR untuk mencoba kembali."
+              "User berhasil dibuat, tetapi QR belum berhasil diaktifkan."
             )
           );
         }
@@ -1550,26 +1592,19 @@ const OrganizationUsers = () => {
           initialCreateForm
         );
 
-        setPage(1);
-
-        // ====================================================
-        // 3. GET USER + CREDENTIAL
-        // ====================================================
-
-        await fetchUsers();
+        if (
+          page !== 1
+        ) {
+          setPage(1);
+        } else {
+          await fetchUsers();
+        }
       } catch (
         error
       ) {
         console.error(
           "CREATE USER ERROR:",
           error
-        );
-
-        console.error(
-          "CREATE USER RESPONSE:",
-          error
-            ?.response
-            ?.data
         );
 
         toast.error(
@@ -1722,11 +1757,9 @@ const OrganizationUsers = () => {
         );
 
         if (
-          visibleUsers
-            .length ===
+          users.length ===
             1 &&
-          page >
-            1
+          page > 1
         ) {
           setPage(
             (
@@ -1735,9 +1768,9 @@ const OrganizationUsers = () => {
               previous -
               1
           );
+        } else {
+          await fetchUsers();
         }
-
-        await fetchUsers();
       } catch (
         error
       ) {
@@ -1806,7 +1839,7 @@ const OrganizationUsers = () => {
         !printWindow
       ) {
         toast.error(
-          "Popup diblokir browser. Izinkan popup untuk mencetak QR."
+          "Popup diblokir browser."
         );
 
         return;
@@ -1838,11 +1871,8 @@ const OrganizationUsers = () => {
 
       printWindow.document.write(`
         <!DOCTYPE html>
-
         <html>
-
           <head>
-
             <meta charset="UTF-8" />
 
             <title>
@@ -1850,215 +1880,109 @@ const OrganizationUsers = () => {
             </title>
 
             <style>
-
               * {
-                box-sizing:
-                  border-box;
+                box-sizing: border-box;
               }
 
               body {
-                margin:
-                  0;
-
-                font-family:
-                  Arial,
-                  Helvetica,
-                  sans-serif;
-
-                color:
-                  #0f172a;
-
-                background:
-                  #ffffff;
+                margin: 0;
+                font-family: Arial, Helvetica, sans-serif;
+                color: #0f172a;
+                background: #ffffff;
               }
 
               .page {
-                min-height:
-                  100vh;
-
-                display:
-                  flex;
-
-                align-items:
-                  center;
-
-                justify-content:
-                  center;
-
-                padding:
-                  30px;
+                min-height: 100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 30px;
               }
 
               .card {
-                width:
-                  380px;
-
-                border:
-                  2px solid
-                  #dbeafe;
-
-                border-radius:
-                  26px;
-
-                padding:
-                  30px;
-
-                text-align:
-                  center;
+                width: 380px;
+                border: 2px solid #dbeafe;
+                border-radius: 26px;
+                padding: 30px;
+                text-align: center;
               }
 
               .brand {
-                margin:
-                  0;
-
-                color:
-                  #1d4ed8;
-
-                font-size:
-                  28px;
-
-                font-weight:
-                  900;
+                margin: 0;
+                color: #1d4ed8;
+                font-size: 28px;
+                font-weight: 900;
               }
 
               .organization {
-                margin-top:
-                  6px;
-
-                margin-bottom:
-                  24px;
-
-                color:
-                  #64748b;
-
-                font-size:
-                  12px;
+                margin-top: 6px;
+                margin-bottom: 24px;
+                color: #64748b;
+                font-size: 12px;
               }
 
               .qr {
-                display:
-                  flex;
-
-                justify-content:
-                  center;
+                display: flex;
+                justify-content: center;
               }
 
               .qr svg {
-                width:
-                  240px;
-
-                height:
-                  240px;
+                width: 240px;
+                height: 240px;
               }
 
               .name {
-                margin-top:
-                  18px;
-
-                margin-bottom:
-                  0;
-
-                font-size:
-                  21px;
-
-                font-weight:
-                  900;
+                margin-top: 18px;
+                margin-bottom: 0;
+                font-size: 21px;
+                font-weight: 900;
               }
 
               .username {
-                margin-top:
-                  7px;
-
-                color:
-                  #2563eb;
-
-                font-size:
-                  13px;
-
-                font-weight:
-                  700;
+                margin-top: 7px;
+                color: #2563eb;
+                font-size: 13px;
+                font-weight: 700;
               }
 
               .email {
-                margin-top:
-                  5px;
-
-                color:
-                  #64748b;
-
-                font-size:
-                  11px;
-
-                word-break:
-                  break-word;
+                margin-top: 5px;
+                color: #64748b;
+                font-size: 11px;
+                word-break: break-word;
               }
 
               .status {
-                display:
-                  inline-block;
-
-                margin-top:
-                  15px;
-
-                padding:
-                  6px 12px;
-
-                border-radius:
-                  999px;
-
-                background:
-                  #dcfce7;
-
-                color:
-                  #15803d;
-
-                font-size:
-                  9px;
-
-                font-weight:
-                  700;
+                display: inline-block;
+                margin-top: 15px;
+                padding: 6px 12px;
+                border-radius: 999px;
+                background: #dcfce7;
+                color: #15803d;
+                font-size: 9px;
+                font-weight: 700;
               }
 
               .description {
-                margin-top:
-                  20px;
-
-                padding-top:
-                  15px;
-
-                border-top:
-                  1px solid
-                  #e2e8f0;
-
-                color:
-                  #64748b;
-
-                font-size:
-                  10px;
-
-                line-height:
-                  1.5;
+                margin-top: 20px;
+                padding-top: 15px;
+                border-top: 1px solid #e2e8f0;
+                color: #64748b;
+                font-size: 10px;
+                line-height: 1.5;
               }
 
               @media print {
-
                 @page {
-                  margin:
-                    10mm;
+                  margin: 10mm;
                 }
 
                 .page {
-                  min-height:
-                    auto;
-
-                  padding:
-                    0;
+                  min-height: auto;
+                  padding: 0;
                 }
-
               }
-
             </style>
-
           </head>
 
           <body>
@@ -2096,18 +2020,11 @@ const OrganizationUsers = () => {
                 </div>
 
                 <div class="description">
-
-                  QR ini merupakan
-                  credential identitas
-                  pengguna EcoCash.
+                  QR ini merupakan credential identitas pengguna EcoCash.
 
                   <br />
 
-                  Gunakan QR untuk
-                  identifikasi pada
-                  Smart Container dan
-                  sistem EcoCash.
-
+                  Gunakan QR untuk identifikasi pada Smart Container dan sistem EcoCash.
                 </div>
 
               </div>
@@ -2115,7 +2032,6 @@ const OrganizationUsers = () => {
             </div>
 
           </body>
-
         </html>
       `);
 
@@ -2134,7 +2050,7 @@ const OrganizationUsers = () => {
     };
 
   // ==========================================================
-  // RENDER
+  // UI
   // ==========================================================
 
   return (
@@ -2245,7 +2161,7 @@ const OrganizationUsers = () => {
 
         </div>
 
-        {/* USER TABLE */}
+        {/* TABLE */}
 
         <Card className="overflow-hidden rounded-[2rem] border border-gray-100 shadow-sm">
 
@@ -2262,6 +2178,8 @@ const OrganizationUsers = () => {
               </Typography>
 
             </div>
+
+            {/* SEARCH */}
 
             <div className="relative w-full md:w-80">
 
@@ -2285,9 +2203,7 @@ const OrganizationUsers = () => {
                   onClick={() => {
                     setSearch("");
 
-                    setPage(
-                      1
-                    );
+                    setPage(1);
                   }}
                   className="absolute right-10 top-1/2 -translate-y-1/2 rounded-full p-1 text-gray-400 hover:bg-gray-100"
                 >
@@ -2353,9 +2269,7 @@ const OrganizationUsers = () => {
                   <tr>
 
                     <td
-                      colSpan={
-                        8
-                      }
+                      colSpan={8}
                       className="py-16"
                     >
 
@@ -2373,16 +2287,13 @@ const OrganizationUsers = () => {
 
                   </tr>
 
-                ) : visibleUsers
-                    .length ===
+                ) : users.length ===
                   0 ? (
 
                   <tr>
 
                     <td
-                      colSpan={
-                        8
-                      }
+                      colSpan={8}
                       className="py-16"
                     >
 
@@ -2406,7 +2317,7 @@ const OrganizationUsers = () => {
 
                 ) : (
 
-                  visibleUsers.map(
+                  users.map(
                     (
                       user
                     ) => (
@@ -2455,16 +2366,40 @@ const OrganizationUsers = () => {
 
           <div className="flex flex-col justify-between gap-3 border-t border-gray-100 p-5 sm:flex-row sm:items-center">
 
-            <Typography className="text-xs font-medium text-gray-500">
+            <div>
 
-              Halaman{" "}
-              {page} dari{" "}
-              {Math.max(
-                meta.totalPages,
-                1
-              )}
+              <Typography className="text-xs font-medium text-gray-500">
 
-            </Typography>
+                Halaman{" "}
+
+                <span className="font-bold text-blue-700">
+                  {page}
+                </span>
+
+                {" "}dari{" "}
+
+                <span className="font-bold text-blue-700">
+                  {Math.max(
+                    meta.totalPages,
+                    1
+                  )}
+                </span>
+
+              </Typography>
+
+              <Typography className="mt-1 text-[10px] text-gray-400">
+
+                Total{" "}
+
+                <span className="font-black text-blue-700">
+                  {meta.total}
+                </span>
+
+                {" "}Regular User
+
+              </Typography>
+
+            </div>
 
             <div className="flex gap-2">
 
@@ -2472,8 +2407,7 @@ const OrganizationUsers = () => {
                 size="sm"
                 variant="outlined"
                 disabled={
-                  page <=
-                    1 ||
+                  page <= 1 ||
                   loading
                 }
                 onClick={() =>
@@ -2481,8 +2415,11 @@ const OrganizationUsers = () => {
                     (
                       previous
                     ) =>
-                      previous -
-                      1
+                      Math.max(
+                        previous -
+                          1,
+                        1
+                      )
                   )
                 }
                 className="normal-case"
@@ -2503,8 +2440,11 @@ const OrganizationUsers = () => {
                     (
                       previous
                     ) =>
-                      previous +
-                      1
+                      Math.min(
+                        previous +
+                          1,
+                        meta.totalPages
+                      )
                   )
                 }
                 className="normal-case"
@@ -2520,9 +2460,9 @@ const OrganizationUsers = () => {
 
       </div>
 
-      {/* =====================================================
+      {/* ======================================================
           CREATE USER
-      ===================================================== */}
+      ====================================================== */}
 
       <Dialog
         open={
@@ -2705,9 +2645,9 @@ const OrganizationUsers = () => {
 
       </Dialog>
 
-      {/* =====================================================
+      {/* ======================================================
           EDIT USER
-      ===================================================== */}
+      ====================================================== */}
 
       <Dialog
         open={
@@ -2750,28 +2690,18 @@ const OrganizationUsers = () => {
             }
           />
 
-          <div className="rounded-xl bg-gray-50 p-4">
-
-            <Typography className="text-xs font-semibold text-gray-500">
-              Username dan email tidak dapat diubah melalui endpoint update saat ini.
-            </Typography>
-
-          </div>
-
         </DialogBody>
 
         <DialogFooter className="gap-2">
 
           <Button
             variant="text"
-            color="blue-gray"
             onClick={
               closeEditModal
             }
             disabled={
               submitting
             }
-            className="normal-case"
           >
             Batal
           </Button>
@@ -2783,22 +2713,18 @@ const OrganizationUsers = () => {
             disabled={
               submitting
             }
-            className="bg-blue-600 normal-case"
+            className="bg-blue-600"
           >
-
-            {submitting
-              ? "Menyimpan..."
-              : "Simpan Perubahan"}
-
+            Simpan
           </Button>
 
         </DialogFooter>
 
       </Dialog>
 
-      {/* =====================================================
+      {/* ======================================================
           DELETE USER
-      ===================================================== */}
+      ====================================================== */}
 
       <Dialog
         open={
@@ -2816,22 +2742,14 @@ const OrganizationUsers = () => {
 
         <DialogBody divider>
 
-          <Typography className="text-sm text-gray-700">
+          Yakin ingin menghapus{" "}
 
-            Yakin ingin menghapus user{" "}
+          <strong>
+            {selectedUser
+              ?.name}
+          </strong>
 
-            <span className="font-bold">
-              {selectedUser
-                ?.name}
-            </span>
-
-            ?
-
-          </Typography>
-
-          <Typography className="mt-2 text-xs text-gray-500">
-            User akan dinonaktifkan dari sistem.
-          </Typography>
+          ?
 
         </DialogBody>
 
@@ -2839,14 +2757,9 @@ const OrganizationUsers = () => {
 
           <Button
             variant="text"
-            color="blue-gray"
             onClick={
               closeDeleteModal
             }
-            disabled={
-              submitting
-            }
-            className="normal-case"
           >
             Batal
           </Button>
@@ -2856,25 +2769,17 @@ const OrganizationUsers = () => {
             onClick={
               handleDeleteUser
             }
-            disabled={
-              submitting
-            }
-            className="normal-case"
           >
-
-            {submitting
-              ? "Menghapus..."
-              : "Hapus User"}
-
+            Hapus
           </Button>
 
         </DialogFooter>
 
       </Dialog>
 
-      {/* =====================================================
-          QR MODAL
-      ===================================================== */}
+      {/* ======================================================
+          QR
+      ====================================================== */}
 
       <Dialog
         open={
@@ -2886,39 +2791,8 @@ const OrganizationUsers = () => {
         size="sm"
       >
 
-        <DialogHeader className="flex items-center justify-between">
-
-          <div>
-
-            <Typography
-              variant="h5"
-              className="font-black text-blue-gray-900"
-            >
-              QR Credential
-            </Typography>
-
-            <Typography className="mt-1 text-xs font-normal text-gray-500">
-
-              QR identitas untuk{" "}
-
-              {qrUser?.name ||
-                "-"}
-
-            </Typography>
-
-          </div>
-
-          <button
-            type="button"
-            onClick={
-              closeQrModal
-            }
-          >
-
-            <XMarkIcon className="h-6 w-6 text-gray-500" />
-
-          </button>
-
+        <DialogHeader>
+          QR Credential
         </DialogHeader>
 
         <DialogBody
@@ -2928,26 +2802,18 @@ const OrganizationUsers = () => {
 
           {qrLoading ? (
 
-            <div className="flex flex-col items-center gap-3 py-10">
-
-              <Spinner className="h-10 w-10 text-blue-600" />
-
-              <Typography className="text-xs font-semibold text-gray-500">
-                Menyiapkan QR Credential...
-              </Typography>
-
-            </div>
+            <Spinner className="h-10 w-10 text-blue-600" />
 
           ) : qrCredential
               ?.identifier ? (
 
-            <div className="w-full">
+            <div className="w-full text-center">
 
               <div
                 ref={
                   qrPrintRef
                 }
-                className="mx-auto flex w-fit rounded-[2rem] border border-blue-100 bg-white p-6 shadow-md"
+                className="mx-auto w-fit rounded-3xl bg-white p-5 shadow"
               >
 
                 <QRCodeSVG
@@ -2955,88 +2821,32 @@ const OrganizationUsers = () => {
                     qrCredential
                       .identifier
                   }
-                  size={
-                    230
-                  }
+                  size={230}
                   level="H"
-                  includeMargin={
-                    true
-                  }
+                  includeMargin
                 />
 
               </div>
 
-              <div className="mt-5 rounded-2xl bg-blue-gray-50 p-5 text-center">
+              <Typography className="mt-4 font-black">
+                {qrUser?.name}
+              </Typography>
 
-                <Typography className="font-black text-blue-gray-900">
-
-                  {qrUser?.name ||
-                    "-"}
-
-                </Typography>
-
-                <Typography className="mt-1 text-xs font-bold text-blue-600">
-
-                  @
-                  {qrUser
-                    ?.username ||
-                    "-"}
-
-                </Typography>
-
-                <Typography className="mt-1 text-[11px] text-gray-500">
-
-                  {qrUser?.email ||
-                    "-"}
-
-                </Typography>
-
-                <div className="mt-3 flex flex-wrap justify-center gap-2">
-
-                  <Chip
-                    value="QR ACTIVE"
-                    className="w-fit rounded-full bg-green-50 text-[8px] font-black text-green-700"
-                  />
-
-                  {qrCredential
-                    ?.label && (
-
-                    <Chip
-                      value={
-                        qrCredential
-                          .label
-                      }
-                      className="w-fit rounded-full bg-blue-50 text-[8px] font-black text-blue-700"
-                    />
-
-                  )}
-
-                </div>
-
-              </div>
-
-              <Typography className="mt-4 text-center text-[10px] leading-relaxed text-gray-400">
-                QR menggunakan identifier credential asli dari backend EcoCash.
+              <Typography className="text-xs text-blue-600">
+                @{qrUser
+                  ?.username}
               </Typography>
 
             </div>
 
           ) : (
 
-            <div className="py-10 text-center">
+            <div className="text-center">
 
-              <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-3xl bg-gray-100">
+              <QrCodeIcon className="mx-auto h-16 w-16 text-gray-300" />
 
-                <QrCodeIcon className="h-11 w-11 text-gray-300" />
-
-              </div>
-
-              <Typography className="mt-4 font-black text-gray-600">
-                QR Belum Tersedia
-              </Typography>
-
-              <Typography className="mx-auto mt-2 max-w-xs text-xs leading-relaxed text-gray-400">
-                QR Credential belum ditemukan setelah proses pengecekan dan refresh backend.
+              <Typography className="mt-4 font-bold text-gray-500">
+                QR belum tersedia
               </Typography>
 
             </div>
@@ -3049,11 +2859,9 @@ const OrganizationUsers = () => {
 
           <Button
             variant="text"
-            color="blue-gray"
             onClick={
               closeQrModal
             }
-            className="normal-case"
           >
             Tutup
           </Button>
@@ -3063,11 +2871,10 @@ const OrganizationUsers = () => {
               handlePrintQr
             }
             disabled={
-              qrLoading ||
               !qrCredential
                 ?.identifier
             }
-            className="flex items-center gap-2 bg-blue-600 normal-case"
+            className="flex items-center gap-2 bg-blue-600"
           >
 
             <PrinterIcon className="h-4 w-4" />
@@ -3145,24 +2952,22 @@ const UserTableRow = ({
   return (
     <tr className="border-b border-gray-50 transition hover:bg-blue-50/30">
 
-      {/* USER */}
-
       <td className="px-5 py-4">
 
         <div className="flex items-center gap-3">
 
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-100 font-black text-blue-700">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 font-black text-blue-700">
             {initial}
           </div>
 
           <div>
 
-            <Typography className="text-xs font-black text-blue-gray-900">
+            <Typography className="text-xs font-black">
               {user.name ||
                 "-"}
             </Typography>
 
-            <Typography className="mt-1 text-[10px] text-gray-500">
+            <Typography className="text-[10px] text-gray-500">
               {user.email ||
                 "-"}
             </Typography>
@@ -3173,61 +2978,33 @@ const UserTableRow = ({
 
       </td>
 
-      {/* USERNAME */}
-
       <td className="px-5 py-4">
-
-        <Typography className="text-xs font-semibold text-gray-700">
-          {user.username ||
-            "-"}
-        </Typography>
-
+        {user.username ||
+          "-"}
       </td>
 
-      {/* PHONE */}
-
       <td className="px-5 py-4">
-
-        <Typography className="text-xs text-gray-600">
-          {user.phoneNumber ||
-            "-"}
-        </Typography>
-
+        {user.phoneNumber ||
+          "-"}
       </td>
-
-      {/* ROLE */}
 
       <td className="px-5 py-4">
 
         <Chip
           value="REGULAR USER"
-          className="w-fit rounded-full bg-blue-50 text-[8px] font-black text-blue-700"
+          className="w-fit bg-blue-50 text-[8px] text-blue-700"
         />
 
       </td>
 
-      {/* ORGANIZATION */}
-
       <td className="px-5 py-4">
-
-        <Typography className="text-xs font-bold text-gray-700">
-          {user.organizationId ||
-            "-"}
-        </Typography>
-
+        {user.organizationId ||
+          "-"}
       </td>
 
-      {/* CREATED */}
-
       <td className="px-5 py-4">
-
-        <Typography className="text-xs text-gray-600">
-          {createdAt}
-        </Typography>
-
+        {createdAt}
       </td>
-
-      {/* QR */}
 
       <td className="px-5 py-4">
 
@@ -3236,64 +3013,33 @@ const UserTableRow = ({
           onClick={
             onQr
           }
-          className="group flex items-center gap-2 rounded-xl border border-blue-100 bg-blue-50 p-2 transition hover:border-blue-200 hover:bg-blue-100"
-          title="Lihat dan Print QR"
+          className="rounded-xl bg-blue-50 p-2"
         >
 
           {qrCredential
             ?.identifier ? (
 
-            <div className="rounded-lg bg-white p-1">
-
-              <QRCodeSVG
-                value={
-                  qrCredential
-                    .identifier
-                }
-                size={
-                  42
-                }
-                level="M"
-              />
-
-            </div>
+            <QRCodeSVG
+              value={
+                qrCredential
+                  .identifier
+              }
+              size={42}
+            />
 
           ) : (
 
-            <div className="flex h-[48px] w-[48px] items-center justify-center rounded-lg bg-white">
-
-              <QrCodeIcon className="h-7 w-7 text-blue-500" />
-
-            </div>
+            <QrCodeIcon className="h-7 w-7 text-blue-500" />
 
           )}
-
-          <div className="hidden text-left xl:block">
-
-            <Typography className="text-[9px] font-black uppercase text-blue-700">
-
-              {qrCredential
-                ?.identifier
-                ? "QR Aktif"
-                : "Aktifkan QR"}
-
-            </Typography>
-
-            <Typography className="text-[8px] text-blue-500">
-              Klik untuk lihat
-            </Typography>
-
-          </div>
 
         </button>
 
       </td>
 
-      {/* ACTION */}
-
       <td className="px-5 py-4">
 
-        <div className="flex items-center gap-2">
+        <div className="flex gap-2">
 
           <button
             type="button"
@@ -3305,13 +3051,8 @@ const UserTableRow = ({
             }
             className={
               canEdit
-                ? "rounded-lg bg-blue-50 p-2 text-blue-600 transition hover:bg-blue-100"
+                ? "rounded-lg bg-blue-50 p-2 text-blue-600"
                 : "cursor-not-allowed rounded-lg bg-gray-100 p-2 text-gray-300"
-            }
-            title={
-              canEdit
-                ? "Edit user"
-                : "Backend hanya mengizinkan edit akun sendiri atau SUPER_ADMIN"
             }
           >
 
@@ -3324,8 +3065,7 @@ const UserTableRow = ({
             onClick={
               onDelete
             }
-            className="rounded-lg bg-red-50 p-2 text-red-600 transition hover:bg-red-100"
-            title="Hapus user"
+            className="rounded-lg bg-red-50 p-2 text-red-600"
           >
 
             <TrashIcon className="h-4 w-4" />
@@ -3339,9 +3079,5 @@ const UserTableRow = ({
     </tr>
   );
 };
-
-// ============================================================
-// EXPORT
-// ============================================================
 
 export default OrganizationUsers;

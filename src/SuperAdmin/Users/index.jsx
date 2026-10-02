@@ -30,13 +30,10 @@ import {
 
 import api from "../../utils/api";
 
-import {
-  toast,
-} from "react-toastify";
+import { toast } from "react-toastify";
 
-import {
-  useDebounce,
-} from "use-debounce";
+import { useDebounce } from "use-debounce";
+
 
 // ============================================================
 // MODALS
@@ -45,6 +42,7 @@ import {
 import CreateUserModal from "./CreateUserModal";
 import EditUserModal from "./EditUserModal";
 import DeleteUserModal from "./DeleteUserModal";
+
 
 // ============================================================
 // TABLE HEADER
@@ -55,43 +53,39 @@ const TABLE_HEAD = [
     label: "User",
     value: "name",
   },
-
   {
     label: "Email",
     value: "email",
   },
-
   {
     label: "QR-Code",
     value: null,
   },
-
   {
     label: "RFID",
     value: "rfid",
   },
-
   {
     label: "Role",
     value: "role",
   },
-
   {
     label: "Location",
     value: "areaId",
   },
-
   {
     label: "Action",
     value: null,
   },
 ];
 
+
 // ============================================================
 // COMPONENT
 // ============================================================
 
 const UserIndex = () => {
+
   // ==========================================================
   // USERS
   // ==========================================================
@@ -101,6 +95,7 @@ const UserIndex = () => {
 
   const [loading, setLoading] =
     useState(true);
+
 
   // ==========================================================
   // SEARCH
@@ -116,6 +111,7 @@ const UserIndex = () => {
     500
   );
 
+
   // ==========================================================
   // FILTER
   // ==========================================================
@@ -124,6 +120,7 @@ const UserIndex = () => {
     filterRole,
     setFilterRole,
   ] = useState("");
+
 
   // ==========================================================
   // PAGINATION
@@ -145,6 +142,7 @@ const UserIndex = () => {
     setTotalData,
   ] = useState(0);
 
+
   // ==========================================================
   // SORT
   // ==========================================================
@@ -162,6 +160,7 @@ const UserIndex = () => {
   ] = useState(
     "desc"
   );
+
 
   // ==========================================================
   // MODALS
@@ -187,6 +186,7 @@ const UserIndex = () => {
     setSelectedUser,
   ] = useState(null);
 
+
   // ==========================================================
   // FIRST RENDER
   // ==========================================================
@@ -194,19 +194,23 @@ const UserIndex = () => {
   const isFirstRender =
     useRef(true);
 
+
   // ==========================================================
   // FETCH USERS
   // ==========================================================
 
   const fetchUsers =
     useCallback(async () => {
+
       setLoading(true);
 
       try {
+
         const token =
           localStorage.getItem(
             "token"
           );
+
 
         const response =
           await api.get(
@@ -229,41 +233,159 @@ const UserIndex = () => {
                 sortOrder,
 
                 role:
-                  filterRole,
+                  filterRole ||
+                  undefined,
               },
             }
           );
 
+
         const result =
           response.data;
 
-        setUsers(
-          result.data || []
+
+        console.log(
+          "USERS RESPONSE:",
+          result
         );
+
+
+        // ====================================================
+        // DATA USER
+        // ====================================================
+
+        const userData =
+          Array.isArray(
+            result?.data
+          )
+            ? result.data
+
+            : Array.isArray(
+                result?.data?.users
+              )
+            ? result.data.users
+
+            : Array.isArray(
+                result?.users
+              )
+            ? result.users
+
+            : [];
+
+
+        setUsers(
+          userData
+        );
+
+
+        // ====================================================
+        // PAGINATION RESPONSE
+        //
+        // Support:
+        //
+        // result.pagination
+        // result.meta
+        // result.data.pagination
+        // result.data.meta
+        // ====================================================
+
+        const pagination =
+          result?.pagination ||
+          result?.meta ||
+          result?.data
+            ?.pagination ||
+          result?.data
+            ?.meta ||
+          {};
+
+
+        // ====================================================
+        // TOTAL ITEMS
+        // ====================================================
+
+        const totalItems =
+          Number(
+            pagination
+              ?.totalItems ??
+            pagination
+              ?.total ??
+            pagination
+              ?.totalData ??
+            result?.totalItems ??
+            result?.total ??
+            userData.length
+          ) || 0;
+
+
+        // ====================================================
+        // TOTAL PAGES DARI API
+        // ====================================================
+
+        const apiTotalPages =
+          Number(
+            pagination
+              ?.totalPages ??
+            pagination
+              ?.pages ??
+            result?.totalPages ??
+            0
+          );
+
+
+        // ====================================================
+        // FALLBACK HITUNG TOTAL PAGE
+        // ====================================================
+
+        const calculatedPages =
+          totalItems > 0
+            ? Math.ceil(
+                totalItems /
+                limit
+              )
+            : 1;
+
+
+        const finalTotalPages =
+          apiTotalPages > 0
+            ? apiTotalPages
+            : calculatedPages;
+
 
         setTotalPages(
-          result.pagination
-            ?.totalPages || 1
+          Math.max(
+            1,
+            finalTotalPages
+          )
         );
 
+
         setTotalData(
-          result.pagination
-            ?.totalItems || 0
+          totalItems
         );
+
+
       } catch (error) {
+
         console.error(
           "Gagal mengambil data user:",
+          error?.response?.data ||
           error
         );
 
+
         toast.error(
-          error.response?.data
+          error?.response?.data
             ?.message ||
-            "Gagal memuat data pengguna."
+          "Gagal memuat data pengguna."
         );
+
+
       } finally {
+
         setLoading(false);
+
       }
+
     }, [
       page,
       limit,
@@ -273,33 +395,65 @@ const UserIndex = () => {
       filterRole,
     ]);
 
+
   // ==========================================================
   // FETCH
   // ==========================================================
 
   useEffect(() => {
+
     fetchUsers();
+
   }, [fetchUsers]);
 
+
   // ==========================================================
-  // RESET PAGE WHEN FILTER CHANGES
+  // RESET PAGE
   // ==========================================================
 
   useEffect(() => {
+
     if (
       isFirstRender.current
     ) {
+
       isFirstRender.current =
         false;
 
       return;
+
     }
 
+
     setPage(1);
+
   }, [
     debouncedSearch,
     filterRole,
   ]);
+
+
+  // ==========================================================
+  // JIKA PAGE MELEBIHI TOTAL PAGE
+  // ==========================================================
+
+  useEffect(() => {
+
+    if (
+      page > totalPages
+    ) {
+
+      setPage(
+        totalPages
+      );
+
+    }
+
+  }, [
+    page,
+    totalPages,
+  ]);
+
 
   // ==========================================================
   // SORT
@@ -308,24 +462,40 @@ const UserIndex = () => {
   const handleSort = (
     value
   ) => {
+
     if (!value) {
       return;
     }
 
-    const isAsc =
-      sortBy === value &&
-      sortOrder === "asc";
 
-    setSortOrder(
-      isAsc
-        ? "desc"
-        : "asc"
-    );
+    if (
+      sortBy === value
+    ) {
 
-    setSortBy(
-      value
-    );
+      setSortOrder(
+        (prev) =>
+          prev === "asc"
+            ? "desc"
+            : "asc"
+      );
+
+    } else {
+
+      setSortBy(
+        value
+      );
+
+      setSortOrder(
+        "asc"
+      );
+
+    }
+
+
+    setPage(1);
+
   };
+
 
   // ==========================================================
   // ROLE COLOR
@@ -334,7 +504,9 @@ const UserIndex = () => {
   const getRoleColor = (
     role
   ) => {
+
     switch (role) {
+
       case "SUPER_ADMIN":
         return "blue";
 
@@ -361,8 +533,11 @@ const UserIndex = () => {
 
       default:
         return "gray";
+
     }
+
   };
+
 
   // ==========================================================
   // ROLE LABEL
@@ -371,15 +546,21 @@ const UserIndex = () => {
   const getRoleLabel = (
     role
   ) => {
+
     if (!role) {
+
       return "USER";
+
     }
+
 
     return role.replace(
       /_/g,
       " "
     );
+
   };
+
 
   // ==========================================================
   // LOCATION
@@ -388,100 +569,228 @@ const UserIndex = () => {
   const getUserLocation = (
     row
   ) => {
+
     // AREA
+
     if (
       row.area?.name
     ) {
+
       return row.area.name;
+
     }
 
-    if (row.areaId) {
+
+    if (
+      row.areaId
+    ) {
+
       return `Area ID: ${row.areaId}`;
+
     }
+
 
     // ORGANIZATION
+
     if (
-      row.organization
-        ?.name
+      row.organization?.name
     ) {
-      return row.organization
-        .name;
+
+      return (
+        row.organization.name
+      );
+
     }
+
 
     if (
       row.organizationId
     ) {
+
       return `Organization ID: ${row.organizationId}`;
+
     }
 
+
     // FOUNDATION
+
     if (
       row.role ===
       "FOUNDATION_ADMIN"
     ) {
+
       return "Foundation";
+
     }
 
+
     // STORE ADMIN
+
     if (
       row.role ===
       "STORE_ADMIN"
     ) {
+
       return (
         row.store?.name ||
         "Store"
       );
+
     }
 
+
     // SUPER ADMIN
+
     if (
       row.role ===
       "SUPER_ADMIN"
     ) {
+
       return "Pusat";
+
     }
 
+
     return "Pusat";
+
   };
+
+
+  // ==========================================================
+  // PREVIOUS
+  // ==========================================================
+
+  const handlePrevious =
+    () => {
+
+      if (
+        page <= 1 ||
+        loading
+      ) {
+
+        return;
+
+      }
+
+
+      setPage(
+        (prev) =>
+          Math.max(
+            prev - 1,
+            1
+          )
+      );
+
+    };
+
+
+  // ==========================================================
+  // NEXT
+  // ==========================================================
+
+  const handleNext =
+    () => {
+
+      if (
+        page >= totalPages ||
+        loading
+      ) {
+
+        return;
+
+      }
+
+
+      setPage(
+        (prev) =>
+          Math.min(
+            prev + 1,
+            totalPages
+          )
+      );
+
+    };
+
 
   // ==========================================================
   // UI
   // ==========================================================
 
   return (
+
     <MainLayout>
-      <div className="p-4 md:p-0 space-y-6">
 
-        {/* ====================================================
+      <div
+        className="
+          space-y-6
+          p-4
+          md:p-0
+        "
+      >
+
+        {/* ==================================================
             HEADER
-        ==================================================== */}
+        ================================================== */}
 
-        <div className="flex flex-col gap-1">
+        <div
+          className="
+            flex
+            flex-col
+            gap-1
+          "
+        >
 
           <Typography
             variant="h4"
-            className="text-[#2b6cb0] font-bold"
+            className="
+              font-bold
+              text-[#2b6cb0]
+            "
           >
             Data Users
           </Typography>
 
-          <Typography className="text-gray-500 text-sm">
-            Kelola hak akses dan profil pengguna sistem
+
+          <Typography
+            className="
+              text-sm
+              text-gray-500
+            "
+          >
+            Kelola hak akses dan
+            profil pengguna sistem
           </Typography>
 
         </div>
 
-        {/* ====================================================
+
+        {/* ==================================================
             ACTION
-        ==================================================== */}
+        ================================================== */}
 
-        <div className="flex flex-col lg:flex-row justify-between gap-4">
+        <div
+          className="
+            flex
+            flex-col
+            justify-between
+            gap-4
 
-          <div className="flex flex-col md:flex-row gap-3 w-full">
+            lg:flex-row
+          "
+        >
 
-            {/* =================================================
-                ADD USER
-            ================================================= */}
+          <div
+            className="
+              flex
+              w-full
+              flex-col
+              gap-3
+
+              md:flex-row
+            "
+          >
+
+            {/* ADD USER */}
 
             <Button
               onClick={() =>
@@ -491,27 +800,39 @@ const UserIndex = () => {
               }
               className="
                 flex
+                shrink-0
                 items-center
                 justify-center
                 gap-2
-                bg-[#66bb6a]
-                normal-case
                 rounded-xl
-                shadow-none
+                bg-[#66bb6a]
                 px-6
-                shrink-0
+                normal-case
+                shadow-none
               "
             >
-              <PlusIcon className="h-5 w-5 stroke-[3]" />
+
+              <PlusIcon
+                className="
+                  h-5
+                  w-5
+                  stroke-[3]
+                "
+              />
 
               Add User
+
             </Button>
 
-            {/* =================================================
-                FILTER ROLE
-            ================================================= */}
 
-            <div className="w-full md:w-64">
+            {/* FILTER ROLE */}
+
+            <div
+              className="
+                w-full
+                md:w-64
+              "
+            >
 
               <Select
                 label="Filter berdasarkan Role"
@@ -520,50 +841,77 @@ const UserIndex = () => {
                 }
                 onChange={(
                   val
-                ) =>
+                ) => {
+
                   setFilterRole(
                     val || ""
-                  )
-                }
-                className="bg-white"
+                  );
+
+                  setPage(1);
+
+                }}
+                className="
+                  bg-white
+                "
               >
+
                 <Option value="">
                   Semua Role
                 </Option>
 
-                <Option value="SUPER_ADMIN">
+
+                <Option
+                  value="SUPER_ADMIN"
+                >
                   Super Admin
                 </Option>
 
-                <Option value="AREA_ADMIN">
+
+                <Option
+                  value="AREA_ADMIN"
+                >
                   Area Admin
                 </Option>
 
-                <Option value="ORGANIZATION_ADMIN">
+
+                <Option
+                  value="ORGANIZATION_ADMIN"
+                >
                   Organization Admin
                 </Option>
 
-                <Option value="STORE_ADMIN">
+
+                <Option
+                  value="STORE_ADMIN"
+                >
                   Store Admin
                 </Option>
 
-                {/* ============================================
-                    FOUNDATION ADMIN
-                ============================================ */}
 
-                <Option value="FOUNDATION_ADMIN">
+                <Option
+                  value="FOUNDATION_ADMIN"
+                >
                   Foundation Admin
                 </Option>
 
-                <Option value="MACHINE_OPERATOR">
+
+                <Option
+                  value="MACHINE_OPERATOR"
+                >
                   Machine Operator
                 </Option>
 
-                <Option value="TRUCK_DRIVER">
+
+                <Option
+                  value="TRUCK_DRIVER"
+                >
                   Truck Driver
                 </Option>
 
-                <Option value="REGULAR_USER">
+
+                <Option
+                  value="REGULAR_USER"
+                >
                   Regular User
                 </Option>
 
@@ -573,59 +921,90 @@ const UserIndex = () => {
 
           </div>
 
-          {/* =================================================
-              SEARCH
-          ================================================= */}
 
-          <div className="w-full lg:w-80">
+          {/* SEARCH */}
+
+          <div
+            className="
+              w-full
+              lg:w-80
+            "
+          >
 
             <Input
               label="Cari user atau email..."
               icon={
-                <MagnifyingGlassIcon className="h-5 w-5" />
+
+                <MagnifyingGlassIcon
+                  className="
+                    h-5
+                    w-5
+                  "
+                />
+
               }
               value={
                 search
               }
               onChange={(
                 e
-              ) =>
+              ) => {
+
                 setSearch(
                   e.target.value
-                )
-              }
+                );
+
+                setPage(1);
+
+              }}
             />
 
           </div>
 
         </div>
 
-        {/* ====================================================
+
+        {/* ==================================================
             TABLE
-        ==================================================== */}
+        ================================================== */}
 
         <Card
           className="
             w-full
             overflow-hidden
+            rounded-2xl
             border
             border-blue-50
             shadow-sm
-            rounded-2xl
           "
         >
 
-          <div className="overflow-x-auto">
+          <div
+            className="
+              overflow-x-auto
+            "
+          >
 
-            <table className="w-full min-w-[1100px] table-auto text-left">
+            <table
+              className="
+                w-full
+                min-w-[1100px]
+                table-auto
+                text-left
+              "
+            >
 
-              {/* ===============================================
+              {/* =============================================
                   TABLE HEADER
-              =============================================== */}
+              ============================================= */}
 
               <thead>
 
-                <tr className="bg-[#e3f2fd]/50">
+                <tr
+                  className="
+                    bg-[#e3f2fd]/50
+                  "
+                >
 
                   {TABLE_HEAD.map(
                     (head) => (
@@ -640,9 +1019,9 @@ const UserIndex = () => {
                           )
                         }
                         className={`
-                          p-5
                           border-b
                           border-blue-gray-50
+                          p-5
                           transition-colors
 
                           ${
@@ -653,20 +1032,30 @@ const UserIndex = () => {
                         `}
                       >
 
-                        <div className="flex items-center justify-between gap-2">
+                        <div
+                          className="
+                            flex
+                            items-center
+                            justify-between
+                            gap-2
+                          "
+                        >
 
                           <Typography
                             className="
-                              font-bold
-                              text-[#2b6cb0]
-                              uppercase
                               text-[11px]
-                              tracking-wider
+                              font-bold
+                              uppercase
                               leading-none
+                              tracking-wider
+                              text-[#2b6cb0]
                             "
                           >
-                            {head.label}
+                            {
+                              head.label
+                            }
                           </Typography>
+
 
                           {head.value && (
 
@@ -697,15 +1086,15 @@ const UserIndex = () => {
 
               </thead>
 
-              {/* ===============================================
+
+              {/* =============================================
                   BODY
-              =============================================== */}
+              ============================================= */}
 
               <tbody>
 
                 {!loading &&
-                users.length >
-                  0 ? (
+                users.length > 0 ? (
 
                   users.map(
                     (row) => (
@@ -715,45 +1104,67 @@ const UserIndex = () => {
                           row.id
                         }
                         className="
-                          hover:bg-blue-50/20
-                          transition-colors
                           border-b
                           border-blue-gray-50/50
+                          transition-colors
+                          hover:bg-blue-50/20
                         "
                       >
 
-                        {/* =====================================
+                        {/* ==================================
                             USER
-                        ===================================== */}
+                        ================================== */}
 
-                        <td className="p-5">
+                        <td
+                          className="
+                            p-5
+                          "
+                        >
 
-                          <div className="flex items-center gap-3">
+                          <div
+                            className="
+                              flex
+                              items-center
+                              gap-3
+                            "
+                          >
 
                             <Avatar
                               src={`https://ui-avatars.com/api/?name=${encodeURIComponent(
                                 row.name ||
-                                  "User"
+                                "User"
                               )}&background=random&color=fff`}
                               size="sm"
                               variant="rounded"
                             />
 
+
                             <div>
 
                               <Typography
                                 variant="small"
-                                className="font-bold text-blue-900"
+                                className="
+                                  font-bold
+                                  text-blue-900
+                                "
                               >
                                 {
-                                  row.name
+                                  row.name ||
+                                  "-"
                                 }
                               </Typography>
 
-                              <Typography className="text-[10px] text-gray-400">
+
+                              <Typography
+                                className="
+                                  text-[10px]
+                                  text-gray-400
+                                "
+                              >
                                 @
                                 {
-                                  row.username
+                                  row.username ||
+                                  "-"
                                 }
                               </Typography>
 
@@ -763,82 +1174,133 @@ const UserIndex = () => {
 
                         </td>
 
-                        {/* =====================================
+
+                        {/* ==================================
                             EMAIL
-                        ===================================== */}
+                        ================================== */}
 
-                        <td className="p-5">
+                        <td
+                          className="
+                            p-5
+                          "
+                        >
 
-                          <Typography className="text-xs font-medium text-blue-600 underline decoration-blue-200">
+                          <Typography
+                            className="
+                              text-xs
+                              font-medium
+                              text-blue-600
+                              underline
+                              decoration-blue-200
+                            "
+                          >
                             {
-                              row.email
+                              row.email ||
+                              "-"
                             }
                           </Typography>
 
                         </td>
 
-                        {/* =====================================
-                            QR CODE
-                        ===================================== */}
 
-                        <td className="p-5">
+                        {/* ==================================
+                            QR CODE
+                        ================================== */}
+
+                        <td
+                          className="
+                            p-5
+                          "
+                        >
 
                           <div
                             className="
-                              p-2
-                              bg-gray-50
                               w-fit
+                              cursor-pointer
                               rounded-lg
                               border
                               border-gray-100
-                              cursor-pointer
-                              hover:bg-white
+                              bg-gray-50
+                              p-2
                               transition-all
+                              hover:bg-white
                             "
                           >
 
-                            <QrCodeIcon className="h-6 w-6 text-gray-800" />
+                            <QrCodeIcon
+                              className="
+                                h-6
+                                w-6
+                                text-gray-800
+                              "
+                            />
 
                           </div>
 
                         </td>
 
-                        {/* =====================================
-                            RFID
-                        ===================================== */}
 
-                        <td className="p-5">
+                        {/* ==================================
+                            RFID
+                        ================================== */}
+
+                        <td
+                          className="
+                            p-5
+                          "
+                        >
 
                           <div
                             className="
                               flex
+                              w-fit
                               items-center
                               gap-2
-                              p-2
-                              bg-gray-50
-                              w-fit
                               rounded-lg
                               border
                               border-gray-100
+                              bg-gray-50
+                              p-2
                             "
                           >
 
-                            <CreditCardIcon className="h-4 w-4 text-gray-500" />
+                            <CreditCardIcon
+                              className="
+                                h-4
+                                w-4
+                                text-gray-500
+                              "
+                            />
 
-                            <Typography className="text-xs font-mono font-bold text-gray-700">
-                              {row.rfid ||
-                                "-"}
+
+                            <Typography
+                              className="
+                                font-mono
+                                text-xs
+                                font-bold
+                                text-gray-700
+                              "
+                            >
+                              {
+                                row.rfid ||
+                                "-"
+                              }
                             </Typography>
 
                           </div>
 
                         </td>
 
-                        {/* =====================================
-                            ROLE
-                        ===================================== */}
 
-                        <td className="p-5">
+                        {/* ==================================
+                            ROLE
+                        ================================== */}
+
+                        <td
+                          className="
+                            p-5
+                          "
+                        >
 
                           <Chip
                             variant="ghost"
@@ -853,40 +1315,69 @@ const UserIndex = () => {
                                 row.role
                               )
                             }
-                            className="text-[10px] font-bold"
+                            className="
+                              w-fit
+                              text-[10px]
+                              font-bold
+                            "
                           />
 
                         </td>
 
-                        {/* =====================================
+
+                        {/* ==================================
                             LOCATION
-                        ===================================== */}
+                        ================================== */}
 
-                        <td className="p-5">
+                        <td
+                          className="
+                            p-5
+                          "
+                        >
 
-                          <Typography className="text-xs font-semibold text-gray-700">
+                          <Typography
+                            className="
+                              text-xs
+                              font-semibold
+                              text-gray-700
+                            "
+                          >
 
-                            {getUserLocation(
-                              row
-                            )}
+                            {
+                              getUserLocation(
+                                row
+                              )
+                            }
 
                           </Typography>
 
                         </td>
 
-                        {/* =====================================
+
+                        {/* ==================================
                             ACTION
-                        ===================================== */}
+                        ================================== */}
 
-                        <td className="p-5">
+                        <td
+                          className="
+                            p-5
+                          "
+                        >
 
-                          <div className="flex items-center gap-2">
+                          <div
+                            className="
+                              flex
+                              items-center
+                              gap-2
+                            "
+                          >
 
                             {/* EDIT */}
 
                             <Button
                               size="sm"
                               onClick={() => {
+
                                 setSelectedUser(
                                   row
                                 );
@@ -894,24 +1385,27 @@ const UserIndex = () => {
                                 setOpenEdit(
                                   true
                                 );
+
                               }}
                               className="
+                                rounded-lg
                                 bg-[#66bb6a]
                                 px-4
                                 py-2
                                 normal-case
-                                rounded-lg
                                 shadow-none
                               "
                             >
                               Edit
                             </Button>
 
+
                             {/* DELETE */}
 
                             <Button
                               size="sm"
                               onClick={() => {
+
                                 setSelectedUser(
                                   row
                                 );
@@ -919,13 +1413,14 @@ const UserIndex = () => {
                                 setOpenDelete(
                                   true
                                 );
+
                               }}
                               className="
+                                rounded-lg
                                 bg-[#ef5350]
                                 px-4
                                 py-2
                                 normal-case
-                                rounded-lg
                                 shadow-none
                               "
                             >
@@ -943,22 +1438,31 @@ const UserIndex = () => {
 
                 ) : (
 
-                  /* ===========================================
-                      EMPTY / LOADING
-                  =========================================== */
+                  // =========================================
+                  // EMPTY / LOADING
+                  // =========================================
 
                   <tr>
 
                     <td
-                      colSpan={
-                        7
-                      }
-                      className="p-10 text-center text-gray-400"
+                      colSpan={7}
+                      className="
+                        p-10
+                        text-center
+                        text-gray-400
+                      "
                     >
 
                       {loading ? (
 
-                        <div className="flex flex-col items-center gap-2">
+                        <div
+                          className="
+                            flex
+                            flex-col
+                            items-center
+                            gap-2
+                          "
+                        >
 
                           <div
                             className="
@@ -994,6 +1498,7 @@ const UserIndex = () => {
 
           </div>
 
+
           {/* ==================================================
               PAGINATION FOOTER
           ================================================== */}
@@ -1001,12 +1506,16 @@ const UserIndex = () => {
           <div
             className="
               flex
-              items-center
-              justify-between
-              p-5
+              flex-col
+              gap-4
               border-t
               border-blue-gray-50
               bg-white
+              p-5
+
+              sm:flex-row
+              sm:items-center
+              sm:justify-between
             "
           >
 
@@ -1014,11 +1523,20 @@ const UserIndex = () => {
 
             <Typography
               variant="small"
-              className="font-medium text-gray-600"
+              className="
+                font-medium
+                text-gray-600
+              "
             >
+
               Menampilkan{" "}
 
-              <span className="text-blue-700">
+              <span
+                className="
+                  font-bold
+                  text-blue-700
+                "
+              >
                 {
                   users.length
                 }
@@ -1026,70 +1544,112 @@ const UserIndex = () => {
 
               {" "}dari{" "}
 
-              <span className="text-blue-700">
+              <span
+                className="
+                  font-bold
+                  text-blue-700
+                "
+              >
                 {
                   totalData
                 }
               </span>
 
               {" "}data
+
             </Typography>
+
 
             {/* PAGE */}
 
-            <div className="flex items-center gap-2">
+            <div
+              className="
+                flex
+                items-center
+                gap-2
+              "
+            >
 
               {/* PREVIOUS */}
 
               <Button
                 variant="outlined"
                 size="sm"
-                onClick={() =>
-                  setPage(
-                    (
-                      currentPage
-                    ) =>
-                      Math.max(
-                        currentPage -
-                          1,
-                        1
-                      )
-                  )
+                onClick={
+                  handlePrevious
                 }
                 disabled={
-                  page === 1 ||
+                  page <= 1 ||
                   loading
                 }
                 className="
                   flex
                   items-center
                   gap-1
+                  rounded-lg
                   border-blue-gray-100
+                  normal-case
+                  shadow-none
                 "
               >
 
-                <ChevronLeftIcon className="h-3 w-3 stroke-[3]" />
+                <ChevronLeftIcon
+                  className="
+                    h-3
+                    w-3
+                    stroke-[3]
+                  "
+                />
 
                 Prev
 
               </Button>
 
+
               {/* CURRENT PAGE */}
 
-              <div className="flex items-center gap-1 px-2">
+              <div
+                className="
+                  flex
+                  min-w-[75px]
+                  items-center
+                  justify-center
+                  gap-1
+                  px-2
+                "
+              >
 
                 <Typography
                   variant="small"
-                  className="font-bold text-blue-700"
+                  className="
+                    font-bold
+                    text-blue-700
+                  "
                 >
-                  {page}
+                  {
+                    page
+                  }
                 </Typography>
 
+
                 <Typography
                   variant="small"
-                  className="font-normal text-gray-500"
+                  className="
+                    font-normal
+                    text-gray-500
+                  "
                 >
-                  /{" "}
+                  /
+                </Typography>
+
+
+                <Typography
+                  variant="small"
+                  className="
+                    font-normal
+                    text-gray-500
+                  "
+                >
                   {
                     totalPages
                   }
@@ -1097,25 +1657,17 @@ const UserIndex = () => {
 
               </div>
 
+
               {/* NEXT */}
 
               <Button
                 variant="outlined"
                 size="sm"
-                onClick={() =>
-                  setPage(
-                    (
-                      currentPage
-                    ) =>
-                      Math.min(
-                        currentPage +
-                          1,
-                        totalPages
-                      )
-                  )
+                onClick={
+                  handleNext
                 }
                 disabled={
-                  page ===
+                  page >=
                     totalPages ||
                   loading
                 }
@@ -1123,12 +1675,22 @@ const UserIndex = () => {
                   flex
                   items-center
                   gap-1
+                  rounded-lg
                   border-blue-gray-100
+                  normal-case
+                  shadow-none
                 "
               >
+
                 Next
 
-                <ChevronRightIcon className="h-3 w-3 stroke-[3]" />
+                <ChevronRightIcon
+                  className="
+                    h-3
+                    w-3
+                    stroke-[3]
+                  "
+                />
 
               </Button>
 
@@ -1139,6 +1701,7 @@ const UserIndex = () => {
         </Card>
 
       </div>
+
 
       {/* ======================================================
           CREATE MODAL
@@ -1158,21 +1721,30 @@ const UserIndex = () => {
         }
       />
 
+
       {/* ======================================================
           EDIT + DELETE
       ====================================================== */}
 
       {selectedUser && (
+
         <>
+
           <EditUserModal
             open={
               openEdit
             }
-            handleOpen={() =>
+            handleOpen={() => {
+
               setOpenEdit(
                 false
-              )
-            }
+              );
+
+              setSelectedUser(
+                null
+              );
+
+            }}
             data={
               selectedUser
             }
@@ -1180,16 +1752,23 @@ const UserIndex = () => {
               fetchUsers
             }
           />
+
 
           <DeleteUserModal
             open={
               openDelete
             }
-            handleOpen={() =>
+            handleOpen={() => {
+
               setOpenDelete(
                 false
-              )
-            }
+              );
+
+              setSelectedUser(
+                null
+              );
+
+            }}
             data={
               selectedUser
             }
@@ -1197,11 +1776,16 @@ const UserIndex = () => {
               fetchUsers
             }
           />
+
         </>
+
       )}
 
     </MainLayout>
+
   );
+
 };
+
 
 export default UserIndex;
