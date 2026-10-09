@@ -1,5 +1,11 @@
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+
 import MainLayout from "../MainLayout";
 import api from "../../utils/api";
 import { toast } from "react-toastify";
@@ -34,22 +40,26 @@ import {
 } from "@heroicons/react/24/outline";
 
 // =====================================================
-// API
+// API CONFIGURATION
 // =====================================================
 
 const API = {
   partners: "/partners/admin/all",
+
+  // Isi lewat .env jika backend memiliki endpoint
+  // daftar semua dokumen yang bisa diakses SUPER_ADMIN.
+  // Contoh nilai harus mengikuti Swagger backend.
+  documents:
+    import.meta.env.VITE_KYC_DOCUMENTS_ENDPOINT || "",
+
   verify: (id) =>
     `/partners/admin/documents/${encodeURIComponent(id)}/verify`,
 };
 
-// Service backend menerima status dan rejectionReason.
-// Pastikan controller meneruskan kedua field tersebut
-// sebelum melakukan verifikasi pada data produksi.
-const buildVerificationPayload = (status, reason) => ({
-  status,
-  rejectionReason: status === "REJECTED" ? reason.trim() : null,
-});
+// Atur ke true setelah kontrak PATCH diverifikasi
+// pada partner.controller.js.
+const VERIFY_ENABLED =
+  import.meta.env.VITE_KYC_VERIFY_ENABLED === "true";
 
 // =====================================================
 // HELPERS
@@ -79,36 +89,6 @@ const formatDate = (value) => {
   });
 };
 
-const statusLabel = (status) => {
-  const labels = {
-    PENDING: "Pending",
-    APPROVED: "Approved",
-    VERIFIED: "Verified",
-    REJECTED: "Rejected",
-    ACTIVE: "Active",
-    SUSPENDED: "Suspended",
-  };
-
-  const key = normalizeStatus(status);
-  return labels[key] || key || "Tidak diketahui";
-};
-
-const statusColor = (status) => {
-  const key = normalizeStatus(status);
-
-  if (["APPROVED", "VERIFIED", "ACTIVE"].includes(key)) {
-    return "green";
-  }
-
-  if (key === "REJECTED" || key === "SUSPENDED") {
-    return "red";
-  }
-
-  if (key === "PENDING") return "amber";
-
-  return "blue-gray";
-};
-
 const getPartnerName = (partner) =>
   partner?.user?.name ||
   partner?.name ||
@@ -125,86 +105,127 @@ const getPartnerPhone = (partner) =>
   partner?.phoneNumber ||
   "-";
 
+const getDocumentName = (doc, index = 0) =>
+  doc?.documentType ||
+  doc?.type ||
+  `Dokumen ${index + 1}`;
+
+const statusLabel = (status) => {
+  const labels = {
+    PENDING: "Pending",
+    APPROVED: "Approved",
+    VERIFIED: "Verified",
+    REJECTED: "Rejected",
+    ACTIVE: "Active",
+    SUSPENDED: "Suspended",
+  };
+
+  const value = normalizeStatus(status);
+
+  return labels[value] || value || "Tidak diketahui";
+};
+
+const statusColor = (status) => {
+  const value = normalizeStatus(status);
+
+  if (["APPROVED", "VERIFIED", "ACTIVE"].includes(value)) {
+    return "green";
+  }
+
+  if (["REJECTED", "SUSPENDED"].includes(value)) {
+    return "red";
+  }
+
+  if (value === "PENDING") return "amber";
+
+  return "blue-gray";
+};
+
+// =====================================================
+// RESPONSE NORMALIZATION
+// =====================================================
+
+const extractArray = (response, keys = []) => {
+  const body = response?.data ?? response;
+
+  const candidates = [
+    body?.data,
+    body,
+    body?.data?.data,
+    ...keys.map((key) => body?.data?.[key]),
+    ...keys.map((key) => body?.[key]),
+  ];
+
+  return candidates.find(Array.isArray) || null;
+};
+
 const getDocuments = (partner) => {
   if (!partner) return [];
 
-  const sources = [
+  const candidates = [
     partner.documents,
     partner.partnerDocuments,
     partner.kycDocuments,
   ];
 
-  return sources.find(Array.isArray) || [];
+  return candidates.find(Array.isArray) || [];
 };
 
-// Menggunakan alamat API server jika fileUrl relatif.
-const getBackendOrigin = () => {
-  const configured = import.meta.env.VITE_API_ORIGIN;
+const mergeDocuments = (partners, documents) => {
+  const grouped = new Map();
 
-  if (configured) {
-    return configured.replace(/\/+$/, "");
-  }
+  documents.forEach((doc) => {
+    if (doc?.partnerId == null) return;
 
-  const baseURL = api.defaults?.baseURL;
+    const partnerId = String(doc.partnerId);
 
-  if (baseURL) {
-    try {
-      return new URL(baseURL, window.location.origin).origin;
-    } catch {
-      return "";
+    if (!grouped.has(partnerId)) {
+      grouped.set(partnerId, []);
     }
-  }
 
-  return "";
+    grouped.get(partnerId).push(doc);
+  });
+
+  return partners.map((partner) => {
+    const existingDocs = getDocuments(partner);
+    const separateDocs =
+      grouped.get(String(partner.id)) || [];
+
+    // Gabungkan tanpa menduplikasi ID dokumen.
+    const docMap = new Map();
+
+    [...existingDocs, ...separateDocs].forEach((doc) => {
+      if (!doc) return;
+
+      const key =
+        doc.id != null
+          ? String(doc.id)
+          : `${doc.documentType}-${doc.fileUrl}`;
+
+      docMap.set(key, doc);
+    });
+
+    return {
+      ...partner,
+      documents: Array.from(docMap.values()),
+    };
+  });
 };
-
-const getDocumentUrl = (document) => {
-  const raw =
-    document?.fileUrl ||
-    document?.url ||
-    document?.documentUrl ||
-    document?.imageUrl ||
-    document?.attachmentUrl ||
-    document?.path;
-
-  if (!raw || typeof raw !== "string") return null;
-
-  const clean = raw.trim().replace(/\\/g, "/");
-
-  if (/^https?:\/\//i.test(clean)) {
-    return clean;
-  }
-
-  const origin = getBackendOrigin();
-
-  if (!origin) {
-    console.warn(
-      "Alamat backend untuk dokumen KYC belum dikonfigurasi."
-    );
-    return null;
-  }
-
-  const pathname = clean.startsWith("/")
-    ? clean
-    : `/${clean}`;
-
-  return `${origin}${pathname}`;
-};
-
-const getDocumentName = (document, index = 0) =>
-  document?.documentType ||
-  document?.type ||
-  document?.name ||
-  `Dokumen ${index + 1}`;
 
 const getOverallStatus = (documents) => {
   if (!documents.length) return null;
 
-  const statuses = documents.map((document) =>
-    normalizeStatus(document.status)
+  const statuses = documents.map((doc) =>
+    normalizeStatus(doc.status)
   );
 
-  if (statuses.includes("REJECTED")) return "REJECTED";
+  if (statuses.includes("REJECTED")) {
+    return "REJECTED";
+  }
+
+  if (statuses.includes("PENDING")) {
+    return "PENDING";
+  }
 
   if (
     statuses.every((status) =>
@@ -214,23 +235,88 @@ const getOverallStatus = (documents) => {
     return "APPROVED";
   }
 
-  if (statuses.includes("PENDING")) return "PENDING";
-
   return null;
 };
 
 // =====================================================
-// COMPONENTS
+// DOCUMENT URL
+// =====================================================
+
+const getBackendOrigin = () => {
+  const configured = import.meta.env.VITE_API_ORIGIN;
+
+  if (configured) {
+    return configured.replace(/\/+$/, "");
+  }
+
+  const base = api.defaults?.baseURL;
+
+  if (!base) return "";
+
+  try {
+    return new URL(base, window.location.origin).origin;
+  } catch {
+    return "";
+  }
+};
+
+const getDocumentUrl = (document) => {
+  const raw =
+    document?.fileUrl ||
+    document?.documentUrl ||
+    document?.url ||
+    document?.imageUrl;
+
+  if (!raw || typeof raw !== "string") {
+    return null;
+  }
+
+  const value = raw.trim().replace(/\\/g, "/");
+  const backendOrigin = getBackendOrigin();
+
+  try {
+    const parsed = new URL(
+      value,
+      backendOrigin || window.location.origin
+    );
+
+    // File lama disimpan menggunakan localhost:3000.
+    // Ganti host tersebut dengan domain API aktif.
+    const isLocalhost = [
+      "localhost",
+      "127.0.0.1",
+    ].includes(parsed.hostname);
+
+    if (isLocalhost && backendOrigin) {
+      return (
+        backendOrigin +
+        parsed.pathname +
+        parsed.search
+      );
+    }
+
+    if (!backendOrigin && !/^https?:\/\//i.test(value)) {
+      return null;
+    }
+
+    return parsed.href;
+  } catch {
+    return null;
+  }
+};
+
+// =====================================================
+// UI COMPONENTS
 // =====================================================
 
 function StatusBadge({ status }) {
   return (
     <Chip
-      value={statusLabel(status)}
-      color={statusColor(status)}
       size="sm"
       variant="ghost"
-      className="w-fit text-xs font-bold"
+      value={statusLabel(status)}
+      color={statusColor(status)}
+      className="w-fit text-xs font-semibold"
     />
   );
 }
@@ -251,9 +337,9 @@ function SummaryCard({ title, value, Icon, color }) {
         </Typography>
       </div>
 
-      <Typography className="mt-3 text-sm font-medium text-gray-500">
+      <p className="mt-3 text-sm font-medium text-gray-500">
         {title}
-      </Typography>
+      </p>
     </Card>
   );
 }
@@ -261,19 +347,16 @@ function SummaryCard({ title, value, Icon, color }) {
 function DetailField({ label, value }) {
   return (
     <div>
-      <p className="mb-1 text-xs font-medium text-gray-500">
+      <p className="mb-1 text-xs text-gray-500">
         {label}
       </p>
+
       <p className="break-words text-sm font-semibold text-gray-800">
         {value ?? "-"}
       </p>
     </div>
   );
 }
-
-// =====================================================
-// IMAGE / PDF PREVIEW
-// =====================================================
 
 function DocumentPreview({ document, index }) {
   const url = getDocumentUrl(document);
@@ -295,7 +378,7 @@ function DocumentPreview({ document, index }) {
     <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
       <div className="flex items-center justify-between gap-3 border-b bg-gray-50 p-4">
         <div className="flex items-center gap-2">
-          <DocumentTextIcon className="h-6 w-6 text-blue-600" />
+          <DocumentTextIcon className="h-5 w-5 text-blue-600" />
 
           <p className="text-sm font-bold text-gray-800">
             {name}
@@ -307,27 +390,31 @@ function DocumentPreview({ document, index }) {
 
       <div className="p-4">
         {!url ? (
-          <div className="flex min-h-48 flex-col items-center justify-center rounded-xl bg-gray-50">
+          <div className="flex min-h-[180px] flex-col items-center justify-center rounded-xl bg-gray-50">
             <PhotoIcon className="h-12 w-12 text-gray-300" />
+
             <p className="mt-3 text-sm text-gray-500">
-              URL dokumen tidak tersedia.
+              URL dokumen belum tersedia.
             </p>
           </div>
         ) : isPdf ? (
-          <div className="flex min-h-48 flex-col items-center justify-center rounded-xl bg-red-50">
+          <div className="flex min-h-[180px] flex-col items-center justify-center rounded-xl bg-red-50">
             <DocumentTextIcon className="h-14 w-14 text-red-500" />
-            <p className="mt-3 text-sm font-medium text-gray-700">
+
+            <p className="mt-3 text-sm text-gray-700">
               Dokumen PDF
             </p>
           </div>
         ) : failed ? (
-          <div className="flex min-h-48 flex-col items-center justify-center rounded-xl bg-gray-50">
+          <div className="flex min-h-[180px] flex-col items-center justify-center rounded-xl bg-gray-50">
             <PhotoIcon className="h-12 w-12 text-gray-300" />
+
             <p className="mt-3 text-sm text-red-500">
-              Gagal memuat gambar.
+              Gambar gagal dimuat.
             </p>
+
             <p className="mt-1 text-xs text-gray-400">
-              Periksa URL dan akses file pada server.
+              Periksa akses file di server.
             </p>
           </div>
         ) : (
@@ -336,10 +423,10 @@ function DocumentPreview({ document, index }) {
             alt={name}
             loading="lazy"
             onError={() => {
-              console.error("KYC IMAGE FAILED:", {
-                documentId: document.id,
-                url,
-              });
+              console.error(
+                "Gagal memuat dokumen KYC:",
+                document.id
+              );
               setFailed(true);
             }}
             className="mx-auto max-h-[360px] w-full rounded-xl bg-gray-50 object-contain"
@@ -363,7 +450,7 @@ function DocumentPreview({ document, index }) {
 }
 
 // =====================================================
-// MAIN KYC PAGE
+// MAIN PAGE
 // =====================================================
 
 export default function KycVerification() {
@@ -379,24 +466,26 @@ export default function KycVerification() {
   const [page, setPage] = useState(1);
   const limit = 10;
 
-  // Modal tanpa navigasi route.
   const [selectedPartnerId, setSelectedPartnerId] =
     useState(null);
 
   const [detailOpen, setDetailOpen] = useState(false);
+  const [verifyOpen, setVerifyOpen] = useState(false);
 
   const [selectedDocument, setSelectedDocument] =
     useState(null);
 
-  const [verifyOpen, setVerifyOpen] = useState(false);
   const [verifyAction, setVerifyAction] =
     useState("APPROVED");
 
   const [reason, setReason] = useState("");
   const [saving, setSaving] = useState(false);
 
+  const [documentWarning, setDocumentWarning] =
+    useState("");
+
   // ===================================================
-  // FETCH DATA
+  // LOAD PARTNERS + DOCUMENTS
   // ===================================================
 
   const fetchPartners = useCallback(async (silent = false) => {
@@ -408,38 +497,82 @@ export default function KycVerification() {
       }
 
       setErrorText("");
+      setDocumentWarning("");
 
-      const response = await api.get(API.partners);
+      const partnerResponse = await api.get(API.partners);
 
-      const result = response.data?.data;
+      const partnerList = extractArray(
+        partnerResponse,
+        ["partners"]
+      );
 
-      const list = Array.isArray(result)
-        ? result
-        : Array.isArray(result?.partners)
-        ? result.partners
-        : Array.isArray(result?.data)
-        ? result.data
-        : null;
-
-      if (!list) {
+      if (!partnerList) {
         throw new Error(
-          "Format respons GET /partners/admin/all tidak sesuai."
+          "Respons daftar Partner tidak sesuai."
         );
       }
 
-      // Diagnosis jika server belum mengembalikan dokumen.
+      // Dokumen yang sudah disertakan API Partner.
+      const embeddedCount = partnerList.reduce(
+        (total, partner) =>
+          total + getDocuments(partner).length,
+        0
+      );
+
+      let separateDocuments = [];
+
+      if (API.documents) {
+        try {
+          const documentResponse = await api.get(
+            API.documents
+          );
+
+          const list = extractArray(
+            documentResponse,
+            ["documents"]
+          );
+
+          if (!list) {
+            throw new Error(
+              "Respons endpoint dokumen bukan array."
+            );
+          }
+
+          separateDocuments = list;
+        } catch (error) {
+          console.error(
+            "Gagal mengambil dokumen KYC:",
+            error
+          );
+
+          setDocumentWarning(
+            "Endpoint dokumen gagal diakses. " +
+            getError(error)
+          );
+        }
+      } else if (embeddedCount === 0) {
+        setDocumentWarning(
+          "API daftar Partner belum menyertakan dokumen. " +
+          "Atur VITE_KYC_DOCUMENTS_ENDPOINT dengan endpoint " +
+          "daftar dokumen untuk Super Admin."
+        );
+      }
+
+      const merged = mergeDocuments(
+        partnerList,
+        separateDocuments
+      );
+
       if (import.meta.env.DEV) {
-        console.log("KYC PARTNER COUNT:", list.length);
-        console.log(
-          "KYC DOCUMENT COUNTS:",
-          list.map((partner) => ({
+        console.table(
+          merged.map((partner) => ({
             partnerId: partner.id,
-            count: getDocuments(partner).length,
+            jumlahDokumen: partner.documents.length,
           }))
         );
       }
 
-      setPartners(list);
+      setPartners(merged);
     } catch (error) {
       console.error("FETCH KYC ERROR:", error);
 
@@ -455,12 +588,16 @@ export default function KycVerification() {
     fetchPartners();
   }, [fetchPartners]);
 
-  // Gunakan data terbaru setelah refresh.
+  // ===================================================
+  // SELECTED PARTNER
+  // ===================================================
+
   const selectedPartner = useMemo(
     () =>
       partners.find(
         (partner) =>
-          String(partner.id) === String(selectedPartnerId)
+          String(partner.id) ===
+          String(selectedPartnerId)
       ) || null,
     [partners, selectedPartnerId]
   );
@@ -476,21 +613,23 @@ export default function KycVerification() {
       partners: partners.length,
       documents: docs.length,
       pending: docs.filter(
-        (item) => normalizeStatus(item.status) === "PENDING"
+        (doc) =>
+          normalizeStatus(doc.status) === "PENDING"
       ).length,
-      approved: docs.filter((item) =>
+      approved: docs.filter((doc) =>
         ["APPROVED", "VERIFIED"].includes(
-          normalizeStatus(item.status)
+          normalizeStatus(doc.status)
         )
       ).length,
       rejected: docs.filter(
-        (item) => normalizeStatus(item.status) === "REJECTED"
+        (doc) =>
+          normalizeStatus(doc.status) === "REJECTED"
       ).length,
     };
   }, [partners]);
 
   // ===================================================
-  // FILTER + PAGINATION
+  // FILTER
   // ===================================================
 
   const filteredPartners = useMemo(() => {
@@ -504,7 +643,7 @@ export default function KycVerification() {
         partner.companyName,
         partner.type,
       ]
-        .filter((value) => value != null)
+        .filter((item) => item != null)
         .join(" ")
         .toLowerCase();
 
@@ -534,7 +673,7 @@ export default function KycVerification() {
   );
 
   // ===================================================
-  // DETAIL
+  // DETAIL MODAL
   // ===================================================
 
   const openDetail = (partner) => {
@@ -550,10 +689,18 @@ export default function KycVerification() {
   };
 
   // ===================================================
-  // APPROVE / REJECT
+  // VERIFICATION
   // ===================================================
 
   const openVerify = (document, action) => {
+    if (!VERIFY_ENABLED) {
+      toast.warning(
+        "Verifikasi belum diaktifkan. " +
+        "Konfirmasi payload pada partner.controller.js."
+      );
+      return;
+    }
+
     if (!document?.id) {
       toast.error("ID dokumen tidak ditemukan.");
       return;
@@ -568,7 +715,13 @@ export default function KycVerification() {
   const submitVerification = async (event) => {
     event.preventDefault();
 
-    if (saving || !selectedDocument?.id) return;
+    if (
+      !VERIFY_ENABLED ||
+      saving ||
+      !selectedDocument?.id
+    ) {
+      return;
+    }
 
     if (
       verifyAction === "REJECTED" &&
@@ -581,20 +734,21 @@ export default function KycVerification() {
     try {
       setSaving(true);
 
-      const payload = buildVerificationPayload(
-        verifyAction,
-        reason
-      );
-
       const response = await api.patch(
         API.verify(selectedDocument.id),
-        payload
+        {
+          status: verifyAction,
+          rejectionReason:
+            verifyAction === "REJECTED"
+              ? reason.trim()
+              : null,
+        }
       );
 
       if (response.data?.success === false) {
         throw new Error(
-          response.data?.message ||
-            "Gagal memverifikasi dokumen."
+          response.data.message ||
+          "Verifikasi gagal."
         );
       }
 
@@ -604,55 +758,11 @@ export default function KycVerification() {
           : "Dokumen berhasil ditolak."
       );
 
-      // Perbarui status dokumen secara lokal.
-      setPartners((previous) =>
-        previous.map((partner) => {
-          const docs = getDocuments(partner);
-
-          const updatedDocs = docs.map((doc) =>
-            String(doc.id) === String(selectedDocument.id)
-              ? {
-                  ...doc,
-                  status: verifyAction,
-                  rejectionReason:
-                    verifyAction === "REJECTED"
-                      ? reason.trim()
-                      : null,
-                  verifiedAt:
-                    verifyAction === "APPROVED"
-                      ? new Date().toISOString()
-                      : null,
-                }
-              : doc
-          );
-
-          if (Array.isArray(partner.documents)) {
-            return { ...partner, documents: updatedDocs };
-          }
-
-          if (Array.isArray(partner.partnerDocuments)) {
-            return {
-              ...partner,
-              partnerDocuments: updatedDocs,
-            };
-          }
-
-          if (Array.isArray(partner.kycDocuments)) {
-            return {
-              ...partner,
-              kycDocuments: updatedDocs,
-            };
-          }
-
-          return partner;
-        })
-      );
-
       setVerifyOpen(false);
       setSelectedDocument(null);
       setReason("");
 
-      // Sinkronisasi dengan server.
+      // Muat ulang hasil terbaru dari server.
       await fetchPartners(true);
     } catch (error) {
       console.error("VERIFY KYC ERROR:", error);
@@ -673,7 +783,7 @@ export default function KycVerification() {
         {/* HEADER */}
         <div className="flex items-center gap-3">
           <div className="rounded-xl bg-green-50 p-3">
-            <ShieldCheckIcon className="h-7 w-7 text-[#66bb6a]" />
+            <ShieldCheckIcon className="h-7 w-7 text-green-500" />
           </div>
 
           <div>
@@ -684,9 +794,9 @@ export default function KycVerification() {
               Verifikasi KYC
             </Typography>
 
-            <Typography className="text-sm text-gray-500">
-              Kelola dokumen dan status EcoCash Partner
-            </Typography>
+            <p className="text-sm text-gray-500">
+              Pemeriksaan dokumen EcoCash Partner
+            </p>
           </div>
         </div>
 
@@ -727,6 +837,19 @@ export default function KycVerification() {
             color="bg-red-50 text-red-600"
           />
         </div>
+
+        {/* WARNING */}
+        {documentWarning && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+            {documentWarning}
+          </div>
+        )}
+
+        {errorText && (
+          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+            {errorText}
+          </div>
+        )}
 
         {/* FILTER */}
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -774,14 +897,8 @@ export default function KycVerification() {
           </div>
         </div>
 
-        {errorText && (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-            {errorText}
-          </div>
-        )}
-
-        {/* TABLE */}
-        <Card className="overflow-hidden rounded-2xl border border-green-50 shadow-sm">
+        {/* PARTNER TABLE */}
+        <Card className="overflow-hidden rounded-2xl border border-gray-100 shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[950px] text-left">
               <thead>
@@ -794,10 +911,13 @@ export default function KycVerification() {
                     "Tanggal",
                     "Aksi",
                   ].map((heading) => (
-                    <th key={heading} className="border-b p-5">
-                      <Typography className="text-xs font-bold uppercase text-[#2b6cb0]">
+                    <th
+                      key={heading}
+                      className="border-b p-5"
+                    >
+                      <p className="text-xs font-bold uppercase text-[#2b6cb0]">
                         {heading}
-                      </Typography>
+                      </p>
                     </th>
                   ))}
                 </tr>
@@ -825,7 +945,7 @@ export default function KycVerification() {
                 ) : (
                   visiblePartners.map((partner) => {
                     const docs = getDocuments(partner);
-                    const status = getOverallStatus(docs);
+                    const overall = getOverallStatus(docs);
 
                     return (
                       <tr
@@ -833,7 +953,7 @@ export default function KycVerification() {
                         className="border-b hover:bg-green-50/30"
                       >
                         <td className="p-5">
-                          <p className="font-bold text-gray-800">
+                          <p className="font-semibold text-gray-800">
                             {getPartnerName(partner)}
                           </p>
 
@@ -851,17 +971,18 @@ export default function KycVerification() {
                         </td>
 
                         <td className="p-5 text-sm text-gray-700">
-                          {docs.length} dokumen
+                          <span className="font-semibold">
+                            {docs.length}
+                          </span>{" "}
+                          dokumen
                         </td>
 
                         <td className="p-5">
-                          {status ? (
-                            <StatusBadge status={status} />
+                          {overall ? (
+                            <StatusBadge status={overall} />
                           ) : (
                             <span className="text-xs text-gray-400">
-                              {docs.length
-                                ? "Status tidak diketahui"
-                                : "Belum ada dokumen"}
+                              Belum ada dokumen
                             </span>
                           )}
                         </td>
@@ -899,7 +1020,9 @@ export default function KycVerification() {
                 size="sm"
                 disabled={currentPage === 1}
                 onClick={() =>
-                  setPage((prev) => Math.max(1, prev - 1))
+                  setPage((prev) =>
+                    Math.max(1, prev - 1)
+                  )
                 }
                 className="rounded-lg bg-[#2b6cb0] p-2"
               >
@@ -935,11 +1058,11 @@ export default function KycVerification() {
                 variant="h5"
                 className="font-bold text-[#2b6cb0]"
               >
-                Detail KYC Partner
+                Detail Verifikasi KYC
               </Typography>
 
               <p className="mt-1 text-xs font-normal text-gray-500">
-                Pemeriksaan dokumen identitas Partner
+                Informasi dan dokumen Partner
               </p>
             </div>
 
@@ -947,16 +1070,14 @@ export default function KycVerification() {
               type="button"
               onClick={closeDetail}
               disabled={saving || verifyOpen}
+              aria-label="Tutup detail"
               className="rounded-lg p-2 hover:bg-gray-100"
-              aria-label="Tutup"
             >
               <XMarkIcon className="h-5 w-5" />
             </button>
           </DialogHeader>
 
           <DialogBody className="max-h-[70vh] space-y-6 overflow-y-auto p-5">
-
-            {/* PARTNER INFORMATION */}
             <div className="rounded-2xl bg-blue-50 p-5">
               <p className="mb-4 text-xs font-bold uppercase text-blue-600">
                 Informasi Partner
@@ -967,25 +1088,32 @@ export default function KycVerification() {
                   label="Nama"
                   value={getPartnerName(selectedPartner)}
                 />
+
                 <DetailField
                   label="Email"
                   value={getPartnerEmail(selectedPartner)}
                 />
+
                 <DetailField
                   label="Telepon"
                   value={getPartnerPhone(selectedPartner)}
                 />
+
                 <DetailField
                   label="Perusahaan"
                   value={selectedPartner?.companyName}
                 />
+
                 <DetailField
-                  label="Tipe"
+                  label="Tipe Partner"
                   value={selectedPartner?.type}
                 />
+
                 <DetailField
                   label="Status Partner"
-                  value={statusLabel(selectedPartner?.status)}
+                  value={statusLabel(
+                    selectedPartner?.status
+                  )}
                 />
               </div>
             </div>
@@ -996,18 +1124,15 @@ export default function KycVerification() {
                 variant="h6"
                 className="mb-4 font-bold text-gray-800"
               >
-                Dokumen Verifikasi
+                Dokumen KYC
               </Typography>
 
               {getDocuments(selectedPartner).length === 0 ? (
                 <div className="rounded-xl border border-dashed border-gray-300 p-8 text-center">
                   <DocumentTextIcon className="mx-auto h-12 w-12 text-gray-300" />
+
                   <p className="mt-3 text-sm text-gray-500">
-                    Belum ada dokumen KYC yang dikirim API.
-                  </p>
-                  <p className="mt-2 text-xs text-gray-400">
-                    Pastikan GET /partners/admin/all
-                    menyertakan relasi documents.
+                    Dokumen belum tersedia pada respons API.
                   </p>
                 </div>
               ) : (
@@ -1058,12 +1183,12 @@ export default function KycVerification() {
                           </div>
 
                           {document.rejectionReason && (
-                            <div className="rounded-lg bg-red-50 p-3">
-                              <p className="text-xs font-semibold text-red-700">
+                            <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
+                              <p className="font-semibold">
                                 Alasan Penolakan
                               </p>
 
-                              <p className="mt-1 text-sm text-red-600">
+                              <p className="mt-1">
                                 {document.rejectionReason}
                               </p>
                             </div>
@@ -1073,7 +1198,11 @@ export default function KycVerification() {
                             <div className="flex flex-wrap gap-3 border-t pt-4">
                               <Button
                                 size="sm"
-                                disabled={saving || !document.id}
+                                disabled={
+                                  saving ||
+                                  !VERIFY_ENABLED ||
+                                  !document.id
+                                }
                                 onClick={() =>
                                   openVerify(
                                     document,
@@ -1088,7 +1217,11 @@ export default function KycVerification() {
 
                               <Button
                                 size="sm"
-                                disabled={saving || !document.id}
+                                disabled={
+                                  saving ||
+                                  !VERIFY_ENABLED ||
+                                  !document.id
+                                }
                                 onClick={() =>
                                   openVerify(
                                     document,
@@ -1107,7 +1240,7 @@ export default function KycVerification() {
                             status
                           ) && (
                             <p className="rounded-lg bg-green-50 p-3 text-sm font-medium text-green-700">
-                              Dokumen telah disetujui.
+                              Dokumen sudah disetujui.
                             </p>
                           )}
 
@@ -1137,19 +1270,21 @@ export default function KycVerification() {
           </DialogFooter>
         </Dialog>
 
-        {/* VERIFICATION CONFIRMATION MODAL */}
+        {/* VERIFICATION CONFIRMATION */}
         <Dialog
           open={verifyOpen}
           handler={() => {
-            if (!saving) setVerifyOpen(false);
+            if (!saving) {
+              setVerifyOpen(false);
+            }
           }}
           size="sm"
           className="rounded-2xl"
         >
           <DialogHeader className="text-[#2b6cb0]">
             {verifyAction === "APPROVED"
-              ? "Approve Dokumen"
-              : "Reject Dokumen"}
+              ? "Setujui Dokumen"
+              : "Tolak Dokumen"}
           </DialogHeader>
 
           <form onSubmit={submitVerification}>
@@ -1175,7 +1310,7 @@ export default function KycVerification() {
                   onChange={(event) =>
                     setReason(event.target.value)
                   }
-                  placeholder="Contoh: Foto KTP tidak jelas..."
+                  placeholder="Contoh: Gambar tidak terbaca..."
                   className="w-full resize-none rounded-xl border border-gray-300 p-3 text-sm outline-none focus:border-red-500"
                 />
               )}
@@ -1193,7 +1328,7 @@ export default function KycVerification() {
 
               <Button
                 type="submit"
-                disabled={saving}
+                disabled={saving || !VERIFY_ENABLED}
                 className={
                   verifyAction === "APPROVED"
                     ? "bg-green-500"
