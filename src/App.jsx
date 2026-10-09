@@ -1,3 +1,4 @@
+
 import React from "react";
 
 import {
@@ -35,7 +36,12 @@ import VoucherManagement from "./SuperAdmin/VoucherManagement";
 import FoundationIndex from "./SuperAdmin/Foundation/index";
 import NewsIndex from "./SuperAdmin/News/index";
 import BotManagementIndex from "./SuperAdmin/BotManagement/BotIndex";
-import FaqManagementIndex from "./SuperAdmin/FaqManagement/FaqIndex"; 
+import FaqManagementIndex from "./SuperAdmin/FaqManagement/FaqIndex";
+
+// LAPORAN MASALAH ECOCASH PARTNER
+import PartnerReports from "./SuperAdmin/livechat/chat.jsx";
+import TicketManagement from "./SuperAdmin/TicketManagemen/index";  
+import KycVerification from "./SuperAdmin/KycVerification/index";
 
 // ============================================================
 // ADMIN AREA
@@ -100,7 +106,7 @@ function App() {
       <Routes>
 
         {/* ====================================================
-            PUBLIC
+            PUBLIC ROUTE
         ==================================================== */}
 
         <Route
@@ -109,7 +115,7 @@ function App() {
         />
 
         {/* ====================================================
-            SUPER ADMIN
+            SUPER ADMIN ROUTES
         ==================================================== */}
 
         <Route
@@ -119,6 +125,7 @@ function App() {
             />
           }
         >
+
           <Route
             path="/dashboard"
             element={<Dashboard />}
@@ -183,26 +190,55 @@ function App() {
             path="/vouchers"
             element={<VoucherManagement />}
           />
+
           <Route
             path="/foundations"
             element={<FoundationIndex />}
           />
+
           <Route
             path="/news"
             element={<NewsIndex />}
           />
+
           <Route
             path="/bot-management"
             element={<BotManagementIndex />}
           />
+
           <Route
             path="/faq-management"
             element={<FaqManagementIndex />}
           />
+
+          {/* ================================================
+              LAPORAN MASALAH ECOCASH PARTNER
+          ================================================ */}
+
+          <Route
+            path="/live-chat"
+            element={<PartnerReports />}
+          />
+          <Route
+            path="/ticket-management"
+            element={<TicketManagement />}
+          />
+          <Route
+    path="/kyc-verification"
+    element={<KycVerification />}
+  />
+
+  {/* Halaman detail KYC */}
+  <Route
+    path="/kyc-verification/:partnerId"
+    element={<KycVerification />}
+  />
+
         </Route>
+        {/* END SUPER ADMIN */}
 
         {/* ====================================================
-            AREA ADMIN
+            ADMIN AREA ROUTES
         ==================================================== */}
 
         <Route
@@ -212,6 +248,7 @@ function App() {
             />
           }
         >
+
           <Route
             path="/AdminArea/dashboard"
             element={<DashboardArea />}
@@ -256,21 +293,22 @@ function App() {
             path="/AdminArea/smart-truck"
             element={<AdminAreaTruckIndex />}
           />
+
         </Route>
+        {/* END ADMIN AREA */}
 
         {/* ====================================================
-            ORGANIZATION ADMIN
+            ORGANIZATION ADMIN ROUTES
         ==================================================== */}
 
         <Route
           element={
             <ProtectedRoute
-              allowedRoles={[
-                "ORGANIZATION_ADMIN",
-              ]}
+              allowedRoles={["ORGANIZATION_ADMIN"]}
             />
           }
         >
+
           <Route
             path="/OrganizationAdmin/dashboard"
             element={<DashboardOrganization />}
@@ -280,21 +318,22 @@ function App() {
             path="/OrganizationAdmin/users"
             element={<OrganizationUsers />}
           />
+
         </Route>
+        {/* END ORGANIZATION ADMIN */}
 
         {/* ====================================================
-            FOUNDATION ADMIN
+            FOUNDATION ADMIN ROUTES
         ==================================================== */}
 
         <Route
           element={
             <ProtectedRoute
-              allowedRoles={[
-                "FOUNDATION_ADMIN",
-              ]}
+              allowedRoles={["FOUNDATION_ADMIN"]}
             />
           }
         >
+
           <Route
             path="/FoundationAdmin/dashboard"
             element={<FoundationDashboard />}
@@ -305,33 +344,31 @@ function App() {
             element={<FoundationDonations />}
           />
 
-            <Route
-              path="/FoundationAdmin/charities"
-              element={
-                <FoundationCharity />
-              }
-            />
-            <Route
+          <Route
+            path="/FoundationAdmin/charities"
+            element={<FoundationCharity />}
+          />
+
+          <Route
             path="/FoundationAdmin/profile"
             element={<FoundationProfile />}
           />
-          </Route>
-        
 
+        </Route>
+        {/* END FOUNDATION ADMIN */}
 
         {/* ====================================================
-            MACHINE OPERATOR
+            MACHINE OPERATOR ROUTES
         ==================================================== */}
 
         <Route
           element={
             <ProtectedRoute
-              allowedRoles={[
-                "MACHINE_OPERATOR",
-              ]}
+              allowedRoles={["MACHINE_OPERATOR"]}
             />
           }
         >
+
           <Route
             path="/operator/dashboard"
             element={<OperatorDashboard />}
@@ -341,6 +378,7 @@ function App() {
             path="/operator/smart-container"
             element={<OperatorSmartContainer />}
           />
+
           <Route
             path="/operator/scheduling"
             element={<OperatorScheduling />}
@@ -355,21 +393,22 @@ function App() {
             path="/operator/profile"
             element={<OperatorProfile />}
           />
+
         </Route>
+        {/* END MACHINE OPERATOR */}
 
         {/* ====================================================
-            STORE ADMIN
+            STORE ADMIN ROUTES
         ==================================================== */}
 
         <Route
           element={
             <ProtectedRoute
-              allowedRoles={[
-                "STORE_ADMIN",
-              ]}
+              allowedRoles={["STORE_ADMIN"]}
             />
           }
         >
+
           <Route
             path="/store/dashboard"
             element={<DashboardStore />}
@@ -404,14 +443,17 @@ function App() {
             path="/store/voucher"
             element={<StoreVoucherManagement />}
           />
+
           <Route
             path="/store/wallet"
             element={<StoreWalletManagement />}
           />
+
         </Route>
+        {/* END STORE ADMIN */}
 
         {/* ====================================================
-            CATCH ALL
+            CATCH ALL ROUTE
         ==================================================== */}
 
         <Route

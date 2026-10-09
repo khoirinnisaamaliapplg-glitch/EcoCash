@@ -1,3 +1,4 @@
+
 import React from "react";
 import { NavLink, Link } from "react-router-dom";
 
@@ -21,11 +22,15 @@ import {
   MapIcon,
   TrashIcon,
   BuildingOffice2Icon,
-  BuildingLibraryIcon, // FOUNDATION
+  BuildingLibraryIcon,
   TicketIcon,
   QuestionMarkCircleIcon,
 } from "@heroicons/react/24/outline";
-import { Bot } from "lucide-react";
+
+import {
+  Bot,
+  MessageSquareWarning,
+} from "lucide-react";
 
 import logo2 from "../assets/logo2.png";
 import sidebarIllustration from "../assets/banner2.jpeg";
@@ -60,9 +65,9 @@ const Sidebar = ({ open, setOpen }) => {
       path: "/areas",
     },
 
-    // ========================================================
+    // ============================================================
     // ORGANIZATION
-    // ========================================================
+    // ============================================================
 
     {
       name: "Organizations",
@@ -70,9 +75,9 @@ const Sidebar = ({ open, setOpen }) => {
       path: "/organizations",
     },
 
-    // ========================================================
+    // ============================================================
     // FOUNDATION
-    // ========================================================
+    // ============================================================
 
     {
       name: "Foundations",
@@ -80,7 +85,9 @@ const Sidebar = ({ open, setOpen }) => {
       path: "/foundations",
     },
 
-    // ========================================================
+    // ============================================================
+    // WASTE MANAGEMENT
+    // ============================================================
 
     {
       name: "Waste Management",
@@ -100,38 +107,79 @@ const Sidebar = ({ open, setOpen }) => {
       path: "/waste-prices",
     },
 
+    // ============================================================
+    // MARKETPLACE
+    // ============================================================
+
     {
       name: "Store",
       icon: <ShoppingBagIcon className="h-5 w-5" />,
       path: "/marketplace",
     },
 
-    // ========================================================
-    // VOUCHER SUPER ADMIN
-    // ========================================================
+    // ============================================================
+    // VOUCHER
+    // ============================================================
 
     {
       name: "Vouchers",
       icon: <TicketIcon className="h-5 w-5" />,
       path: "/vouchers",
     },
+
+    // ============================================================
+    // NEWS
+    // ============================================================
+
     {
-      name:"News",
+      name: "News",
       icon: <BuildingLibraryIcon className="h-5 w-5" />,
       path: "/news",
     },
+
+    // ============================================================
+    // BOT MANAGEMENT
+    // ============================================================
+
     {
       name: "Bot Management",
       icon: <Bot className="h-5 w-5" />,
       path: "/bot-management",
     },
+
+    // ============================================================
+    // FAQ
+    // ============================================================
+
     {
       name: "FAQ Management",
       icon: <QuestionMarkCircleIcon className="h-5 w-5" />,
       path: "/faq-management",
     },
 
-    // ========================================================
+    // ============================================================
+    // LAPORAN MASALAH ECOCASH PARTNER
+    // ============================================================
+
+    {
+      name: "Laporan Partner",
+      icon: <MessageSquareWarning className="h-5 w-5" />,
+      path: "/live-chat",
+    },
+    {
+      name: "Ticket Management",
+      icon: <MessageSquareWarning className="h-5 w-5" />,
+      path: "/ticket-management",
+    },
+    {
+      name: "KYC Verification",
+      icon: <MessageSquareWarning className="h-5 w-5" />,
+      path: "/kyc-verification",
+    },
+
+    // ============================================================
+    // FINANCIAL REPORT
+    // ============================================================
 
     {
       name: "Financial Reports",
@@ -139,12 +187,20 @@ const Sidebar = ({ open, setOpen }) => {
       path: "/finansial-reports",
     },
 
+    // ============================================================
+    // SYSTEM SETTINGS
+    // ============================================================
+
     {
       name: "System Setting",
       icon: <Cog6ToothIcon className="h-5 w-5" />,
       path: "/settings",
     },
   ];
+
+  // ============================================================
+  // RENDER
+  // ============================================================
 
   return (
     <>
@@ -174,7 +230,8 @@ const Sidebar = ({ open, setOpen }) => {
         className={`
           fixed md:static inset-y-0 left-0 z-30
           h-screen w-full max-w-[18rem] p-4
-          shadow-xl shadow-blue-gray-900/5 bg-white
+          shadow-xl shadow-blue-gray-900/5
+          bg-white
           border-r border-gray-100
           transition-transform duration-300 ease-in-out
           flex flex-col justify-between
@@ -190,7 +247,7 @@ const Sidebar = ({ open, setOpen }) => {
             BAGIAN ATAS
         ==================================================== */}
 
-        <div className="flex flex-col h-[calc(100%-130px)]">
+        <div className="flex min-h-0 flex-1 flex-col">
           {/* ==================================================
               LOGO
           ================================================== */}
@@ -210,6 +267,7 @@ const Sidebar = ({ open, setOpen }) => {
           >
             <Link
               to="/dashboard"
+              onClick={() => setOpen(false)}
               className="
                 flex
                 items-center
@@ -258,8 +316,10 @@ const Sidebar = ({ open, setOpen }) => {
             {/* CLOSE MOBILE */}
 
             <button
+              type="button"
               onClick={() => setOpen(false)}
               className="md:hidden"
+              aria-label="Tutup sidebar"
             >
               <XMarkIcon className="h-6 w-6 text-gray-500" />
             </button>
@@ -269,12 +329,12 @@ const Sidebar = ({ open, setOpen }) => {
               MENU
           ================================================== */}
 
-          <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar">
+          <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto pr-1">
             <List className="gap-1 p-0">
-              {menu.map((item, idx) => (
+              {menu.map((item) => (
                 <NavLink
                   to={item.path}
-                  key={idx}
+                  key={item.path}
                   onClick={() => setOpen(false)}
                 >
                   {({ isActive }) => (
@@ -325,7 +385,7 @@ const Sidebar = ({ open, setOpen }) => {
         >
           <img
             src={sidebarIllustration}
-            alt="Admin Panel Illustration"
+            alt="EcoCash Admin Panel Illustration"
             className="
               w-full
               h-[140px]
